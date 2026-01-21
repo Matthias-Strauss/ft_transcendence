@@ -11,7 +11,11 @@
 
    - _Action:_ Fill in the `.env` with your local keys/configs.
 
-2. **Run the Project:**
+2. **Install dependencies:**
+
+   Run `npm install` in project root in order to install dependencies.
+
+3. **Run the Project:**
 
    ```bash
    docker-compose up --build
@@ -53,6 +57,7 @@
 - **Secrets:**
   - ❌ NEVER hardcode API keys or passwords.
   - ✅ Use `process.env.VARIABLE_NAME` and add keys to `.env`.
+- **🚨 IMPORTANT:** Keep updating README.md, it's a mandatory part of the subject that we document!
 - **Comments:** Explain _why_ complex logic exists, not _what_ the code does.
 
 ---
