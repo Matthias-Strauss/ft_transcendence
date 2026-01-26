@@ -100,3 +100,33 @@ export const MOCK_POSTS: Post[] = [
       'https://images.unsplash.com/photo-1535222636729-76586bf52493?q=80&w=1470&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
   },
 ];
+
+export const MOCK_LOBBIES: GameLobby[] = [
+  {
+    id: '1',
+    game: 'Hangman',
+    host: 'WordWizard',
+    players: 1,
+    maxPlayers: 4,
+    status: 'waiting',
+    difficulty: 'hard',
+  },
+  {
+    id: '2',
+    game: 'Tic-Tac-Toe',
+    host: 'GridMaster',
+    players: 2,
+    maxPlayers: 2,
+    status: 'playing',
+    difficulty: 'medium',
+  },
+  {
+    id: '3',
+    game: 'Hangman',
+    host: 'LexiPlay',
+    players: 2,
+    maxPlayers: 4,
+    status: 'finished',
+    difficulty: 'easy',
+  },
+];
