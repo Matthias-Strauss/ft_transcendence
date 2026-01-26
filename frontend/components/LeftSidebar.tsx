@@ -58,12 +58,6 @@ export function LeftSidebar({ activeTab, onTabChange, onNewPost }: LeftSidebarPr
           onClick={() => onTabChange('home')}
         />
         <SidebarItem
-          icon={<Gamepad2 className="size-6" />}
-          label="Games"
-          active={activeTab === 'games'}
-          onClick={() => onTabChange('games')}
-        />
-        <SidebarItem
           icon={<Trophy className="size-6" />}
           label="Leaderboard"
           active={activeTab === 'leaderboard'}

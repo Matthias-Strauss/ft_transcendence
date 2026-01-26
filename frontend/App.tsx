@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { RightPanel } from '@/components/RightPanel';
 import { LeftSidebar } from './components/LeftSidebar';
+import { HomeFeed } from './components/HomeFeed';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('home');
@@ -12,12 +13,7 @@ export default function App() {
   const renderContent = () => {
     switch (activeTab) {
       case 'home':
-        return (
-          <div className="p-8 text-center">
-            <h2 className="font-bold text-[20px] text-[#f7f9f9] mb-2">Home</h2>
-            <p className="text-[#8b98a5]">Welcome to the home feed!</p>
-          </div>
-        );
+        return <HomeFeed />;
       case 'leaderboard':
         return (
           <div className="p-8 text-center">
@@ -61,22 +57,17 @@ export default function App() {
           </div>
         );
       default:
-        return (
-          <div className="p-8 text-center">
-            <h2 className="font-bold text-[20px] text-[#f7f9f9] mb-2">Home</h2>
-            <p className="text-[#8b98a5]">Welcome to the home feed!</p>
-          </div>
-        );
+        return <HomeFeed />;
     }
   };
-
-  <main className="ml-[220px] mr-[520px] min-h-screen border-x border-[#39444d]">
-    {renderContent()}
-  </main>;
 
   return (
     <div className="min-h-screen bg-[#0f172a]">
       <LeftSidebar activeTab={activeTab} onTabChange={setActiveTab} onNewPost={handleNewPost} />
+      <main className="ml-[220px] mr-[520px] min-h-screen border-x border-[#39444d]">
+        {renderContent()}
+      </main>
+      ;
       <RightPanel />
     </div>
   );
