@@ -43,10 +43,82 @@ export interface Player {
   following: boolean;
 }
 
+export interface FriendRequest {
+  id: string;
+  name: string;
+  username: string;
+  avatar: string;
+  mutualFriends: number;
+}
+
+export interface Friends {
+  online: Player[];
+  offline: Player[];
+}
+
 export const GAMES: Game[] = [
   { id: '1', name: 'Hangman', icon: '🪢', color: '#F59E0B' },
   { id: '2', name: 'Tic-Tac-Toe', icon: '❌', color: '#3B82F6' },
 ];
+
+export const FRIEND_REQUESTS: FriendRequest[] = [
+  {
+    id: '1',
+    name: 'Alex Gamer',
+    username: '@alexgamer',
+    avatar:
+      'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop&auto=format',
+    mutualFriends: 5,
+  },
+  {
+    id: '2',
+    name: 'Sam Playz',
+    username: '@samplayz',
+    avatar:
+      'https://images.unsplash.com/photo-1527980965255-d3b416303d12?w=100&h=100&fit=crop&auto=format',
+    mutualFriends: 2,
+  },
+];
+
+export const FRIENDS: Friends = {
+  online: [
+    {
+      id: '1',
+      name: 'Gamer Gal',
+      username: '@gamergal',
+      avatar:
+        'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=100&h=100&fit=crop&auto=format',
+      verified: true,
+      level: 15,
+      wins: 120,
+      following: true,
+    },
+    {
+      id: '2',
+      name: 'PixelPro',
+      username: '@pixelpro',
+      avatar:
+        'https://images.unsplash.com/photo-1527980965255-d3b416303d12?w=100&h=100&fit=crop&auto=format',
+      verified: false,
+      level: 20,
+      wins: 200,
+      following: true,
+    },
+  ],
+  offline: [
+    {
+      id: '3',
+      name: 'ArcadeAce',
+      username: '@arcadeace',
+      avatar:
+        'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop&auto=format',
+      verified: true,
+      level: 10,
+      wins: 80,
+      following: true,
+    },
+  ],
+};
 
 export const MOCK_POSTS: Post[] = [
   {

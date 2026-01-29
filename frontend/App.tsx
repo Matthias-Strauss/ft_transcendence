@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { RightPanel } from '@/components/RightPanel';
 import { LeftSidebar } from './components/LeftSidebar';
 import { HomeFeed } from './pages/HomeFeed';
+import { FriendsPage } from './pages/FriendsPage';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('home');
@@ -36,12 +37,7 @@ export default function App() {
           </div>
         );
       case 'friends':
-        return (
-          <div className="p-8 text-center">
-            <h2 className="font-bold text-[20px] text-[#f7f9f9] mb-2">Friends</h2>
-            <p className="text-[#8b98a5]">Your friends will appear here</p>
-          </div>
-        );
+        return <FriendsPage />;
       case 'saved':
         return (
           <div className="p-8 text-center">
