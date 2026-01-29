@@ -1,5 +1,5 @@
 import { Heart, MessageCircle, Share2, MoreHorizontal } from 'lucide-react';
-import { Post } from '../mock_data/mock';
+import { Post } from '../../mock_data/mock';
 import { BadgeCheck } from 'lucide-react';
 
 interface PostCardProps {
