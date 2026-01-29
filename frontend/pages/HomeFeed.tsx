@@ -1,4 +1,4 @@
-import { PostCard } from './ui/PostCard';
+import { PostCard } from '../components/ui/PostCard';
 import { MOCK_POSTS } from '../mock_data/mock';
 import { Sparkles } from 'lucide-react';
 

@@ -1,6 +1,6 @@
 import { Heart, MessageCircle, Share2, MoreHorizontal } from 'lucide-react';
 import { Post } from '../../mock_data/mock';
-import { BadgeCheck } from 'lucide-react';
+import { User } from './User';
 
 interface PostCardProps {
   post: Post;
@@ -10,26 +10,14 @@ export function PostCard({ post }: PostCardProps) {
   return (
     <div className="border-b border-[#39444d] p-4 hover:bg-[#1e293b]/30 transition-colors cursor-pointer">
       <div className="flex gap-3">
-        <div className="size-12 rounded-full overflow-hidden shrink-0">
-          <img
-            src={post.author.avatar}
-            alt={post.author.name}
-            className="w-full h-full object-cover"
-          />
-        </div>
-
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between mb-1">
-            <div className="flex items-center gap-1 min-w-0">
-              <span className="font-bold text-[15px] text-[#f7f9f9] truncate">
-                {post.author.name}
-              </span>
-              {post.author.verified && <BadgeCheck className="size-5" color="var(--color-1)" />}
-
-              <span className="text-[15px] text-[#8b98a5] truncate">{post.author.username}</span>
-              <span className="text-[#8b98a5]">·</span>
-              <span className="text-[15px] text-[#8b98a5]">{post.timestamp}</span>
-            </div>
+            <User
+              avatar={post.author.avatar}
+              name={post.author.name}
+              username={post.author.username}
+              verified={post.author.verified}
+            />
             <button className="p-1 hover:bg-[var(--color-1)]/10 rounded-full transition-colors">
               <MoreHorizontal className="size-5 text-[#8b98a5]" />
             </button>

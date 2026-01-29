@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { RightPanel } from '@/components/RightPanel';
 import { LeftSidebar } from './components/LeftSidebar';
-import { HomeFeed } from './components/HomeFeed';
+import { HomeFeed } from './pages/HomeFeed';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('home');
