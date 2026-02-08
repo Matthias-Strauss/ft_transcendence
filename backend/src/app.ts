@@ -3,11 +3,13 @@ import cors from 'cors';
 
 import { FRONTEND_ORIGIN } from './config.js';
 import { healthRouter } from './routes/health.js';
+import { authRouter } from './routes/auth.js';
 
 function createAPI() {
 	const api = express.Router();
 
 	api.use(healthRouter);
+	api.use(authRouter);
 
 	return api;
 }
