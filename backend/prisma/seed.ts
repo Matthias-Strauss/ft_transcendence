@@ -9,11 +9,12 @@ const prisma = new PrismaClient({ adapter });
 async function main() {
   const username = "test";
   const passwordHash = "55789e79eca2f9a1e0786388b869f34f28a64ccbc37eb85ceeb031fd9677e06e"; // passwort123 SHA-256 hex
+  const displayName = "test user";
 
   await prisma.user.upsert({
     where: { username },
     update: { password: passwordHash },
-    create: { username, password: passwordHash },
+    create: { username, password: passwordHash, displayname: displayName },
   });
 
   console.log(`seed.ts: test user seeded: 'test' 'passwort123'`);
