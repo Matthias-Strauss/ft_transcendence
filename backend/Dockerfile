@@ -15,4 +15,4 @@ RUN npm run build
 
 EXPOSE 8080
 
-CMD sh -c "npm run prisma:push && node dist/index.js"
+CMD sh -c "npm run prisma:push && npm run prisma:seed && node dist/index.js"
