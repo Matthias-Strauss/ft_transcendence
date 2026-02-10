@@ -2,13 +2,15 @@ import { PrismaClient } from "@prisma/client";
 import { Pool } from "pg";
 import { PrismaPg } from "@prisma/adapter-pg";
 
+import { hashPassword } from '../src/auth/password.js';
+
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
   const username = "test";
-  const passwordHash = "55789e79eca2f9a1e0786388b869f34f28a64ccbc37eb85ceeb031fd9677e06e"; // passwort123 SHA-256 hex
+  const passwordHash = await hashPassword('passwort123');
   const mail = "test@test.com"
   const displayName = "test user";
 
