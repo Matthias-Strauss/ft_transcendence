@@ -3,6 +3,7 @@ import { email, z, ZodError } from 'zod';
 
 import { prisma } from '../db.js';
 import { hashPassword, verifyPassword } from '../auth/password.js';
+import { signAccessToken } from '../auth/jwt.js';
 
 export const authRouter = Router();
 
@@ -42,7 +43,12 @@ authRouter.post('/auth/login', async (req, res) => {
     });
   }
 
-  res.json({ ok: true });
+  const accessToken = await signAccessToken({
+    sub: String(userExists.id),
+    username: userExists.username,
+  });
+
+  res.json({ accessToken });
 });
 
 const RegisterSchema = z.object({
