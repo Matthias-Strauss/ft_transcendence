@@ -12,4 +12,19 @@ model User {
   password    String
   email       String?  @unique
   displayname String
+
+  refreshTokens RefreshToken[]
+}
+
+model RefreshToken {
+  id          Int       @id @default(autoincrement())
+  userId      String
+  tokenHash   String    @unique
+  createdAt   DateTime  @default(now())
+  expiresAt   DateTime
+  revokedAt   DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }

@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 
 import { FRONTEND_ORIGIN } from './config.js';
 import { healthRouter } from './routes/health.js';
@@ -26,6 +27,7 @@ export function createApp() {
     }),
   );
   app.use(express.json({ limit: '1mb' }));
+  app.use(cookieParser());
 
   app.use('/api', createAPI());
 

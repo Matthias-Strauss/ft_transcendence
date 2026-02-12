@@ -8,6 +8,9 @@ export type AccessTokenPayload = {
   username: string;
 };
 
+export const ACCESS_TOKEN_TTL = '15m';
+export const REFRESH_TOKEN_DAYS = 7;
+
 const enc = new TextEncoder();
 const key = enc.encode(JWT_SECRET);
 
@@ -27,4 +30,16 @@ export async function verifyAccessToken(token: string) {
     issuer: JWT_ISSUER,
     audience: JWT_AUDIENCE,
   });
+}
+
+export function generateRefreshToken(): string {
+  return crypto.randomBytes(32).toString('base64');
+}
+
+export function hashRefreshToken(token: string): string {
+  return crypto.createHash('sha256').update(token).digest('hex');
+}
+
+export function refreshExpiresAt(): Date {
+  return new Date(Date.now() + 1000 * 60 * 60 *24 * REFRESH_TOKEN_DAYS); // ms, s, m, h, d
 }
