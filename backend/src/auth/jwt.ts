@@ -21,3 +21,10 @@ export async function signAccessToken(payload: AccessTokenPayload): Promise<stri
     .setExpirationTime('1d')
     .sign(key);
 }
+
+export async function verifyAccessToken(token: string) {
+  return jwtVerify(token, key, {
+    issuer: JWT_ISSUER,
+    audience: JWT_AUDIENCE,
+  });
+}
