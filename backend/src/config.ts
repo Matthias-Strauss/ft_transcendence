@@ -5,11 +5,52 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-export const PORT = process.env.BACKEND_PORT ? Number(process.env.BACKEND_PORT) : 8080;
-export const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN ?? 'http://localhost:3000';
+// env input validation. set dafaultValue as a fallback.
+// leave defaultValue blank to thow an error if this env value is required.
+// - defaultValue is set -> console warning
+// - defaultValue undefined -> triggers error
+function getEnvNumber(key: string, defaultValue?: number): number {
+  const value = process.env[key];
+  const parsed = value !== undefined ? Number(value) : NaN;
 
-export const JWT_SECRET = process.env.JWT_SECRET ?? 'transcendence42';
-export const JWT_ISSUER = process.env.JWT_ISSUER ?? 'transcendence';
-export const JWT_AUDIENCE = process.env.JWT_AUDIENCE ?? 'transcendence_client';
-export const ACCESS_TOKEN_TTL = process.env.ACCESS_TOKEN_TTL ?? '15m';
-export const REFRESH_TOKEN_DAYS = process.env.REFRESH_TOKEN_DAYS ? Number(process.env.REFRESH_TOKEN_DAYS) : 7;
+  if (value !== undefined && !Number.isNaN(parsed)) {
+    return parsed;
+  }
+  if (defaultValue === undefined) {
+    throw new Error(
+      `[CONFIG] ${key} is not a valid number or not set! This value is required!`
+    );
+  } else {
+    console.warn(
+      `[CONFIG] ${key} is not a valid number or not set. Falling back to default: "${defaultValue}"`
+    );
+    return defaultValue;
+  }
+}
+
+function getEnvString(key: string, defaultValue?: string): string {
+  const value = process.env[key];
+
+  if (value && value.length > 0) {
+    return value;
+  }
+  if (defaultValue === undefined) {
+    throw new Error(
+      `[CONFIG] ${key} is not set! This value is required!`
+    );
+  } else {
+    console.warn(
+      `[CONFIG] ${key} is not set. Falling back to default: "${defaultValue}"`
+    );
+    return defaultValue;
+  }
+}
+
+export const PORT = getEnvNumber('BACKEND_PORT', 8080);
+export const FRONTEND_ORIGIN = getEnvString('FRONTEND_ORIGIN', 'http://localhost:3000');
+
+export const JWT_SECRET = getEnvString('JWT_SECRET');
+export const JWT_ISSUER = getEnvString('JWT_ISSUER', 'transcendence');
+export const JWT_AUDIENCE = getEnvString('JWT_AUDIENCE', 'transcendence_client');
+export const ACCESS_TOKEN_TTL = getEnvString('ACCESS_TOKEN_TTL', '15m');
+export const REFRESH_TOKEN_DAYS = getEnvNumber('REFRESH_TOKEN_DAYS', 7);
