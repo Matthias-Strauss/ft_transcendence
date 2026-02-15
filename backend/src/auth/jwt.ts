@@ -1,15 +1,12 @@
 import crypto from 'crypto';
 import { SignJWT, jwtVerify } from "jose";
 
-import { JWT_SECRET, JWT_ISSUER, JWT_AUDIENCE } from '../config.js';
+import { JWT_SECRET, JWT_ISSUER, JWT_AUDIENCE, ACCESS_TOKEN_TTL, REFRESH_TOKEN_DAYS } from '../config.js';
 
 export type AccessTokenPayload = {
   sub: string; //user id
   username: string;
 };
-
-export const ACCESS_TOKEN_TTL = '15m';
-export const REFRESH_TOKEN_DAYS = 7;
 
 const enc = new TextEncoder();
 const key = enc.encode(JWT_SECRET);
@@ -21,7 +18,7 @@ export async function signAccessToken(payload: AccessTokenPayload): Promise<stri
     .setAudience(JWT_AUDIENCE)
     .setSubject(payload.sub)
     .setIssuedAt()
-    .setExpirationTime('1d')
+    .setExpirationTime(ACCESS_TOKEN_TTL)
     .sign(key);
 }
 

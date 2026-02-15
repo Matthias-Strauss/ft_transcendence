@@ -1,4 +1,4 @@
-import { REFRESH_TOKEN_DAYS } from "./jwt.js";
+import { REFRESH_TOKEN_DAYS } from "../config.js";
 
 export const REFRESH_COOKIE_NAME = 'refresh_token';
 export const REFRESH_COOKIE_PATH = '/api/auth/';
