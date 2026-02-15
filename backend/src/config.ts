@@ -53,4 +53,4 @@ export const JWT_SECRET = getEnvString('JWT_SECRET');
 export const JWT_ISSUER = getEnvString('JWT_ISSUER', 'transcendence');
 export const JWT_AUDIENCE = getEnvString('JWT_AUDIENCE', 'transcendence_client');
 export const ACCESS_TOKEN_TTL = getEnvString('ACCESS_TOKEN_TTL', '15m');
-export const REFRESH_TOKEN_DAYS = getEnvNumber('REFRESH_TOKEN_DAYS', 7);
+export const REFRESH_TOKEN_DAYS = getEnvNumber('REFRESH_TOKEN_TTL_DAYS', 7);

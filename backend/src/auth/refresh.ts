@@ -10,7 +10,7 @@ export function refreshCookieOptions() {
     secure: isProd,
     sameSite: 'lax' as const,
     path: REFRESH_COOKIE_PATH,
-    maxAge: 60 * 60 * 24 * REFRESH_TOKEN_DAYS,
+    maxAge: 1000 * 60 * 60 * 24 * REFRESH_TOKEN_DAYS,
   };
 }
 
