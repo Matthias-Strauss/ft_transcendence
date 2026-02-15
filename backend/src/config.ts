@@ -48,6 +48,7 @@ function getEnvString(key: string, defaultValue?: string): string {
 
 export const PORT = getEnvNumber('BACKEND_PORT', 8080);
 export const FRONTEND_ORIGIN = getEnvString('FRONTEND_ORIGIN', 'http://localhost:3000');
+export const DATABASE_URL = getEnvString('DATABASE_URL');
 
 export const JWT_SECRET = getEnvString('JWT_SECRET');
 export const JWT_ISSUER = getEnvString('JWT_ISSUER', 'transcendence');
