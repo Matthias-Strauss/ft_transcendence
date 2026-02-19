@@ -20,8 +20,12 @@ export async function requireAuth(req: AuthedRequest, res: Response, next: NextF
   try {
     const { payload } = await verifyAccessToken(token);
 
-    if (!payload.sub || typeof payload.sub !== 'string'
-      || !payload.username || typeof payload.username !== 'string') {
+    if (
+      !payload.sub ||
+      typeof payload.sub !== 'string' ||
+      !payload.username ||
+      typeof payload.username !== 'string'
+    ) {
       return res.status(401).json({
         error: 'Invalid token',
       });

@@ -8,13 +8,13 @@ import { authRouter } from './routes/auth.js';
 import { testRouter } from './routes/test.js';
 
 function createAPI() {
-	const api = express.Router();
+  const api = express.Router();
 
-	api.use(healthRouter);
-	api.use(authRouter);
+  api.use(healthRouter);
+  api.use(authRouter);
   api.use(testRouter);
 
-	return api;
+  return api;
 }
 
 export function createApp() {

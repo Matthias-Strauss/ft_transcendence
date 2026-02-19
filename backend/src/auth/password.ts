@@ -1,4 +1,4 @@
-import argon2 from 'argon2'
+import argon2 from 'argon2';
 
 // Argon2 settings, 19mb for memory cost.
 // maybe adjust this with a env entry in the future
