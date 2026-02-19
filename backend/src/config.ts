@@ -17,12 +17,10 @@ function getEnvNumber(key: string, defaultValue?: number): number {
     return parsed;
   }
   if (defaultValue === undefined) {
-    throw new Error(
-      `[CONFIG] ${key} is not a valid number or not set! This value is required!`
-    );
+    throw new Error(`[CONFIG] ${key} is not a valid number or not set! This value is required!`);
   } else {
     console.warn(
-      `[CONFIG] ${key} is not a valid number or not set. Falling back to default: "${defaultValue}"`
+      `[CONFIG] ${key} is not a valid number or not set. Falling back to default: "${defaultValue}"`,
     );
     return defaultValue;
   }
@@ -35,13 +33,9 @@ function getEnvString(key: string, defaultValue?: string): string {
     return value;
   }
   if (defaultValue === undefined) {
-    throw new Error(
-      `[CONFIG] ${key} is not set! This value is required!`
-    );
+    throw new Error(`[CONFIG] ${key} is not set! This value is required!`);
   } else {
-    console.warn(
-      `[CONFIG] ${key} is not set. Falling back to default: "${defaultValue}"`
-    );
+    console.warn(`[CONFIG] ${key} is not set. Falling back to default: "${defaultValue}"`);
     return defaultValue;
   }
 }

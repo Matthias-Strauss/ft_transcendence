@@ -3,7 +3,12 @@ import { email, z, ZodError } from 'zod';
 
 import { prisma } from '../db.js';
 import { hashPassword, verifyPassword } from '../auth/password.js';
-import { signAccessToken, generateRefreshToken, hashRefreshToken, refreshExpiresAt } from '../auth/jwt.js';
+import {
+  signAccessToken,
+  generateRefreshToken,
+  hashRefreshToken,
+  refreshExpiresAt,
+} from '../auth/jwt.js';
 import { REFRESH_COOKIE_NAME, setRefreshCookie, clearRefreshCookie } from '../auth/refresh.js';
 import { error } from 'console';
 
@@ -27,10 +32,7 @@ authRouter.post('/auth/login', async (req, res) => {
   const username = parsed.data.username;
   const userExists = await prisma.user.findFirst({
     where: {
-      OR: [
-        { username },
-        { email: username },
-      ],
+      OR: [{ username }, { email: username }],
     },
   });
   if (!userExists) {
@@ -142,8 +144,18 @@ authRouter.post('/auth/refresh', async (req, res) => {
 
 // REGISTER
 const RegisterSchema = z.object({
-  displayname: z.string().min(1).max(30).regex(/^[a-zA-Z0-9._-]+( [a-zA-Z0-9._-]+)*$/),
-  username: z.string().trim().toLowerCase().min(3).max(30).regex(/^[a-z0-9._-]+$/),
+  displayname: z
+    .string()
+    .min(1)
+    .max(30)
+    .regex(/^[a-zA-Z0-9._-]+( [a-zA-Z0-9._-]+)*$/),
+  username: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .min(3)
+    .max(30)
+    .regex(/^[a-z0-9._-]+$/),
   email: z.email().optional(),
   password: z.string().min(3).max(100),
 });
@@ -161,10 +173,7 @@ authRouter.post('/auth/register', async (req, res) => {
   const username = parsed.data.username;
   const userExists = await prisma.user.findFirst({
     where: {
-      OR: [
-        { username },
-        ...(parsed.data.email ? [{ email: parsed.data.email }] : []),
-      ],
+      OR: [{ username }, ...(parsed.data.email ? [{ email: parsed.data.email }] : [])],
     },
   });
   if (userExists) {
@@ -188,5 +197,5 @@ authRouter.post('/auth/register', async (req, res) => {
     username,
     displayname,
   });
-  console.log(`New user registered: ${username}`)
+  console.log(`New user registered: ${username}`);
 });

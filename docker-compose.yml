@@ -26,3 +26,8 @@ services:
       - .env
     ports:
       - "${BACKEND_PORT}:${BACKEND_PORT}"
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "${FRONTEND_PORT}:${FRONTEND_PORT}"

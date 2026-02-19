@@ -10,6 +10,7 @@ interface SidebarItemProps {
 export function SidebarItem({ icon, label, active, onClick }: SidebarItemProps) {
   return (
     <button
+      type="button"
       onClick={onClick}
       className={`flex items-center gap-4 px-3 py-3 rounded-full transition-colors w-full hover:bg-[#1e293b] ${
         active ? 'font-bold' : ''

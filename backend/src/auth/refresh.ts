@@ -1,4 +1,4 @@
-import { REFRESH_TOKEN_DAYS } from "../config.js";
+import { REFRESH_TOKEN_DAYS } from '../config.js';
 
 export const REFRESH_COOKIE_NAME = 'refresh_token';
 export const REFRESH_COOKIE_PATH = '/api/auth/';
@@ -19,7 +19,7 @@ export function setRefreshCookie(res: any, token: string) {
 }
 
 export function clearRefreshCookie(res: any) {
-  res.clearCookie(REFRESH_COOKIE_NAME,{
+  res.clearCookie(REFRESH_COOKIE_NAME, {
     ...refreshCookieOptions(),
     maxAge: undefined,
   });

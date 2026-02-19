@@ -7,7 +7,7 @@ export const testRouter = Router();
 
 testRouter.get('/test', requireAuth, async (req: AuthedRequest, res) => {
   if (!req.userId) {
-      return res.status(401).json({ error: 'Invalid token' });
+    return res.status(401).json({ error: 'Invalid token' });
   }
 
   const usr = await prisma.user.findUnique({

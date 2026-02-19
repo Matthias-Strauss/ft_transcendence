@@ -1,7 +1,13 @@
 import crypto from 'crypto';
-import { SignJWT, jwtVerify } from "jose";
+import { SignJWT, jwtVerify } from 'jose';
 
-import { JWT_SECRET, JWT_ISSUER, JWT_AUDIENCE, ACCESS_TOKEN_TTL, REFRESH_TOKEN_DAYS } from '../config.js';
+import {
+  JWT_SECRET,
+  JWT_ISSUER,
+  JWT_AUDIENCE,
+  ACCESS_TOKEN_TTL,
+  REFRESH_TOKEN_DAYS,
+} from '../config.js';
 
 export type AccessTokenPayload = {
   sub: string; //user id
@@ -38,5 +44,5 @@ export function hashRefreshToken(token: string): string {
 }
 
 export function refreshExpiresAt(): Date {
-  return new Date(Date.now() + 1000 * 60 * 60 *24 * REFRESH_TOKEN_DAYS); // ms, s, m, h, d
+  return new Date(Date.now() + 1000 * 60 * 60 * 24 * REFRESH_TOKEN_DAYS); // ms, s, m, h, d
 }

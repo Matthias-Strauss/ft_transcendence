@@ -63,7 +63,6 @@ export default function App() {
       <main className="ml-[220px] mr-[520px] min-h-screen border-x border-[#39444d]">
         {renderContent()}
       </main>
-      ;
       <RightPanel />
     </div>
   );

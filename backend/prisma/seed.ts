@@ -1,6 +1,6 @@
-import { PrismaClient } from "@prisma/client";
-import { Pool } from "pg";
-import { PrismaPg } from "@prisma/adapter-pg";
+import { PrismaClient } from '@prisma/client';
+import { Pool } from 'pg';
+import { PrismaPg } from '@prisma/adapter-pg';
 
 import { hashPassword } from '../src/auth/password.js';
 
@@ -9,10 +9,10 @@ const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
-  const username = "test";
+  const username = 'test';
   const passwordHash = await hashPassword('passwort123');
-  const mail = "test@test.com"
-  const displayName = "test user";
+  const mail = 'test@test.com';
+  const displayName = 'test user';
 
   await prisma.user.upsert({
     where: { username },
@@ -25,7 +25,7 @@ async function main() {
 
 main()
   .catch((err) => {
-    console.error("seed.ts: failed:", err);
+    console.error('seed.ts: failed:', err);
     process.exitCode = 1;
   })
   .finally(async () => {
