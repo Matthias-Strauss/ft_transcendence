@@ -3,6 +3,11 @@
 *.pdf
 /dont_sync
 
+# cookie files for testing
+cookie.txt
+cookies.txt
+*.cookies.txt
+
 # Dependency directories
 node_modules/
 dist/
