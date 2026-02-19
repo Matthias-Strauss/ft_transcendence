@@ -11,6 +11,7 @@
     "lint:fix": "eslint \"src/**/*.ts\" --fix",
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
+    "prisma:migrate": "prisma migrate deploy",
     "prisma:seed": "prisma db seed"
   },
   "prisma": {
