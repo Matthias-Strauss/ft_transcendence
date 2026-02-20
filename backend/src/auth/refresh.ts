@@ -1,3 +1,4 @@
+import { Response } from 'express';
 import { REFRESH_TOKEN_DAYS } from '../config.js';
 
 export const REFRESH_COOKIE_NAME = 'refresh_token';
@@ -14,11 +15,11 @@ export function refreshCookieOptions() {
   };
 }
 
-export function setRefreshCookie(res: any, token: string) {
+export function setRefreshCookie(res: Response, token: string) {
   res.cookie(REFRESH_COOKIE_NAME, token, refreshCookieOptions());
 }
 
-export function clearRefreshCookie(res: any) {
+export function clearRefreshCookie(res: Response) {
   res.clearCookie(REFRESH_COOKIE_NAME, {
     ...refreshCookieOptions(),
     maxAge: undefined,

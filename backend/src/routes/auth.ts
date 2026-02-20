@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { email, z, ZodError } from 'zod';
+import { z } from 'zod';
 
 import { prisma } from '../db.js';
 import { hashPassword, verifyPassword } from '../auth/password.js';
@@ -10,7 +10,6 @@ import {
   refreshExpiresAt,
 } from '../auth/jwt.js';
 import { REFRESH_COOKIE_NAME, setRefreshCookie, clearRefreshCookie } from '../auth/refresh.js';
-import { error } from 'console';
 
 export const authRouter = Router();
 

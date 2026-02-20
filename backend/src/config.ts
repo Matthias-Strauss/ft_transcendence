@@ -1,10 +1,3 @@
-import path from 'path';
-import fs from 'fs';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
 // env input validation. set dafaultValue as a fallback.
 // leave defaultValue blank to thow an error if this env value is required.
 // - defaultValue is set -> console warning
