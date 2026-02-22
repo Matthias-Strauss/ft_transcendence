@@ -1,11 +1,16 @@
 module.exports = {
-  parser: "@typescript-eslint/parser",
+  parser: '@typescript-eslint/parser',
   extends: [
-    "plugin:@typescript-eslint/recommended",
-    // 'plugin:react/recommended', // (If using React)
-    "plugin:prettier/recommended", // <--- Make sure this is LAST
+    'plugin:react/recommended',
+    'plugin:react-hooks/recommended',
+    'plugin:@typescript-eslint/recommended',
+    'plugin:prettier/recommended',
   ],
+  settings: {
+    react: { version: 'detect' },
+  },
   rules: {
-    // Custom rules...
+    'react/jsx-uses-react': 'off',
+    'react/react-in-jsx-scope': 'off',
   },
 };
