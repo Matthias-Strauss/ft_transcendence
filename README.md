@@ -1,18 +1,18 @@
-_This project has been created as part of the 42 curriculum by [mstrauss], [kruseva], [jmuhlber], [rriebsch], [ghodges]._
+_This project has been created as part of the 42 curriculum by [mstrauss], [kruseva], [jmuhlber], [ghodges]._
 
 # ft_transcendence
 
 ## 📖 Description
 
-ft_transcendence is the final project of the 42 Common Core. It is a comprehensive web application designed to be a social media platform with social games.
-This project combines a robust backend, a modern frontend, and a relational database to create a seamless social gaming experience.
+ft_transcendence is the final project of the 42 Common Core. It is a full-stack web application designed around a social media concept with an integrated multiplayer game layer.
+At this stage of the project, the focus is on building the core platform first: user authentication, profiles, a frontend foundation, a backend API, and the infrastructure needed to support social features and game-related extensions later on.
 
 **Key Features:**
 
-- **Game:** A real-time multiplayer implementation of Tic-Tac-Toe with tournament capabilities.
-- **Social:** User profiles, friends lists, and real-time chat.
-- **Security:** Two-factor authentication (if added), encrypted data, and secure authentication.
-- **Blockchain:** Tournament scores are immutably recorded on the Avalanche blockchain.
+- **Platform Foundation:** Monorepo structure with separated frontend, backend, database, and proxy setup.
+- **Social Core:** Authentication, user profiles, and the first steps toward user-to-user interaction.
+- **Technical Direction:** Containerized deployment, relational database support, and a framework-based frontend/backend stack.
+- **Planned Extension:** A multiplayer game module that will integrate into the social platform once the core foundation is stable.
 
 ---
 
@@ -20,17 +20,19 @@ This project combines a robust backend, a modern frontend, and a relational data
 
 ### Prerequisites
 
-- Docker & Docker Compose
-- [Any other tools, e.g., Node.js version, Make, etc.] **✏️ ADD ALL DEPENDENCIES YOU ADD HERE!!!**
+- Git
+- Docker Engine or Docker Desktop
+- Docker Compose
+- Node.js and npm for local frontend development
 
 ### Installation & Execution
 
-This project uses Docker to ensure consistency across environments.
+This project currently uses Docker for the backend, database, and shared infrastructure. During this phase, the frontend may still be run locally depending on the branch and the feature being tested.
 
 1. **Clone the repository:**
 
    ```bash
-   git clone git@github.com:Matthias-Strauss/ft_transcendence.git
+   git clone <repository-url>
    cd ft_transcendence
    ```
 
@@ -39,20 +41,28 @@ This project uses Docker to ensure consistency across environments.
 
    ```bash
    cp .env.example .env
-   # Edit .env and fill in your credentials (API Keys, DB config, etc.)
    ```
-
-   Or rename the provided .env.example to .env and replace the necccessary fields with real values.
+   Review the database and JWT values in `.env` before starting the backend stack.
 
 3. **Run the application:**
-   To build and start the containers:
+   To build and start the backend stack:
 
    ```bash
    docker-compose up --build
    ```
 
-4. **Access:**
-   Open your browser and navigate to: `http://localhost:8080`
+4. **Frontend development:**
+   In the current project phase, the frontend can also be started locally:
+
+   ```bash
+   cd frontend
+   npm install
+   npm run dev
+   ```
+
+5. **Access:**
+   - Frontend: `http://localhost:3000`
+   - Backend / API: `http://localhost:8080`
 
 ---
 
@@ -61,55 +71,53 @@ This project uses Docker to ensure consistency across environments.
 | Team Member    | Role            | Responsibilities                                                    |
 | :------------- | :-------------- | :------------------------------------------------------------------ |
 | **[mstrauss]** | Product Owner   | Defined vision, prioritized features, maintained backlog.           |
-| **[rriebsch]** | Project Manager | Facilitated coordination, tracked deadlines, managed blockers.      |
 | **[ghodges]**  | Tech Lead       | Oversaw architecture, code quality, and technology stack decisions. |
-| **[kruseva]**  | Developer       | Implemented features, wrote tests, participated in code reviews.    |
-| **[jmuhlber]** | Developer       | Implemented features, wrote tests, participated in code reviews.    |
+| **[kruseva]**  | Developer       | Designed and implemented frontend features, participated in reviews, and helped shape the UI direction. |
+| **[jmuhlber]** | Developer       | Implemented backend foundation work, authentication flows, and infrastructure-related setup. |
 
 ---
 
 ## 📅 Project Management
 
 **Organization:**
-We organized our work using Agile/Scrum with Weekly stand-ups.
+We organized our work around a shared monorepo and split the project into frontend, backend, infrastructure, and documentation tracks. Work was coordinated through discussions, pull requests, and regular syncs as the project structure was still being established.
 
 **Tools Used:**
 
 - **Task Tracking:** GitHub Issues
 - **Communication:** WhatsApp
 - **Version Control:** Git & GitHub
-- **✏️ ADD ANY ADDITIONAL TOOLS YOU INTRODUCE HERE YOU ADD HERE!!!**
+- **Documentation / Planning:** `QUESTIONS.md`, `INSTRUCTIONS.md`, `Project_Plan.md`
 
 ---
 
 ## 💻 Technical Stack
 
-- **✏️ DOCUMENT YOUR TECH CHOICES HERE. MAKE SURE TO PROVIDE REASONING!!!**
-
 ### Frontend
 
-- **Framework:** [e.g., React, Vue, Angular]
-- **Reasoning:** [Brief justification, e.g., "Chosen for its component-based architecture and state management capabilities."]
+- **Framework:** React with TypeScript and Vite
+- **Reasoning:** Chosen to support a component-based frontend architecture and fast iteration on the social platform UI.
 
 ### Backend
 
-- **Framework:** [e.g., NestJS, Django, Ruby on Rails]
-- **Reasoning:** [Brief justification.]
+- **Framework:** Express with TypeScript
+- **Reasoning:** Chosen to keep the backend explicit and lightweight while building the core API and authentication system.
 
 ### Database
 
-- **Database:** [e.g., PostgreSQL]
-- **Reasoning:** [Brief justification.]
+- **Database:** PostgreSQL
+- **Reasoning:** Chosen because the project requires a relational data model for users, sessions, and future social/game entities.
 
-- **ORM:** [e.g., Prisma, TypeORM]
-- **Reasoning:** [Brief justification.]
+- **ORM:** Prisma
+- **Reasoning:** Chosen to handle schema definition, migrations, and type-safe database access.
 
-### Blockchain
+### Infrastructure
 
-- **Network:** Avalanche
-- **Language:** Solidity, Typescript
-- **Tooling:** Hardhat, Metamask
-- **Reasoning:** Hardhat and Metamask were selected because they are more mature toolings in this space than their alternatives.
+- **Containerization:** Docker, Docker Compose
+- **Reasoning:** Chosen to provide a consistent local development and evaluation environment.
+
+- **Reverse Proxy / Web Layer:** Nginx
+- **Reasoning:** Chosen to handle routing, certificate setup, and service entry points once the stack is fully integrated.
 
 ---
 
