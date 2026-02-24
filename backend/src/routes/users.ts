@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
+import { Prisma } from '@prisma/client';
 
 import { prisma } from '../db.js';
 import { requireAuth, AuthedRequest } from '../auth/middleware.js';
@@ -62,6 +63,25 @@ const UpdateMeSchema = z
     }
   });
 
+function prismaUniqueToUserError(err: unknown) {
+  if (!(err instanceof Prisma.PrismaClientKnownRequestError)) {
+    return null;
+  }
+  if (err.code !== 'P2002') {
+    return null;
+  }
+
+  const target = (err.meta as { target?: unknown } | undefined)?.target;
+  const fields = Array.isArray(target) ? target : target ? [target] : [];
+  if (fields.includes('username')) {
+    return UserErrors.usernameTaken();
+  }
+  if (fields.includes('email')) {
+    return UserErrors.emailTaken();
+  }
+  return null;
+}
+
 usersRouter.patch(
   '/users/me',
   requireAuth,
@@ -85,18 +105,27 @@ usersRouter.patch(
     if (parsed.data.username !== undefined) updateData.username = parsed.data.username;
     if (parsed.data.email !== undefined) updateData.email = parsed.data.email;
 
-    const updated = await prisma.user.update({
-      where: { id: req.userId },
-      data: updateData,
-      select: {
-        id: true,
-        username: true,
-        displayname: true,
-        email: true,
-      },
-    });
+    try {
+      const updated = await prisma.user.update({
+        where: { id: req.userId },
+        data: updateData,
+        select: {
+          id: true,
+          username: true,
+          displayname: true,
+          email: true,
+        },
+      });
 
-    return res.json(updated);
+      return res.json(updated);
+    } catch (err) {
+      const conflict = prismaUniqueToUserError(err);
+      if (conflict) {
+        throw conflict;
+      }
+
+      throw err;
+    }
   }),
 );
 

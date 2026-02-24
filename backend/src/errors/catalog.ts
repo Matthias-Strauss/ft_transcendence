@@ -49,6 +49,16 @@ export const ERROR_CATALOG = {
     message: 'User not found',
     errCode: 'USER_NOT_FOUND',
   },
+  USERNAME_TAKEN: {
+    statusCode: 409,
+    message: 'Username already taken',
+    errCode: 'USER_USERNAME_TAKEN',
+  },
+  EMAIL_TAKEN: {
+    statusCode: 409,
+    message: 'Email already taken',
+    errCode: 'USER_EMAIL_TAKEN',
+  },
 } as const;
 
 export type ErrorKey = keyof typeof ERROR_CATALOG;
@@ -81,4 +91,6 @@ export const AuthErrors = {
 
 export const UserErrors = {
   userNotFound: () => appError('USER_NOT_FOUND'),
+  usernameTaken: () => appError('USERNAME_TAKEN'),
+  emailTaken: () => appError('EMAIL_TAKEN'),
 };
