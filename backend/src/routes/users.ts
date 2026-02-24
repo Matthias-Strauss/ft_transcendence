@@ -63,10 +63,24 @@ const UpdateMeSchema = z
     }
   });
 
-function prismaUniqueToUserError(err: unknown) {
-  const e = err as any;
+type PrismaUniqueError = {
+  code?: unknown;
+  message?: unknown;
+  meta?: {
+    target?: unknown;
+    modelName?: unknown;
+    driverAdapterError?: unknown;
+  };
+};
 
-  if (!e || typeof e !== 'object' || e.code !== 'P2002') {
+function prismaUniqueToUserError(err: unknown) {
+  if (typeof err !== 'object' || err === null) {
+    return null;
+  }
+
+  const e = err as PrismaUniqueError;
+
+  if (e.code !== 'P2002') {
     return null;
   }
 
@@ -142,7 +156,6 @@ usersRouter.patch(
 
       return res.json(updated);
     } catch (err) {
-      console.error('Prisma error', err);
       const conflict = prismaUniqueToUserError(err);
       if (conflict) {
         throw conflict;
