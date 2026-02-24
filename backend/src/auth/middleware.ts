@@ -1,7 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
 
 import { verifyAccessToken } from './jwt.js';
-import { AppError } from '../errors/error.js';
+import { AuthErrors } from '../errors/catalog.js';
 
 export type AuthedRequest = Request & {
   userId?: string;
@@ -11,13 +11,7 @@ export type AuthedRequest = Request & {
 export async function requireAuth(req: AuthedRequest, res: Response, next: NextFunction) {
   const auth = req.headers.authorization;
   if (!auth?.startsWith('Bearer ')) {
-    return next(
-      new AppError({
-        statusCode: 401,
-        message: 'Missing token',
-        errCode: 'AUTH_MISSING_TOKEN',
-      }),
-    );
+    return next(AuthErrors.missingToken());
   }
 
   const token = auth.slice('Bearer '.length);
@@ -31,25 +25,13 @@ export async function requireAuth(req: AuthedRequest, res: Response, next: NextF
       !payload.username ||
       typeof payload.username !== 'string'
     ) {
-      return next(
-        new AppError({
-          statusCode: 401,
-          message: 'Invalid token',
-          errCode: 'AUTH_INVALID_TOKEN',
-        }),
-      );
+      return next(AuthErrors.invalidToken());
     }
 
     req.userId = payload.sub;
     req.username = payload.username;
     return next();
   } catch {
-    return next(
-      new AppError({
-        statusCode: 401,
-        message: 'Invalid token',
-        errCode: 'AUTH_INVALID_TOKEN',
-      }),
-    );
+    return next(AuthErrors.invalidToken());
   }
 }
