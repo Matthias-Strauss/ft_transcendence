@@ -6,6 +6,7 @@ import { FRONTEND_ORIGIN } from './config.js';
 import { healthRouter } from './routes/health.js';
 import { authRouter } from './routes/auth.js';
 import { testRouter } from './routes/test.js';
+import { errorHandler, notFoundHandler } from './errors/error.js';
 
 function createAPI() {
   const api = express.Router();
@@ -30,6 +31,9 @@ export function createApp() {
   app.use(cookieParser());
 
   app.use('/api', createAPI());
+
+  app.use(notFoundHandler);
+  app.use(errorHandler);
 
   return app;
 }
