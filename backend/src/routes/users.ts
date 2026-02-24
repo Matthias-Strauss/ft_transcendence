@@ -64,21 +64,44 @@ const UpdateMeSchema = z
   });
 
 function prismaUniqueToUserError(err: unknown) {
-  if (!(err instanceof Prisma.PrismaClientKnownRequestError)) {
-    return null;
-  }
-  if (err.code !== 'P2002') {
+  const e = err as any;
+
+  if (!e || typeof e !== 'object' || e.code !== 'P2002') {
     return null;
   }
 
-  const target = (err.meta as { target?: unknown } | undefined)?.target;
-  const fields = Array.isArray(target) ? target : target ? [target] : [];
-  if (fields.includes('username')) {
+  const targetRaw = e.meta?.target;
+  const targets: string[] = (
+    Array.isArray(targetRaw) ? targetRaw : targetRaw ? [targetRaw] : []
+  ).map((t: unknown) => String(t).toLowerCase());
+
+  const joinedTargets = targets.join(',');
+
+  const msg = String(e.message ?? '').toLowerCase();
+
+  const mentionsUsername =
+    targets.includes('username') ||
+    joinedTargets.includes('username') ||
+    msg.includes('(`username`)') ||
+    msg.includes('(username)') ||
+    msg.includes('`username`') ||
+    msg.includes(' username');
+
+  const mentionsEmail =
+    targets.includes('email') ||
+    joinedTargets.includes('email') ||
+    msg.includes('(`email`)') ||
+    msg.includes('(email)') ||
+    msg.includes('`email`') ||
+    msg.includes(' email');
+
+  if (mentionsUsername) {
     return UserErrors.usernameTaken();
   }
-  if (fields.includes('email')) {
+  if (mentionsEmail) {
     return UserErrors.emailTaken();
   }
+
   return null;
 }
 
@@ -119,9 +142,14 @@ usersRouter.patch(
 
       return res.json(updated);
     } catch (err) {
+      console.error('Prisma error', err);
       const conflict = prismaUniqueToUserError(err);
       if (conflict) {
         throw conflict;
+      }
+
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2025') {
+        throw AuthErrors.invalidToken();
       }
 
       throw err;
