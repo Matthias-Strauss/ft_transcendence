@@ -33,6 +33,62 @@ usersRouter.get(
   }),
 );
 
+const UpdateMeSchema = z.object({
+  displayname: z
+    .string()
+    .min(1)
+    .max(30)
+    .regex(/^[a-zA-Z0-9._-]+( [a-zA-Z0-9._-]+)*$/)
+    .optional(),
+  username: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .min(3)
+    .max(30)
+    .regex(/^[a-z0-9._-]+$/)
+    .optional(),
+  email: z.union([z.email(), z.null()]).optional(),
+});
+
+usersRouter.patch(
+  '/users/me',
+  requireAuth,
+  asyncHandler(async (req: AuthedRequest, res) => {
+    if (!req.userId) {
+      throw AuthErrors.invalidToken();
+    }
+
+    const parsed = UpdateMeSchema.safeParse(req.body);
+    if (!parsed.success) {
+      throw RequestErrors.badRequest(parsed.error.issues);
+    }
+
+    const updateData: {
+      displayname?: string;
+      username?: string;
+      email?: string | null;
+    } = {};
+
+    if (parsed.data.displayname !== undefined) updateData.displayname = parsed.data.displayname;
+    if (parsed.data.username !== undefined) updateData.username = parsed.data.displayname;
+    if (parsed.data.email !== undefined) updateData.email = parsed.data.email;
+
+    const updated = await prisma.user.update({
+      where: { id: req.userId },
+      data: updateData,
+      select: {
+        id: true,
+        username: true,
+        displayname: true,
+        email: true,
+      },
+    });
+
+    return res.json(updated);
+  }),
+);
+
 const UsernameSchema = z.object({
   username: z
     .string()
@@ -45,8 +101,8 @@ const UsernameSchema = z.object({
 
 usersRouter.get(
   '/users/:username',
-  asyncHandler(async (requireAuth, res) => {
-    const parsed = UsernameSchema.safeParse(requireAuth.params);
+  asyncHandler(async (req, res) => {
+    const parsed = UsernameSchema.safeParse(req.params);
     if (!parsed.success) {
       throw RequestErrors.badRequest(parsed.error.issues);
     }
