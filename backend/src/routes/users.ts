@@ -6,6 +6,7 @@ import { prisma } from '../db.js';
 import { requireAuth, AuthedRequest } from '../auth/middleware.js';
 import { asyncHandler } from '../errors/asyncHandler.js';
 import { AuthErrors, RequestErrors, UserErrors } from '../errors/catalog.js';
+import { hashPassword, verifyPassword } from '../auth/password.js';
 
 export const usersRouter = Router();
 
@@ -167,6 +168,61 @@ usersRouter.patch(
 
       throw err;
     }
+  }),
+);
+
+const ChangePasswordSchema = z
+  .object({
+    currentPassword: z.string().min(1).max(100),
+    newPassword: z.string().min(3).max(100),
+  })
+  .strict()
+  .superRefine((val, ctx) => {
+    if (val.currentPassword === val.newPassword) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'New password must be different from current passowrd',
+        path: ['newPassword'],
+      });
+    }
+  });
+
+usersRouter.put(
+  '/users/me/change-password',
+  requireAuth,
+  asyncHandler(async (req: AuthedRequest, res) => {
+    if (!req.userId) {
+      throw AuthErrors.invalidToken();
+    }
+
+    const parsed = ChangePasswordSchema.safeParse(req.body);
+    if (!parsed.success) {
+      throw RequestErrors.badRequest(parsed.error.issues);
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: req.userId },
+      select: {
+        id: true,
+        password: true,
+      },
+    });
+    if (!user) {
+      throw AuthErrors.invalidToken();
+    }
+
+    const passwordCorrect = await verifyPassword(parsed.data.currentPassword, user.password);
+    if (!passwordCorrect) {
+      throw AuthErrors.invalidCredentials();
+    }
+
+    const newPasswordHash = await hashPassword(parsed.data.newPassword);
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { password: newPasswordHash },
+    });
+
+    return res.json({ ok: true });
   }),
 );
 
