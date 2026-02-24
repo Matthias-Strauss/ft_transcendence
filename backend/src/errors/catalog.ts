@@ -43,6 +43,12 @@ export const ERROR_CATALOG = {
     message: 'Refresh token expired',
     errCode: 'AUTH_REFRESH_TOKEN_EXPIRED',
   },
+
+  USER_NOT_FOUND: {
+    statusCode: 401,
+    message: 'User not found',
+    errCode: 'USER_NOT_FOUND',
+  },
 } as const;
 
 export type ErrorKey = keyof typeof ERROR_CATALOG;
@@ -71,4 +77,8 @@ export const AuthErrors = {
   missingRefreshToken: () => appError('MISSING_REFRESH_TOKEN'),
   invalidRefreshToken: () => appError('INVALID_REFRESH_TOKEN'),
   refreshTokenExpired: () => appError('REFRESH_TOKEN_EXPIRED'),
+};
+
+export const UserErrors = {
+  userNotFound: () => appError('USER_NOT_FOUND'),
 };
