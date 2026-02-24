@@ -1,20 +1,24 @@
 import { NextFunction, Request, Response } from 'express';
+import { ZodError } from 'zod';
 
 export type ErrorResponseBody = {
   success: false;
   message: string;
   errCode: string;
+  details?: unknown;
 };
 
 export class AppError extends Error {
   public readonly statusCode: number;
   public readonly errCode: string;
+  public readonly details?: unknown;
 
-  constructor(opts: { statusCode: number; message: string; errCode: string }) {
+  constructor(opts: { statusCode: number; message: string; errCode: string; details?: unknown }) {
     super(opts.message);
     this.name = 'AppError';
     this.statusCode = opts.statusCode;
     this.errCode = opts.errCode;
+    this.details = opts.details;
   }
 }
 
@@ -26,6 +30,19 @@ function normalizeError(err: unknown): { statusCode: number; body: ErrorResponse
         success: false,
         message: err.message,
         errCode: err.errCode,
+        ...(err.details !== undefined ? { details: err.details } : {}),
+      },
+    };
+  }
+
+  if (err instanceof ZodError) {
+    return {
+      statusCode: 400,
+      body: {
+        success: false,
+        message: 'Bad request',
+        errCode: 'VALIDATION_ERROR',
+        details: err.issues,
       },
     };
   }
