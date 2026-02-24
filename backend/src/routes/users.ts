@@ -33,23 +33,34 @@ usersRouter.get(
   }),
 );
 
-const UpdateMeSchema = z.object({
-  displayname: z
-    .string()
-    .min(1)
-    .max(30)
-    .regex(/^[a-zA-Z0-9._-]+( [a-zA-Z0-9._-]+)*$/)
-    .optional(),
-  username: z
-    .string()
-    .trim()
-    .toLowerCase()
-    .min(3)
-    .max(30)
-    .regex(/^[a-z0-9._-]+$/)
-    .optional(),
-  email: z.union([z.email(), z.null()]).optional(),
-});
+const UpdateMeSchema = z
+  .object({
+    displayname: z
+      .string()
+      .min(1)
+      .max(30)
+      .regex(/^[a-zA-Z0-9._-]+( [a-zA-Z0-9._-]+)*$/)
+      .optional(),
+    username: z
+      .string()
+      .trim()
+      .toLowerCase()
+      .min(3)
+      .max(30)
+      .regex(/^[a-z0-9._-]+$/)
+      .optional(),
+    email: z.union([z.email(), z.null()]).optional(),
+  })
+  .strict()
+  .superRefine((val, ctx) => {
+    if (val.displayname === undefined && val.username === undefined && val.email === undefined) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'At least one parameter needs to be provided',
+        path: [],
+      });
+    }
+  });
 
 usersRouter.patch(
   '/users/me',
@@ -71,7 +82,7 @@ usersRouter.patch(
     } = {};
 
     if (parsed.data.displayname !== undefined) updateData.displayname = parsed.data.displayname;
-    if (parsed.data.username !== undefined) updateData.username = parsed.data.displayname;
+    if (parsed.data.username !== undefined) updateData.username = parsed.data.username;
     if (parsed.data.email !== undefined) updateData.email = parsed.data.email;
 
     const updated = await prisma.user.update({
