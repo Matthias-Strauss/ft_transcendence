@@ -7,6 +7,7 @@ import { requireAuth, AuthedRequest } from '../auth/middleware.js';
 import { asyncHandler } from '../errors/asyncHandler.js';
 import { AuthErrors, RequestErrors, UserErrors } from '../errors/catalog.js';
 import { hashPassword, verifyPassword } from '../auth/password.js';
+import { clearRefreshCookie } from '../auth/refresh.js';
 
 export const usersRouter = Router();
 
@@ -217,10 +218,18 @@ usersRouter.put(
     }
 
     const newPasswordHash = await hashPassword(parsed.data.newPassword);
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { password: newPasswordHash },
-    });
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: user.id },
+        data: { password: newPasswordHash },
+      }),
+      prisma.refreshToken.updateMany({
+        where: { userId: user.id, revokedAt: null },
+        data: { revokedAt: new Date() },
+      }),
+    ]);
+
+    clearRefreshCookie(res);
 
     return res.json({ ok: true });
   }),
