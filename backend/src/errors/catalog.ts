@@ -45,7 +45,7 @@ export const ERROR_CATALOG = {
   },
 
   USER_NOT_FOUND: {
-    statusCode: 401,
+    statusCode: 404,
     message: 'User not found',
     errCode: 'USER_NOT_FOUND',
   },
@@ -58,6 +58,11 @@ export const ERROR_CATALOG = {
     statusCode: 409,
     message: 'Email already taken',
     errCode: 'USER_EMAIL_TAKEN',
+  },
+  USER_CURRENT_PASSWORD_INCORRECT: {
+    statusCode: 400,
+    message: 'Current password incorrect',
+    errCode: 'USER_CURRENT_PASSWORD_INCORRECT',
   },
 } as const;
 
@@ -93,4 +98,5 @@ export const UserErrors = {
   userNotFound: () => appError('USER_NOT_FOUND'),
   usernameTaken: () => appError('USERNAME_TAKEN'),
   emailTaken: () => appError('EMAIL_TAKEN'),
+  currentPasswordIncorrect: () => appError('USER_CURRENT_PASSWORD_INCORRECT'),
 };

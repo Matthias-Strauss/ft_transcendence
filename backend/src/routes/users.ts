@@ -181,7 +181,7 @@ const ChangePasswordSchema = z
     if (val.currentPassword === val.newPassword) {
       ctx.addIssue({
         code: 'custom',
-        message: 'New password must be different from current passowrd',
+        message: 'New password must be different from current password',
         path: ['newPassword'],
       });
     }
@@ -213,7 +213,7 @@ usersRouter.put(
 
     const passwordCorrect = await verifyPassword(parsed.data.currentPassword, user.password);
     if (!passwordCorrect) {
-      throw AuthErrors.invalidCredentials();
+      throw UserErrors.currentPasswordIncorrect();
     }
 
     const newPasswordHash = await hashPassword(parsed.data.newPassword);
