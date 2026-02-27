@@ -42,3 +42,5 @@ export const JWT_ISSUER = getEnvString('JWT_ISSUER', 'transcendence');
 export const JWT_AUDIENCE = getEnvString('JWT_AUDIENCE', 'transcendence_client');
 export const ACCESS_TOKEN_TTL = getEnvString('ACCESS_TOKEN_TTL', '15m');
 export const REFRESH_TOKEN_DAYS = getEnvNumber('REFRESH_TOKEN_TTL_DAYS', 7);
+
+export const FILES_DIR = getEnvString('FILES_DIR', '/data/uploads');
