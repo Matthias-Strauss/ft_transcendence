@@ -7,6 +7,7 @@ import { healthRouter } from './routes/health.js';
 import { authRouter } from './routes/auth.js';
 import { testRouter } from './routes/test.js';
 import { errorHandler, notFoundHandler } from './errors/error.js';
+import { usersRouter } from './routes/users.js';
 
 function createAPI() {
   const api = express.Router();
@@ -14,6 +15,7 @@ function createAPI() {
   api.use(healthRouter);
   api.use(authRouter);
   api.use(testRouter);
+  api.use(usersRouter);
 
   return api;
 }
