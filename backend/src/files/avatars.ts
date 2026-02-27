@@ -1,5 +1,8 @@
 import type { NextFunction, Response, Request } from 'express';
 import multer from 'multer';
+import crypto from 'crypto';
+import fs from 'fs/promises';
+import { fileTypeFromFile } from 'file-type';
 
 import { AuthedRequest } from '../auth/middleware.js';
 import { resolveInFilesDir } from './storage.js';
@@ -34,7 +37,8 @@ const avatarStorage = multer.diskStorage({
         '',
       );
     }
-    cb(null, `avatar_${userId}_${Date.now()}${ext}`);
+    const avatarUUID = crypto.randomUUID();
+    cb(null, `avatar_${avatarUUID}_${Date.now()}${ext}`);
   },
 });
 
@@ -44,7 +48,7 @@ const avatarUpload = multer({
     fileSize: AVATAR_MAX_FILE_SIZE_BYTES,
   },
   fileFilter: (_req, file, cb) => {
-    if (!AVATAR_ALLOWED_MIME_TYPES.includes(file.mimetype as AllowedAvatarMime)) {
+    if (!getMimeExt(file.mimetype)) {
       return cb(
         FileErrors.invalidFileType({
           allowed: AVATAR_ALLOWED_MIME_TYPES,
@@ -61,17 +65,68 @@ export function avatarUploadHandler(req: AuthedRequest, res: Response, next: Nex
     { name: 'avatar', maxCount: 1 },
     { name: 'file', maxCount: 1 },
   ]);
-  handler(req as Request, res, (err: unknown) => {
-    if (!err) return next();
-    if (err instanceof multer.MulterError) {
-      if (err.code === 'LIMIT_FILE_SIZE') {
+
+  handler(req as Request, res, async (err: unknown) => {
+    if (err) {
+      if (err instanceof multer.MulterError) {
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          return next(
+            FileErrors.fileTooLarge({
+              maxBytes: AVATAR_MAX_FILE_SIZE_BYTES,
+            }),
+          );
+        }
+      }
+      return next(err);
+    }
+
+    try {
+      const files = req.files as
+        | { [fieldname: string]: Express.Multer.File[] | undefined }
+        | undefined;
+
+      const uploaded = files?.avatar?.[0] ?? files?.file?.[0];
+
+      if (!uploaded) {
+        return next(FileErrors.missingFile());
+      }
+
+      const detectedType = await fileTypeFromFile(uploaded.path);
+
+      if (!detectedType) {
+        await fs.unlink(uploaded.path);
         return next(
-          FileErrors.fileTooLarge({
-            maxBytes: AVATAR_MAX_FILE_SIZE_BYTES,
+          FileErrors.invalidFileType({
+            allowed: AVATAR_ALLOWED_MIME_TYPES,
+            received: 'unknown',
           }),
         );
       }
+
+      if (!AVATAR_ALLOWED_MIME_TYPES.includes(detectedType.mime as AllowedAvatarMime)) {
+        await fs.unlink(uploaded.path);
+        return next(
+          FileErrors.invalidFileType({
+            allowed: AVATAR_ALLOWED_MIME_TYPES,
+            received: detectedType.mime,
+          }),
+        );
+      }
+
+      const expectedExt = getMimeExt(detectedType.mime);
+      if (!uploaded.filename.endsWith(expectedExt!)) {
+        await fs.unlink(uploaded.path);
+        return next(
+          FileErrors.invalidFileType({
+            allowed: AVATAR_ALLOWED_MIME_TYPES,
+            received: detectedType.mime,
+          }),
+        );
+      }
+
+      return next();
+    } catch (e) {
+      return next(e);
     }
-    return next(err);
   });
 }

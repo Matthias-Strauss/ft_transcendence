@@ -18,6 +18,11 @@ export function initFileStorage() {
 export function resolveInFilesDir(relPath: string) {
   const baseDir = getFilesDir();
   const fullPath = path.resolve(baseDir, relPath);
+  const relativePath = path.relative(baseDir, fullPath);
+
+  if (relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
+    throw new Error('AA Invalid Path');
+  }
 
   return fullPath;
 }
