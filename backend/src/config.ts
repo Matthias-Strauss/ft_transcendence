@@ -44,3 +44,4 @@ export const ACCESS_TOKEN_TTL = getEnvString('ACCESS_TOKEN_TTL', '15m');
 export const REFRESH_TOKEN_DAYS = getEnvNumber('REFRESH_TOKEN_TTL_DAYS', 7);
 
 export const FILES_DIR = getEnvString('FILES_DIR', '/data/uploads');
+export const AVATAR_MAX_FILE_SIZE_BYTES = getEnvNumber('AVATAR_MAX_FILE_SIZE_BYTES', 2097152);
