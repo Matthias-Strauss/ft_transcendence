@@ -7,7 +7,10 @@ import { fileTypeFromFile } from 'file-type';
 import { AuthedRequest } from '../auth/middleware.js';
 import { resolveInFilesDir } from './storage.js';
 import { FileErrors } from '../errors/catalog.js';
-import { AVATAR_MAX_FILE_SIZE_BYTES } from '../config.js';
+import { AVATAR_MAX_FILE_SIZE_BYTES, DEFAULT_AVATAR_FILENAME } from '../config.js';
+
+export const DEFAULT_AVATAR_REL_PATH = `avatars/${DEFAULT_AVATAR_FILENAME}`;
+export const DEFAULT_AVATAR_URL = `/files/${DEFAULT_AVATAR_REL_PATH}`;
 
 const AVATAR_MIME_MAP = {
   'image/jpeg': '.jpg',
@@ -131,5 +134,14 @@ export function avatarUploadHandler(req: AuthedRequest, res: Response, next: Nex
 }
 
 export function getAvatarUrlFromPath(avatarPath: string | null) {
+  if (!avatarPath) {
+    return DEFAULT_AVATAR_URL;
+  }
   return `/files/${avatarPath}`;
+}
+
+export function isUserUploadedAvatarPath(avatarPath: string | null | undefined) {
+  return Boolean(
+    avatarPath && avatarPath.startsWith('avatars/') && avatarPath !== DEFAULT_AVATAR_REL_PATH,
+  );
 }
