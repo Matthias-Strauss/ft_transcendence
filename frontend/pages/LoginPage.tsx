@@ -31,25 +31,36 @@ export default function LoginPage() {
   };
 
   return (
-    <div>
-      <h1>Login</h1>
+    <div className="login-container">
+      <div className="login-card">
+        <h1>Welcome Back</h1>
+        <p className="subtitle">Login to your account</p>
 
-      {error && <p style={{ color: 'red' }}>{error}</p>}
+        {error && <p className="error">{error}</p>}
 
-      <input
-        placeholder="Username"
-        value={username}
-        onChange={(e) => setUsername(e.target.value)}
-      />
+        <input
+          className="input"
+          placeholder="Username"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+        />
 
-      <input
-        type="password"
-        placeholder="Password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-      />
+        <input
+          className="input"
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
 
-      <button onClick={handleLogin}>Login</button>
+        <button className="primary-btn" onClick={handleLogin}>
+          Login
+        </button>
+
+        <button className="secondary-btn" onClick={() => navigate('/register')}>
+          Don&apos;t have an account? Register
+        </button>
+      </div>
     </div>
   );
 }
