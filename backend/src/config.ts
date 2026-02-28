@@ -42,3 +42,7 @@ export const JWT_ISSUER = getEnvString('JWT_ISSUER', 'transcendence');
 export const JWT_AUDIENCE = getEnvString('JWT_AUDIENCE', 'transcendence_client');
 export const ACCESS_TOKEN_TTL = getEnvString('ACCESS_TOKEN_TTL', '15m');
 export const REFRESH_TOKEN_DAYS = getEnvNumber('REFRESH_TOKEN_TTL_DAYS', 7);
+
+export const FILES_DIR = getEnvString('FILES_DIR', '/data/uploads');
+export const AVATAR_MAX_FILE_SIZE_BYTES = getEnvNumber('AVATAR_MAX_FILE_SIZE_BYTES', 2097152);
+export const DEFAULT_AVATAR_FILENAME = getEnvString('DEFAULT_AVATAR_FILENAME', 'default.svg');
