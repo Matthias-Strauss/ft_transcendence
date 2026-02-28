@@ -96,7 +96,7 @@ export function avatarUploadHandler(req: AuthedRequest, res: Response, next: Nex
       const detectedType = await fileTypeFromFile(uploaded.path);
 
       if (!detectedType) {
-        await fs.unlink(uploaded.path);
+        await fs.unlink(uploaded.path).catch(() => undefined);
         return next(
           FileErrors.invalidFileType({
             allowed: AVATAR_ALLOWED_MIME_TYPES,
@@ -106,7 +106,7 @@ export function avatarUploadHandler(req: AuthedRequest, res: Response, next: Nex
       }
 
       if (!AVATAR_ALLOWED_MIME_TYPES.includes(detectedType.mime as AllowedAvatarMime)) {
-        await fs.unlink(uploaded.path);
+        await fs.unlink(uploaded.path).catch(() => undefined);
         return next(
           FileErrors.invalidFileType({
             allowed: AVATAR_ALLOWED_MIME_TYPES,
@@ -116,12 +116,13 @@ export function avatarUploadHandler(req: AuthedRequest, res: Response, next: Nex
       }
 
       const expectedExt = getMimeExt(detectedType.mime);
-      if (!uploaded.filename.endsWith(expectedExt!)) {
-        await fs.unlink(uploaded.path);
+      if (!expectedExt || !uploaded.filename.endsWith(expectedExt)) {
+        await fs.unlink(uploaded.path).catch(() => undefined);
         return next(
           FileErrors.invalidFileType({
             allowed: AVATAR_ALLOWED_MIME_TYPES,
-            received: detectedType.mime,
+            received: `${uploaded.mimetype} (declared), detected: ${detectedType.mime}`,
+            reason: 'extension_mismatch',
           }),
         );
       }
