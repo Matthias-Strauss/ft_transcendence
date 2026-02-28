@@ -12,6 +12,7 @@ model User {
   password    String
   email       String?  @unique
   displayname String
+  avatarPath  String?   //relative paht within FILES_DIR
 
   refreshTokens RefreshToken[]
 }

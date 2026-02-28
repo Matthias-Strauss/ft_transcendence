@@ -26,7 +26,6 @@ const avatarStorage = multer.diskStorage({
     cb(null, resolveInFilesDir('avatars'));
   },
   filename: (req, file, cb) => {
-    const userId = (req as AuthedRequest).userId ?? 'unknown';
     const ext = getMimeExt(file.mimetype);
     if (!ext) {
       return cb(
@@ -129,4 +128,8 @@ export function avatarUploadHandler(req: AuthedRequest, res: Response, next: Nex
       return next(e);
     }
   });
+}
+
+export function getAvatarUrlFromPath(avatarPath: string) {
+  return `/files/${avatarPath}`;
 }
