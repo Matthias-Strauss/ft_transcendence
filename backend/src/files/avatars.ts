@@ -130,6 +130,6 @@ export function avatarUploadHandler(req: AuthedRequest, res: Response, next: Nex
   });
 }
 
-export function getAvatarUrlFromPath(avatarPath: string) {
+export function getAvatarUrlFromPath(avatarPath: string | null) {
   return `/files/${avatarPath}`;
 }
