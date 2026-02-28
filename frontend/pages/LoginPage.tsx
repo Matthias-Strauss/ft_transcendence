@@ -12,22 +12,27 @@ export default function LoginPage() {
   const [error, setError] = useState('');
 
   const handleLogin = async () => {
-    const res = await fetch('http://localhost:8080/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ username, password }),
-    });
+    setError('');
+    try {
+      const res = await fetch('http://localhost:8080/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ username, password }),
+      });
 
-    if (!res.ok) {
-      setError('Invalid credentials');
-      return;
+      if (!res.ok) {
+        setError('Invalid credentials');
+        return;
+      }
+
+      const data: LoginResponse = await res.json();
+      localStorage.setItem('accessToken', data.accessToken);
+      navigate('/');
+    } catch (err) {
+      setError('Network error. Please try again. ');
+      console.log(err);
     }
-
-    const data: LoginResponse = await res.json();
-    localStorage.setItem('accessToken', data.accessToken);
-
-    navigate('/');
   };
 
   return (

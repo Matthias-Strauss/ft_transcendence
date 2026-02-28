@@ -17,7 +17,7 @@ const Registration: React.FC = () => {
       alert('Password must be at least 8 characters');
       return;
     }
-    if (password.includes(username)) {
+    if (password.toLowerCase().includes(username.toLowerCase())) {
       alert('Password cannot contain username');
       return;
     }
@@ -68,7 +68,7 @@ const Registration: React.FC = () => {
       />
 
       <input
-        type="displayname"
+        type="text"
         placeholder="Display Name"
         value={displayname}
         onChange={(e) => setDisplayName(e.target.value)}

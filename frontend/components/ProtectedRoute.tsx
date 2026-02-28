@@ -1,6 +1,7 @@
 import { Navigate } from 'react-router-dom';
+import type { ReactNode } from 'react';
 
-export function ProtectedRoute({ children }: { children: React.ReactNode }) {
+export function ProtectedRoute({ children }: { children: ReactNode }) {
   const token = localStorage.getItem('accessToken');
 
   if (!token) {
