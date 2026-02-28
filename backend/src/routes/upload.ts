@@ -59,7 +59,7 @@ uploadsRouter.post(
       throw err;
     }
 
-    if (oldAvatarPath) {
+    if (oldAvatarPath && isUserUploadedAvatarPath(oldAvatarPath)) {
       const oldAbsPath = resolveInFilesDir(oldAvatarPath);
       await fs.unlink(oldAbsPath).catch(() => undefined);
     }
