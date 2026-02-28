@@ -64,6 +64,22 @@ export const ERROR_CATALOG = {
     message: 'Current password incorrect',
     errCode: 'USER_CURRENT_PASSWORD_INCORRECT',
   },
+
+  FILE_MISSING: {
+    statusCode: 400,
+    message: 'Missing file',
+    errCode: 'FILE_MISSING',
+  },
+  FILE_INVALID_TYPE: {
+    statusCode: 400,
+    message: 'Invalid file type',
+    errCode: 'FILE_INVALID_TYPE',
+  },
+  FILE_TOO_LARGE: {
+    statusCode: 413,
+    message: 'File too large',
+    errCode: 'FILE_TOO_LARGE',
+  },
 } as const;
 
 export type ErrorKey = keyof typeof ERROR_CATALOG;
@@ -99,4 +115,12 @@ export const UserErrors = {
   usernameTaken: () => appError('USERNAME_TAKEN'),
   emailTaken: () => appError('EMAIL_TAKEN'),
   currentPasswordIncorrect: () => appError('USER_CURRENT_PASSWORD_INCORRECT'),
+};
+
+export const FileErrors = {
+  missingFile: () => appError('FILE_MISSING'),
+  invalidFileType: (details?: unknown) =>
+    appError('FILE_INVALID_TYPE', details ? { details } : undefined),
+  fileTooLarge: (details?: unknown) =>
+    appError('FILE_TOO_LARGE', details ? { details } : undefined),
 };

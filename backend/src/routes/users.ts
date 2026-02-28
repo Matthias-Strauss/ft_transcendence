@@ -8,6 +8,7 @@ import { asyncHandler } from '../errors/asyncHandler.js';
 import { AuthErrors, RequestErrors, UserErrors } from '../errors/catalog.js';
 import { hashPassword, verifyPassword } from '../auth/password.js';
 import { clearRefreshCookie } from '../auth/refresh.js';
+import { getAvatarUrlFromPath } from '../files/avatars.js';
 
 export const usersRouter = Router();
 
@@ -26,13 +27,18 @@ usersRouter.get(
         username: true,
         displayname: true,
         email: true,
+        avatarPath: true,
       },
     });
     if (!user) {
       throw AuthErrors.invalidToken();
     }
 
-    return res.json(user);
+    const { avatarPath, ...safeUser } = user;
+    return res.json({
+      ...safeUser,
+      avatarUrl: getAvatarUrlFromPath(avatarPath),
+    });
   }),
 );
 
@@ -153,10 +159,15 @@ usersRouter.patch(
           username: true,
           displayname: true,
           email: true,
+          avatarPath: true,
         },
       });
 
-      return res.json(updated);
+      const { avatarPath, ...safeUser } = updated;
+      return res.json({
+        ...safeUser,
+        avatarUrl: getAvatarUrlFromPath(avatarPath),
+      });
     } catch (err) {
       const conflict = prismaUniqueToUserError(err);
       if (conflict) {
@@ -258,12 +269,17 @@ usersRouter.get(
       select: {
         username: true,
         displayname: true,
+        avatarPath: true,
       },
     });
     if (!user) {
       throw UserErrors.userNotFound();
     }
 
-    return res.json(user);
+    return res.json({
+      username: user.username,
+      displayname: user.displayname,
+      avatarUrl: getAvatarUrlFromPath(user.avatarPath),
+    });
   }),
 );

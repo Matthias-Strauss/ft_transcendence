@@ -26,6 +26,8 @@ services:
       - .env
     ports:
       - "${BACKEND_PORT}:${BACKEND_PORT}"
+    volumes:
+      - ./uploads:/data/uploads
 
   frontend:
     build: ./frontend

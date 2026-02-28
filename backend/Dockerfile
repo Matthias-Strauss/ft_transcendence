@@ -9,6 +9,7 @@ COPY tsconfig.json ./
 COPY src ./src
 COPY prisma ./prisma
 COPY prisma.config.ts ./
+COPY assets ./assets
 
 RUN npm install
 RUN npm run build
