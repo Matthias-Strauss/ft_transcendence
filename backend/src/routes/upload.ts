@@ -5,7 +5,11 @@ import fs from 'node:fs/promises';
 import { AuthedRequest, requireAuth } from '../auth/middleware.js';
 import { asyncHandler } from '../errors/asyncHandler.js';
 import { AuthErrors } from '../errors/catalog.js';
-import { avatarUploadHandler, getAvatarUrlFromPath } from '../files/avatars.js';
+import {
+  avatarUploadHandler,
+  getAvatarUrlFromPath,
+  isUserUploadedAvatarPath,
+} from '../files/avatars.js';
 import { FileErrors } from '../errors/catalog.js';
 import { prisma } from '../db.js';
 import { resolveInFilesDir } from '../files/storage.js';
@@ -63,6 +67,42 @@ uploadsRouter.post(
     return res.json({
       ok: true,
       avatarUrl: getAvatarUrlFromPath(newAvatarRelPath),
+    });
+  }),
+);
+
+uploadsRouter.delete(
+  '/uploads/avatar',
+  requireAuth,
+  asyncHandler(async (req: AuthedRequest, res) => {
+    if (!req.userId) {
+      throw AuthErrors.invalidToken();
+    }
+
+    const current = await prisma.user.findUnique({
+      where: { id: req.userId },
+      select: {
+        id: true,
+        avatarPath: true,
+      },
+    });
+    if (!current) {
+      throw AuthErrors.invalidToken();
+    }
+
+    await prisma.user.update({
+      where: { id: current.id },
+      data: { avatarPath: null },
+    });
+
+    if (isUserUploadedAvatarPath(current.avatarPath)) {
+      const oldAbsPath = resolveInFilesDir(current.avatarPath);
+      await fs.unlink(oldAbsPath).catch(() => undefined);
+    }
+
+    return res.json({
+      ok: true,
+      avatarUrl: getAvatarUrlFromPath(null),
     });
   }),
 );

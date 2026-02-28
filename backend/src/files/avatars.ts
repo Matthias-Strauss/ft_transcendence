@@ -140,7 +140,9 @@ export function getAvatarUrlFromPath(avatarPath: string | null) {
   return `/files/${avatarPath}`;
 }
 
-export function isUserUploadedAvatarPath(avatarPath: string | null | undefined) {
+export function isUserUploadedAvatarPath(
+  avatarPath: string | null | undefined,
+): avatarPath is string {
   return Boolean(
     avatarPath && avatarPath.startsWith('avatars/') && avatarPath !== DEFAULT_AVATAR_REL_PATH,
   );
