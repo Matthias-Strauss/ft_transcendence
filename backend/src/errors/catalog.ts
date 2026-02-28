@@ -43,6 +43,27 @@ export const ERROR_CATALOG = {
     message: 'Refresh token expired',
     errCode: 'AUTH_REFRESH_TOKEN_EXPIRED',
   },
+
+  USER_NOT_FOUND: {
+    statusCode: 404,
+    message: 'User not found',
+    errCode: 'USER_NOT_FOUND',
+  },
+  USERNAME_TAKEN: {
+    statusCode: 409,
+    message: 'Username already taken',
+    errCode: 'USER_USERNAME_TAKEN',
+  },
+  EMAIL_TAKEN: {
+    statusCode: 409,
+    message: 'Email already taken',
+    errCode: 'USER_EMAIL_TAKEN',
+  },
+  USER_CURRENT_PASSWORD_INCORRECT: {
+    statusCode: 400,
+    message: 'Current password incorrect',
+    errCode: 'USER_CURRENT_PASSWORD_INCORRECT',
+  },
 } as const;
 
 export type ErrorKey = keyof typeof ERROR_CATALOG;
@@ -71,4 +92,11 @@ export const AuthErrors = {
   missingRefreshToken: () => appError('MISSING_REFRESH_TOKEN'),
   invalidRefreshToken: () => appError('INVALID_REFRESH_TOKEN'),
   refreshTokenExpired: () => appError('REFRESH_TOKEN_EXPIRED'),
+};
+
+export const UserErrors = {
+  userNotFound: () => appError('USER_NOT_FOUND'),
+  usernameTaken: () => appError('USERNAME_TAKEN'),
+  emailTaken: () => appError('EMAIL_TAKEN'),
+  currentPasswordIncorrect: () => appError('USER_CURRENT_PASSWORD_INCORRECT'),
 };
