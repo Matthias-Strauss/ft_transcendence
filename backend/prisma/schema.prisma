@@ -15,6 +15,7 @@ model User {
   avatarPath  String?   //relative paht within FILES_DIR
 
   refreshTokens RefreshToken[]
+  posts         Post[]
 }
 
 model RefreshToken {
@@ -28,4 +29,22 @@ model RefreshToken {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+model Post {
+  id           String   @id @default(cuid())
+  authorId     String
+  content      String
+  imageUrl     String?
+  gameTag      String?
+  likeCount    Int      @default(0)
+  commentCount Int      @default(0)
+  shareCount   Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([authorId])
+  @@index([createdAt, id])
 }
