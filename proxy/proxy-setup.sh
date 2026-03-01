@@ -26,7 +26,7 @@ fi
 echo "Proxy-Setup: generating nginx config from template..."
 TEMPLATE="/etc/nginx/templates/default.conf.template"
 TARGET="/etc/nginx/conf.d/default.conf"
-envsubst '${PROXY_HTTP_PORT} ${PROXY_HTTPS_PORT} ${TLS_CERT_FILE} ${TLS_KEY_FILE} ${FRONTEND_PORT}' \
+envsubst '${PROXY_HTTP_PORT} ${PROXY_HTTPS_PORT} ${TLS_CERT_FILE} ${TLS_KEY_FILE} ${FRONTEND_PORT} ${BACKEND_PORT}' \
   < "$TEMPLATE" > "$TARGET"
 
 echo "Proxy-Setup: complete. Start nginx..."
