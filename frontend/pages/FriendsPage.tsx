@@ -7,7 +7,7 @@ export function FriendsPage() {
     <div className="border-b border-[#39444d]">
       <div className="sticky top-0 backdrop-blur-xl bg-[#0f172a]/80 border-b border-[#39444d] z-10">
         <div className="flex items-center justify-between p-4">
-          <h1 className="font-bold text-[20px] text-[#f7f9f9]">Home</h1>
+          <h1 className="font-bold text-[20px] text-[#f7f9f9]">Friends</h1>
           <button className="p-2 hover:bg-[#1e293b] rounded-full transition-colors">
             <Sparkles className="size-5" style={{ color: 'var(--color-1)' }} />
           </button>

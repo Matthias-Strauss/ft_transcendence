@@ -1,6 +1,6 @@
-import { PrismaClient } from "@prisma/client";
-import { Pool } from "pg";
-import { PrismaPg } from "@prisma/adapter-pg";
+import { PrismaClient } from '@prisma/client';
+import { Pool } from 'pg';
+import { PrismaPg } from '@prisma/adapter-pg';
 
 import { hashPassword } from '../src/auth/password.js';
 
@@ -37,7 +37,7 @@ async function main() {
 
 main()
   .catch((err) => {
-    console.error("seed.ts: failed:", err);
+    console.error('seed.ts: failed:', err);
     process.exitCode = 1;
   })
   .finally(async () => {

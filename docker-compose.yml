@@ -28,3 +28,8 @@ services:
       - "${BACKEND_PORT}:${BACKEND_PORT}"
     volumes:
       - ./uploads:/data/uploads
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "${FRONTEND_PORT}:${FRONTEND_PORT}"
