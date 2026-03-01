@@ -6,6 +6,13 @@ datasource db {
   provider = "postgresql"
 }
 
+enum ChatMessageType {
+  TEXT
+  GAME_INVITE
+  GAME_NOTIFICATION
+}
+
+
 model User {
   id          String   @id @default(cuid())
   username    String   @unique
@@ -15,6 +22,8 @@ model User {
   avatarPath  String?   //relative paht within FILES_DIR
 
   refreshTokens RefreshToken[]
+  sentMessages DirectMessage[] @relation("DirectMessageSender")
+  receivedMessages DirectMessage[] @relation("DirectMessageRecipient")
 }
 
 model RefreshToken {
@@ -28,4 +37,22 @@ model RefreshToken {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+model DirectMessage {
+  id          String          @id @default(cuid())
+  senderId    String
+  recipientId String
+  text        String
+  type        ChatMessageType @default(TEXT)
+  createdAt   DateTime        @default(now())
+  readAt      DateTime?
+  metadata    Json?
+
+  sender    User @relation("DirectMessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  recipient User @relation("DirectMessageRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+
+  @@index([senderId, recipientId, createdAt])
+  @@index([recipientId, senderId, createdAt])
+  @@index([recipientId, readAt, createdAt])
 }
