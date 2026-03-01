@@ -59,7 +59,7 @@ authRouter.post(
       },
     });
 
-    setRefreshCookie(res, refreshToken);
+    setRefreshCookie(req, res, refreshToken);
 
     res.json({ accessToken });
   }),
@@ -79,7 +79,7 @@ authRouter.post(
       });
     }
 
-    clearRefreshCookie(res);
+    clearRefreshCookie(req, res);
 
     return res.json({ ok: true });
   }),
@@ -100,7 +100,7 @@ authRouter.post(
       include: { user: true },
     });
     if (!stored || stored.revokedAt) {
-      clearRefreshCookie(res);
+      clearRefreshCookie(req, res);
       throw AuthErrors.invalidRefreshToken();
     }
 
@@ -109,7 +109,7 @@ authRouter.post(
         where: { id: stored.id },
         data: { revokedAt: new Date() },
       });
-      clearRefreshCookie(res);
+      clearRefreshCookie(req, res);
       throw AuthErrors.refreshTokenExpired();
     }
 
@@ -128,7 +128,7 @@ authRouter.post(
         },
       }),
     ]);
-    setRefreshCookie(res, newRefresh);
+    setRefreshCookie(req, res, newRefresh);
 
     const accessToken = await signAccessToken({
       sub: String(stored.userId),
