@@ -80,6 +80,17 @@ export const ERROR_CATALOG = {
     message: 'File too large',
     errCode: 'FILE_TOO_LARGE',
   },
+
+  POST_NOT_FOUND: {
+    statusCode: 404,
+    message: 'Post not found',
+    errCode: 'POST_NOT_FOUND',
+  },
+  POST_DELETE_FORBIDDEN: {
+    statusCode: 403,
+    message: 'You can only delete your own posts',
+    errCode: 'POST_DELETE_FORBIDDEN',
+  },
 } as const;
 
 export type ErrorKey = keyof typeof ERROR_CATALOG;
@@ -123,4 +134,9 @@ export const FileErrors = {
     appError('FILE_INVALID_TYPE', details ? { details } : undefined),
   fileTooLarge: (details?: unknown) =>
     appError('FILE_TOO_LARGE', details ? { details } : undefined),
+};
+
+export const PostErrors = {
+  notFound: () => appError('POST_NOT_FOUND'),
+  deleteForbidden: () => appError('POST_DELETE_FORBIDDEN'),
 };
