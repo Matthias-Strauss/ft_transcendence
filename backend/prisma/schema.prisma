@@ -24,6 +24,8 @@ model User {
   refreshTokens RefreshToken[]
   sentMessages DirectMessage[] @relation("DirectMessageSender")
   receivedMessages DirectMessage[] @relation("DirectMessageRecipient")
+  blockedUsers            UserBlock[] @relation("UserBlockBlocker")
+  blockedByUsers          UserBlock[] @relation("UserBlockBlocked")
 }
 
 model RefreshToken {
@@ -55,4 +57,16 @@ model DirectMessage {
   @@index([senderId, recipientId, createdAt])
   @@index([recipientId, senderId, createdAt])
   @@index([recipientId, readAt, createdAt])
+}
+
+model UserBlock {
+  blockerUserId String
+  blockedUserId String
+  createdAt DateTime @default(now())
+
+  blocker User @relation("UserBlockBlocker", fields: [blockerUserId], references: [id], onDelete: Cascade)
+  blocked User @relation("UserBlockBlocked", fields: [blockedUserId], references: [id], onDelete: Cascade)
+
+  @@id([blockerUserId, blockedUserId])
+  @@index([blockedUserId])
 }

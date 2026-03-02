@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { AuthedRequest, requireAuth } from '../auth/middleware.js';
 import { prisma } from '../db.js';
 import { asyncHandler } from '../errors/asyncHandler.js';
-import { AuthErrors, RequestErrors, UserErrors } from '../errors/catalog.js';
+import { AuthErrors, ChatErrors, RequestErrors, UserErrors } from '../errors/catalog.js';
 import { getAvatarUrlFromPath } from '../files/avatars.js';
 
 export const chatRouter = Router();
@@ -192,6 +192,81 @@ chatRouter.get(
       messages: messages
         .reverse()
         .map((message: DirectMessageWithUsers) => serializeDirectMessage(message, viewerId)),
+    });
+  }),
+);
+
+// block a user from chatting
+chatRouter.post(
+  '/chat/block/:username',
+  requireAuth,
+  asyncHandler(async (req: AuthedRequest, res) => {
+    if (!req.userId) {
+      throw AuthErrors.invalidToken();
+    }
+
+    const parsedUsernameSchema = UsernameSchema.safeParse(req.params);
+    if (!parsedUsernameSchema.success) {
+      throw RequestErrors.badRequest(parsedUsernameSchema.error.issues);
+    }
+
+    const viewerId = req.userId;
+    const targetUser = await findChatTargetByUsername(parsedUsernameSchema.data.username);
+
+    if (viewerId === targetUser.id) {
+      throw ChatErrors.blockToSelfForbidden();
+    }
+
+    const blocked = await prisma.userBlock.upsert({
+      where: {
+        blockerUserId_blockedUserId: {
+          blockerUserId: viewerId,
+          blockedUserId: targetUser.id,
+        },
+      },
+      update: {},
+      create: {
+        blockerUserId: viewerId,
+        blockedUserId: targetUser.id,
+      },
+    });
+
+    return res.json({
+      ok: blocked ? true : false,
+      blocked: true,
+      target: serializeChatUser(targetUser),
+    });
+  }),
+);
+
+// unblock a user
+chatRouter.delete(
+  '/chat/block/:username',
+  requireAuth,
+  asyncHandler(async (req: AuthedRequest, res) => {
+    if (!req.userId) {
+      throw AuthErrors.invalidToken();
+    }
+
+    const parsedUsernameSchema = UsernameSchema.safeParse(req.params);
+    if (!parsedUsernameSchema.success) {
+      throw RequestErrors.badRequest(parsedUsernameSchema.error.issues);
+    }
+
+    const viewerId = req.userId;
+    const targetUser = await findChatTargetByUsername(parsedUsernameSchema.data.username);
+
+    const unblocked = await prisma.userBlock.deleteMany({
+      where: {
+        blockerUserId: viewerId,
+        blockedUserId: targetUser.id,
+      },
+    });
+
+    return res.json({
+      ok: unblocked.count > 0,
+      blocked: false,
+      target: serializeChatUser(targetUser),
     });
   }),
 );

@@ -80,6 +80,12 @@ export const ERROR_CATALOG = {
     message: 'File too large',
     errCode: 'FILE_TOO_LARGE',
   },
+
+  CHAT_BLOCK_TO_SELF_FORBIDDEN: {
+    statusCode: 400,
+    message: 'You cannot block yourself',
+    errCode: 'CHAT_BLOCK_TO_SELF_FORBIDDEN',
+  },
 } as const;
 
 export type ErrorKey = keyof typeof ERROR_CATALOG;
@@ -123,4 +129,8 @@ export const FileErrors = {
     appError('FILE_INVALID_TYPE', details ? { details } : undefined),
   fileTooLarge: (details?: unknown) =>
     appError('FILE_TOO_LARGE', details ? { details } : undefined),
+};
+
+export const ChatErrors = {
+  blockToSelfForbidden: () => appError('CHAT_BLOCK_TO_SELF_FORBIDDEN'),
 };
