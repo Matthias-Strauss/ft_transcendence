@@ -213,3 +213,6 @@ dist
 
 # SvelteKit build / generate output
 .svelte-kit
+
+uploads
+dbdata

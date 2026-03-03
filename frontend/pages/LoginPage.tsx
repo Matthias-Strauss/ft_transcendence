@@ -14,7 +14,7 @@ export default function LoginPage() {
   const handleLogin = async () => {
     setError('');
     try {
-      const res = await fetch('https://localhost/api/auth/login', {
+	  const res = await fetch('https://localhost:8443/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
