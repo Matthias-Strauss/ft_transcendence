@@ -151,3 +151,76 @@ postsRouter.delete(
     });
   }),
 );
+
+// COMMENTS
+async function checkPostExists(postId: string) {
+  const post = await prisma.post.findUnique({
+    where: { id: postId },
+    select: { id: true },
+  });
+  if (!post) {
+    throw PostErrors.notFound();
+  }
+}
+
+const commentContextIncluded = {
+  author: {
+    select: {
+      id: true,
+      username: true,
+      displayname: true,
+      avatarPath: true,
+    },
+  },
+  post: {
+    select: {
+      id: true,
+      authorId: true,
+    },
+  },
+} satisfies Prisma.CommentInclude;
+
+type CommentWithContext = Prisma.CommentGetPayload<{
+  include: typeof commentContextIncluded;
+}>;
+
+function serializeComment(comment: CommentWithContext, viewerId: string) {
+  const { author, post, ...safeComment } = comment;
+  const { avatarPath, ...safeAuthor } = author;
+
+  return {
+    ...safeComment,
+    author: {
+      ...safeAuthor,
+      avatarUrl: getAvatarUrlFromPath(avatarPath),
+    },
+    canDelete: comment.authorId === viewerId || post.authorId === viewerId,
+  };
+}
+
+postsRouter.get(
+  '/posts/:id/comments',
+  requireAuth,
+  asyncHandler(async (req: AuthedRequest, res) => {
+    if (!req.userId) {
+      throw AuthErrors.invalidToken();
+    }
+
+    await checkPostExists(req.params.id);
+
+    const comments = await prisma.comment.findMany({
+      where: { postId: req.params.id },
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+      include: commentContextIncluded,
+    });
+
+    const viewerId = req.userId;
+    return res.json({
+      items: comments.map((comment) => serializeComment(comment, viewerId)),
+      meta: {
+        total: comments.length,
+        order: 'createdAt_asc',
+      },
+    });
+  }),
+);

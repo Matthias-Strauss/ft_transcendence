@@ -16,6 +16,7 @@ model User {
 
   refreshTokens RefreshToken[]
   posts         Post[]
+  comments      Comment[]
 }
 
 model RefreshToken {
@@ -43,8 +44,24 @@ model Post {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  author    User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  comments  Comment[]
 
   @@index([authorId])
   @@index([createdAt, id])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  postId    String
+  authorId  String
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  post    Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author  User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([postId, createdAt, id])
+  @@index([authorId])
 }

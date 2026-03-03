@@ -85,8 +85,39 @@ async function seedPost(post: {
   console.log(`seed.ts: post seeded: '${post.id}' by '${post.authorId}'`);
 }
 
+async function seedComment(comment: {
+  id: string;
+  postId: string;
+  authorId: string;
+  content: string;
+  createdAt: Date;
+}) {
+  await prisma.comment.upsert({
+    where: { id: comment.id },
+    update: {
+      postId: comment.postId,
+      authorId: comment.authorId,
+      content: comment.content,
+      createdAt: comment.createdAt,
+    },
+    create: {
+      id: comment.id,
+      postId: comment.postId,
+      authorId: comment.authorId,
+      content: comment.content,
+      createdAt: comment.createdAt,
+    },
+  });
+
+  console.log(`seed.ts: comment seeded: '${comment.id}' on '${comment.postId}'`);
+}
+
 function hoursAgo(hours: number): Date {
   return new Date(Date.now() - hours * 60 * 60 * 1000);
+}
+
+function minutesAgo(minutes: number): Date {
+  return new Date(Date.now() - minutes * 60 * 1000);
 }
 
 async function main() {
@@ -166,6 +197,49 @@ async function main() {
     commentCount: 5,
     shareCount: 1,
     createdAt: hoursAgo(24),
+  });
+
+  await seedComment({
+    id: 'seed-comment-1',
+    postId: 'seed-post-1',
+    authorId: seagullUser.id,
+    content: 'I <3 seagulls!!',
+    createdAt: minutesAgo(45),
+  });
+  await seedComment({
+    id: 'seed-comment-2',
+    postId: 'seed-post-1',
+    authorId: testUser.id,
+    content: 'I <3 seagulls too!',
+    createdAt: minutesAgo(40),
+  });
+  await seedComment({
+    id: 'seed-comment-3',
+    postId: 'seed-post-2',
+    authorId: testUser.id,
+    content: 'Seagulls are awesome!',
+    createdAt: hoursAgo(2),
+  });
+  await seedComment({
+    id: 'seed-comment-4',
+    postId: 'seed-post-2',
+    authorId: seagullUser.id,
+    content: 'I know!',
+    createdAt: hoursAgo(1),
+  });
+  await seedComment({
+    id: 'seed-comment-5',
+    postId: 'seed-post-3',
+    authorId: seagullUser.id,
+    content: 'Seagulls are the best!',
+    createdAt: hoursAgo(5),
+  });
+  await seedComment({
+    id: 'seed-comment-6',
+    postId: 'seed-post-4',
+    authorId: testUser.id,
+    content: 'Agreed.',
+    createdAt: hoursAgo(9),
   });
 }
 
