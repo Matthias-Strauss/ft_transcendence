@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 
-import { FRONTEND_ORIGIN } from './config.js';
+import { CORS_ALLOWED_ORIGINS, TRUST_PROXY_HOPS } from './config.js';
 import { healthRouter } from './routes/health.js';
 import { authRouter } from './routes/auth.js';
 import { testRouter } from './routes/test.js';
@@ -23,12 +23,27 @@ function createAPI() {
   return api;
 }
 
+function isAllowedOrigin(origin: string | undefined): boolean {
+  if (!origin) {
+    return true;
+  }
+
+  return CORS_ALLOWED_ORIGINS.includes(origin);
+}
+
 export function createApp() {
   const app = express();
 
+  app.set('trust proxy', TRUST_PROXY_HOPS);
+
   app.use(
     cors({
-      origin: FRONTEND_ORIGIN,
+      origin(origin, callback) {
+        if (isAllowedOrigin(origin)) {
+          return callback(null, true);
+        }
+        return callback(new Error(`Origin ${origin ?? 'unknown'} is not allowed by CORS`));
+      },
       credentials: true,
     }),
   );

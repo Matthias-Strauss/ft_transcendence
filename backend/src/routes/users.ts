@@ -240,7 +240,7 @@ usersRouter.put(
       }),
     ]);
 
-    clearRefreshCookie(res);
+    clearRefreshCookie(req, res);
 
     return res.json({ ok: true });
   }),
