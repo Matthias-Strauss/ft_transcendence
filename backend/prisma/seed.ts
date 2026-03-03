@@ -42,7 +42,7 @@ async function seedUser(
     },
   });
 
-  console.log(`seed.ts: user seeded: '${username}' '${password}'`);
+  console.log(`seed.ts: user seeded: usr:'${username}' pass:'${password}' uuid:'${user.id}'`);
   return user;
 }
 
@@ -109,7 +109,7 @@ async function seedComment(comment: {
     },
   });
 
-  console.log(`seed.ts: comment seeded: '${comment.id}' on '${comment.postId}'`);
+  console.log(`seed.ts: comment seeded: commentId:'${comment.id}' on postId:'${comment.postId}' by userId:'${comment.authorId}'`);
 }
 
 function hoursAgo(hours: number): Date {

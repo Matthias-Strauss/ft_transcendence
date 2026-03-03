@@ -91,6 +91,17 @@ export const ERROR_CATALOG = {
     message: 'You can only delete your own posts',
     errCode: 'POST_DELETE_FORBIDDEN',
   },
+
+  COMMENT_NOT_FOUND: {
+    statusCode: 404,
+    message: 'Comment not found',
+    errCode: 'COMMENT_NOT_FOUND',
+  },
+  COMMENT_DELETE_FORBIDDEN: {
+    statusCode: 403,
+    message: 'You can only delete your own comments or comments on your posts',
+    errCode: 'COMMENT_DELETE_FORBIDDEN',
+  },
 } as const;
 
 export type ErrorKey = keyof typeof ERROR_CATALOG;
@@ -139,4 +150,9 @@ export const FileErrors = {
 export const PostErrors = {
   notFound: () => appError('POST_NOT_FOUND'),
   deleteForbidden: () => appError('POST_DELETE_FORBIDDEN'),
+};
+
+export const CommentErrors = {
+  notFound: () => appError('COMMENT_NOT_FOUND'),
+  deleteForbidden: () => appError('COMMENT_DELETE_FORBIDDEN'),
 };

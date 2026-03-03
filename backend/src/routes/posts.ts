@@ -4,7 +4,7 @@ import { Prisma } from '@prisma/client';
 
 import { AuthedRequest, requireAuth } from '../auth/middleware.js';
 import { asyncHandler } from '../errors/asyncHandler.js';
-import { AuthErrors, PostErrors, RequestErrors } from '../errors/catalog.js';
+import { AuthErrors, CommentErrors, PostErrors, RequestErrors } from '../errors/catalog.js';
 import { prisma } from '../db.js';
 import { getAvatarUrlFromPath } from '../files/avatars.js';
 
@@ -221,6 +221,108 @@ postsRouter.get(
         total: comments.length,
         order: 'createdAt_asc',
       },
+    });
+  }),
+);
+
+const CreateCommentSchema = z
+  .object({
+    content: z.string().trim().min(1).max(300),
+  })
+  .strict();
+
+postsRouter.post(
+  '/posts/:id/comments',
+  requireAuth,
+  asyncHandler(async (req: AuthedRequest, res) => {
+    if (!req.userId) {
+      throw AuthErrors.invalidToken();
+    }
+
+    const parsed = CreateCommentSchema.safeParse(req.body);
+    if (!parsed.success) {
+      throw RequestErrors.badRequest(parsed.error.issues);
+    }
+
+    const viewerId = req.userId;
+    const comment = await prisma.$transaction(async (tx) => {
+      const post = await tx.post.findUnique({
+        where: { id: req.params.id },
+        select: { id: true },
+      });
+
+      if (!post) {
+        throw PostErrors.notFound();
+      }
+
+      const createdComment = await tx.comment.create({
+        data: {
+          postId: req.params.id,
+          authorId: viewerId,
+          content: parsed.data.content,
+        },
+        include: commentContextIncluded,
+      });
+
+      await tx.post.update({
+        where: { id: req.params.id },
+        data: {
+          commentCount: { increment: 1 },
+        },
+      });
+
+      return createdComment;
+    });
+
+    return res.status(201).json(serializeComment(comment, viewerId));
+  }),
+);
+
+postsRouter.delete(
+  '/posts/:postId/comments/:commentId',
+  requireAuth,
+  asyncHandler(async (req: AuthedRequest, res) => {
+    if (!req.userId) {
+      throw AuthErrors.invalidToken();
+    }
+
+    const { postId, commentId } = req.params;
+    const viewerId = req.userId;
+
+    const comment = await prisma.comment.findUnique({
+      where: { id: commentId },
+      include: {
+        post: {
+          select: { authorId: true },
+        },
+      },
+    });
+
+    if (!comment || comment.postId !== postId) {
+      throw CommentErrors.notFound();
+    }
+
+    if (comment.authorId !== viewerId && comment.post.authorId !== viewerId) {
+      throw CommentErrors.deleteForbidden();
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.comment.delete({
+        where: { id: commentId },
+      });
+
+      await tx.post.update({
+        where: { id: postId },
+        data: {
+          commentCount: { decrement: 1 },
+        },
+      });
+    });
+
+    return res.json({
+      ok: true,
+      deletedCommentId: commentId,
+      postId: postId,
     });
   }),
 );
