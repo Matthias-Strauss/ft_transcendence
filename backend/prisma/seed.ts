@@ -154,6 +154,27 @@ async function seedShare(postId: string, userId: string) {
   console.log(`seed.ts: share seeded: postId:'${postId}' by userId:'${userId}'`);
 }
 
+async function seedCommentLike(commentId: string, userId: string) {
+  await prisma.commentLike.upsert({
+    where: {
+      commentId_userId: {
+        commentId,
+        userId,
+      },
+    },
+    update: {
+      commentId,
+      userId,
+    },
+    create: {
+      commentId,
+      userId,
+    },
+  });
+
+  console.log(`seed.ts: comment like seeded: commentId:'${commentId}' by userId:'${userId}'`);
+}
+
 function hoursAgo(hours: number): Date {
   return new Date(Date.now() - hours * 60 * 60 * 1000);
 }
@@ -180,6 +201,21 @@ async function syncPostCommentLikeShareCounter(postIds: string[]) {
     });
 
     console.log(`seed.ts: counters synced for '${postId}'`);
+  }
+}
+
+async function syncCommentLikeCounter(commentIds: string[]) {
+  for (const commentId of commentIds) {
+    const likeCount = await prisma.commentLike.count({ where: { commentId } });
+
+    await prisma.comment.update({
+      where: { id: commentId },
+      data: {
+        likeCount,
+      },
+    });
+
+    console.log(`seed.ts: comment like counter synced for '${commentId}'`);
   }
 }
 
@@ -297,6 +333,11 @@ async function main() {
   await seedShare('seed-post-2', testUser.id);
   await seedShare('seed-post-3', seagullUser.id);
 
+  await seedCommentLike('seed-comment-1', testUser.id);
+  await seedCommentLike('seed-comment-1', seagullUser.id);
+  await seedCommentLike('seed-comment-2', testUser.id);
+  await seedCommentLike('seed-comment-3', seagullUser.id);
+
   await syncPostCommentLikeShareCounter([
     'seed-post-1',
     'seed-post-2',
@@ -304,6 +345,15 @@ async function main() {
     'seed-post-4',
     'seed-post-5',
     'seed-post-6',
+  ]);
+
+  await syncCommentLikeCounter([
+    'seed-comment-1',
+    'seed-comment-2',
+    'seed-comment-3',
+    'seed-comment-4',
+    'seed-comment-5',
+    'seed-comment-6',
   ]);
 }
 

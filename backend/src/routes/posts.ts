@@ -493,3 +493,98 @@ postsRouter.post(
     return res.json(result);
   }),
 );
+
+postsRouter.post(
+  '/posts/:postId/comments/:commentId/like',
+  requireAuth,
+  asyncHandler(async (req: AuthedRequest, res) => {
+    if (!req.userId) {
+      throw AuthErrors.invalidToken();
+    }
+
+    const { postId, commentId } = req.params;
+    const viewerId = req.userId;
+
+    const comment = await prisma.comment.findUnique({
+      where: { id: commentId },
+      select: {
+        id: true,
+        postId: true,
+      },
+    });
+
+    if (!comment || comment.postId !== postId) {
+      throw CommentErrors.notFound();
+    }
+
+    const result = await prisma.$transaction(async (tx) => {
+      const deleted = await tx.commentLike.deleteMany({
+        where: {
+          commentId,
+          userId: viewerId,
+        },
+      });
+
+      if (deleted.count > 0) {
+        const updatedComment = await tx.comment.update({
+          where: { id: commentId },
+          data: {
+            likeCount: { decrement: 1 },
+          },
+          select: {
+            id: true,
+            likeCount: true,
+          },
+        });
+
+        return {
+          likedByMe: false,
+          likeCount: updatedComment.likeCount,
+        };
+      }
+
+      const created = await tx.commentLike.createMany({
+        data: {
+          commentId,
+          userId: viewerId,
+        },
+        skipDuplicates: true,
+      });
+
+      if (created.count > 0) {
+        const updatedComment = await tx.comment.update({
+          where: { id: commentId },
+          data: {
+            likeCount: { increment: 1 },
+          },
+          select: {
+            id: true,
+            likeCount: true,
+          },
+        });
+
+        return {
+          likedByMe: true,
+          likeCount: updatedComment.likeCount,
+        };
+      }
+
+      const unchanged = await tx.comment.findUnique({
+        where: { id: commentId },
+        select: { likeCount: true },
+      });
+
+      return {
+        likedByMe: true,
+        likeCount: unchanged!.likeCount,
+      };
+    });
+
+    return res.json({
+      postId,
+      commentId,
+      likedByMe: result.likedByMe,
+      likeCount: result.likeCount,
+    });
+  }),
+);
