@@ -17,6 +17,8 @@ model User {
   refreshTokens RefreshToken[]
   posts         Post[]
   comments      Comment[]
+  postLikes     PostLike[]
+  postShares    PostShare[]
 }
 
 model RefreshToken {
@@ -46,6 +48,8 @@ model Post {
 
   author    User @relation(fields: [authorId], references: [id], onDelete: Cascade)
   comments  Comment[]
+  likes     PostLike[]
+  shares    PostShare[]
 
   @@index([authorId])
   @@index([createdAt, id])
@@ -64,4 +68,28 @@ model Comment {
 
   @@index([postId, createdAt, id])
   @@index([authorId])
+}
+
+model PostLike {
+  postId    String
+  userId    String
+  createdAt DateTime @default(now())
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([postId, userId])
+  @@index([userId])
+}
+
+model PostShare {
+  postId    String
+  userId    String
+  createdAt DateTime @default(now())
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([postId, userId])
+  @@index([userId])
 }

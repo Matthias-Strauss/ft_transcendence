@@ -52,9 +52,9 @@ async function seedPost(post: {
   content: string;
   imageUrl?: string;
   gameTag?: string;
-  likeCount: number;
-  commentCount: number;
-  shareCount: number;
+  likeCount?: number;
+  commentCount?: number;
+  shareCount?: number;
   createdAt: Date;
 }) {
   await prisma.post.upsert({
@@ -112,12 +112,75 @@ async function seedComment(comment: {
   console.log(`seed.ts: comment seeded: commentId:'${comment.id}' on postId:'${comment.postId}' by userId:'${comment.authorId}'`);
 }
 
+async function seedLike(postId: string, userId: string) {
+  await prisma.postLike.upsert({
+    where: {
+      postId_userId: {
+        postId,
+        userId,
+      },
+    },
+    update: {
+      postId,
+      userId,
+    },
+    create: {
+      postId,
+      userId,
+    },
+  });
+
+  console.log(`seed.ts: like seeded: postId:'${postId}' by userId:'${userId}'`);
+}
+
+async function seedShare(postId: string, userId: string) {
+  await prisma.postShare.upsert({
+    where: {
+      postId_userId: {
+        postId,
+        userId,
+      },
+    },
+    update: {
+      postId,
+      userId,
+    },
+    create: {
+      postId,
+      userId,
+    },
+  });
+
+  console.log(`seed.ts: share seeded: postId:'${postId}' by userId:'${userId}'`);
+}
+
 function hoursAgo(hours: number): Date {
   return new Date(Date.now() - hours * 60 * 60 * 1000);
 }
 
 function minutesAgo(minutes: number): Date {
   return new Date(Date.now() - minutes * 60 * 1000);
+}
+
+async function syncPostCommentLikeShareCounter(postIds: string[]) {
+  for (const postId of postIds) {
+    const [likeCount, commentCount, shareCount] = await Promise.all([
+      prisma.postLike.count({ where: { postId } }),
+      prisma.comment.count({ where: { postId } }),
+      prisma.postShare.count({ where: { postId } }),
+    ]);
+
+    await prisma.post.update({
+      where: { id: postId },
+      data: {
+        likeCount,
+        commentCount,
+        shareCount,
+      },
+    });
+
+    console.log(`seed.ts: counters synced for '${postId}'`);
+  }
 }
 
 async function main() {
@@ -132,9 +195,6 @@ async function main() {
     imageUrl:
       'https://images.unsplash.com/photo-1451195090173-2e0781d7c33e?q=80&w=1470&auto=format&fit=crop',
     gameTag: 'Hangman',
-    likeCount: 128,
-    commentCount: 22,
-    shareCount: 9,
     createdAt: hoursAgo(1),
   });
 
@@ -146,9 +206,6 @@ async function main() {
     imageUrl:
       'https://images.unsplash.com/photo-1668901382969-8c73e450a1f5?q=80&w=880&auto=format&fit=crop',
     gameTag: 'Tic-Tac-Toe',
-    likeCount: 94,
-    commentCount: 31,
-    shareCount: 6,
     createdAt: hoursAgo(3),
   });
 
@@ -159,9 +216,6 @@ async function main() {
       'Spent the evening polishing the lobby flow. Tiny UX details really change the feel of a social game app.',
     imageUrl:
       'https://images.unsplash.com/photo-1535222636729-76586bf52493?q=80&w=1470&auto=format&fit=crop',
-    likeCount: 542,
-    commentCount: 88,
-    shareCount: 41,
     createdAt: hoursAgo(6),
   });
 
@@ -170,9 +224,6 @@ async function main() {
     authorId: seagullUser.id,
     content: 'New personal best in Hangman tonight. Guess pacing helped more than speed.',
     gameTag: 'Hangman',
-    likeCount: 61,
-    commentCount: 7,
-    shareCount: 2,
     createdAt: hoursAgo(10),
   });
 
@@ -181,9 +232,6 @@ async function main() {
     authorId: testUser.id,
     content:
       'Would you rather see daily challenges or weekly tournaments first in the social feed?',
-    likeCount: 47,
-    commentCount: 16,
-    shareCount: 4,
     createdAt: hoursAgo(16),
   });
 
@@ -193,9 +241,6 @@ async function main() {
     content:
       'Prototype idea: game tags on posts make it much easier to browse strategy clips and match recaps.',
     gameTag: 'Community',
-    likeCount: 33,
-    commentCount: 5,
-    shareCount: 1,
     createdAt: hoursAgo(24),
   });
 
@@ -241,6 +286,25 @@ async function main() {
     content: 'Agreed.',
     createdAt: hoursAgo(9),
   });
+
+  await seedLike('seed-post-1', testUser.id);
+  await seedLike('seed-post-1', seagullUser.id);
+  await seedLike('seed-post-2', testUser.id);
+  await seedLike('seed-post-3', seagullUser.id);
+
+  await seedShare('seed-post-1', testUser.id);
+  await seedShare('seed-post-1', seagullUser.id);
+  await seedShare('seed-post-2', testUser.id);
+  await seedShare('seed-post-3', seagullUser.id);
+
+  await syncPostCommentLikeShareCounter([
+    'seed-post-1',
+    'seed-post-2',
+    'seed-post-3',
+    'seed-post-4',
+    'seed-post-5',
+    'seed-post-6',
+  ]);
 }
 
 main()

@@ -326,3 +326,170 @@ postsRouter.delete(
     });
   }),
 );
+
+// LIKES / SHARES
+postsRouter.post(
+  '/posts/:id/like',
+  requireAuth,
+  asyncHandler(async (req: AuthedRequest, res) => {
+    if (!req.userId) {
+      throw AuthErrors.invalidToken();
+    }
+    const viewerId = req.userId;
+
+    const result = await prisma.$transaction(async (tx) => {
+      const post = await tx.post.findUnique({
+        where: { id: req.params.id },
+        select: { id: true, likeCount: true },
+      });
+
+      if (!post) {
+        throw PostErrors.notFound();
+      }
+
+      const deleted = await tx.postLike.deleteMany({
+        where: {
+          postId: req.params.id,
+          userId: viewerId,
+        },
+      });
+
+      if (deleted.count > 0) {
+        const updatedPost = await tx.post.update({
+          where: { id: req.params.id },
+          data: {
+            likeCount: { decrement: 1 },
+          },
+          select: {
+            id: true,
+            likeCount: true,
+          },
+        });
+
+        return {
+          postId: updatedPost.id,
+          likedByMe: false,
+          likeCount: updatedPost.likeCount,
+        };
+      }
+
+      const created = await tx.postLike.createMany({
+        data: {
+          postId: req.params.id,
+          userId: viewerId,
+        },
+        skipDuplicates: true,
+      });
+
+      if (created.count > 0) {
+        const updatedPost = await tx.post.update({
+          where: { id: req.params.id },
+          data: {
+            likeCount: { increment: 1 },
+          },
+          select: {
+            id: true,
+            likeCount: true,
+          },
+        });
+
+        return {
+          postId: updatedPost.id,
+          likedByMe: true,
+          likeCount: updatedPost.likeCount,
+        };
+      }
+
+      const unchangedPost = await tx.post.findUnique({
+        where: { id: req.params.id },
+        select: {
+          id: true,
+          likeCount: true,
+        },
+      });
+
+      if (!unchangedPost) {
+        throw PostErrors.notFound();
+      }
+
+      return {
+        postId: unchangedPost.id,
+        likedByMe: true,
+        likeCount: unchangedPost.likeCount,
+      };
+    });
+
+    return res.json(result);
+  }),
+);
+
+postsRouter.post(
+  '/posts/:id/share',
+  requireAuth,
+  asyncHandler(async (req: AuthedRequest, res) => {
+    if (!req.userId) {
+      throw AuthErrors.invalidToken();
+    }
+    const viewerId = req.userId;
+
+    const result = await prisma.$transaction(async (tx) => {
+      const post = await tx.post.findUnique({
+        where: { id: req.params.id },
+        select: { id: true, shareCount: true },
+      });
+
+      if (!post) {
+        throw PostErrors.notFound();
+      }
+
+      const created = await tx.postShare.createMany({
+        data: {
+          postId: req.params.id,
+          userId: viewerId,
+        },
+        skipDuplicates: true,
+      });
+
+      if (created.count > 0) {
+        const updatedPost = await tx.post.update({
+          where: { id: req.params.id },
+          data: {
+            shareCount: { increment: 1 },
+          },
+          select: {
+            id: true,
+            shareCount: true,
+          },
+        });
+
+        return {
+          postId: updatedPost.id,
+          sharedByMe: true,
+          shareCount: updatedPost.shareCount,
+          incremented: true,
+        };
+      }
+
+      const unchangedPost = await tx.post.findUnique({
+        where: { id: req.params.id },
+        select: {
+          id: true,
+          shareCount: true,
+        },
+      });
+
+      if (!unchangedPost) {
+        throw PostErrors.notFound();
+      }
+
+      return {
+        postId: unchangedPost.id,
+        sharedByMe: true,
+        shareCount: unchangedPost.shareCount,
+        incremented: false,
+      };
+    });
+
+    return res.json(result);
+  }),
+);
