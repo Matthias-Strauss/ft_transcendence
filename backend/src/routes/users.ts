@@ -9,6 +9,7 @@ import { AuthErrors, RequestErrors, UserErrors } from '../errors/catalog.js';
 import { hashPassword, verifyPassword } from '../auth/password.js';
 import { clearRefreshCookie } from '../auth/refresh.js';
 import { getAvatarUrlFromPath } from '../files/avatars.js';
+import { getPostViewerContext, postAuthorInclude, serializePost } from '../utils/postUtils.js';
 
 export const usersRouter = Router();
 
@@ -38,6 +39,48 @@ usersRouter.get(
     return res.json({
       ...safeUser,
       avatarUrl: getAvatarUrlFromPath(avatarPath),
+    });
+  }),
+);
+
+usersRouter.get(
+  '/users/me/posts',
+  requireAuth,
+  asyncHandler(async (req: AuthedRequest, res) => {
+    if (!req.userId) {
+      throw AuthErrors.invalidToken();
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: req.userId },
+      select: { id: true },
+    });
+    if (!user) {
+      throw AuthErrors.invalidToken();
+    }
+
+    const posts = await prisma.post.findMany({
+      where: { authorId: user.id },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      include: postAuthorInclude,
+    });
+
+    const { likedPostIds, sharedPostIds } = await getPostViewerContext(
+      posts.map((post) => post.id),
+      req.userId,
+    );
+
+    return res.json({
+      items: posts.map((post) =>
+        serializePost(post, {
+          likedByMe: likedPostIds.has(post.id),
+          sharedByMe: sharedPostIds.has(post.id),
+        }),
+      ),
+      meta: {
+        total: posts.length,
+        order: 'createdAt_desc',
+      },
     });
   }),
 );
@@ -258,7 +301,12 @@ const UsernameSchema = z.object({
 
 usersRouter.get(
   '/users/:username',
-  asyncHandler(async (req, res) => {
+  requireAuth,
+  asyncHandler(async (req: AuthedRequest, res) => {
+    if (!req.userId) {
+      throw AuthErrors.invalidToken();
+    }
+
     const parsed = UsernameSchema.safeParse(req.params);
     if (!parsed.success) {
       throw RequestErrors.badRequest(parsed.error.issues);
@@ -280,6 +328,52 @@ usersRouter.get(
       username: user.username,
       displayname: user.displayname,
       avatarUrl: getAvatarUrlFromPath(user.avatarPath),
+    });
+  }),
+);
+
+usersRouter.get(
+  '/users/:username/posts',
+  requireAuth,
+  asyncHandler(async (req: AuthedRequest, res) => {
+    if (!req.userId) {
+      throw AuthErrors.invalidToken();
+    }
+
+    const parsed = UsernameSchema.safeParse(req.params);
+    if (!parsed.success) {
+      throw RequestErrors.badRequest(parsed.error.issues);
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { username: parsed.data.username },
+      select: { id: true },
+    });
+    if (!user) {
+      throw UserErrors.userNotFound();
+    }
+
+    const posts = await prisma.post.findMany({
+      where: { authorId: user.id },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      include: postAuthorInclude,
+    });
+
+    const { likedPostIds, sharedPostIds } = await getPostViewerContext(
+      posts.map((post) => post.id),
+      req.userId,
+    );
+    return res.json({
+      items: posts.map((post) =>
+        serializePost(post, {
+          likedByMe: likedPostIds.has(post.id),
+          sharedByMe: sharedPostIds.has(post.id),
+        }),
+      ),
+      meta: {
+        total: posts.length,
+        order: 'createdAt_desc',
+      },
     });
   }),
 );
