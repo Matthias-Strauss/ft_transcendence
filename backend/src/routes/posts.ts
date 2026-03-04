@@ -25,16 +25,54 @@ type PostWithAuthor = Prisma.PostGetPayload<{
   include: typeof postAuthorInclude;
 }>;
 
-function serializePost(post: PostWithAuthor) {
+type PostViewerContext = {
+  likedByMe?: boolean;
+  sharedByMe?: boolean;
+};
+
+function serializePost(post: PostWithAuthor, viewerContext: PostViewerContext = {}) {
   const { author, ...safePost } = post;
   const { avatarPath, ...safeAuthor } = author;
 
   return {
     ...safePost,
+    likedByMe: viewerContext.likedByMe ?? false,
+    sharedByMe: viewerContext.sharedByMe ?? false,
     author: {
       ...safeAuthor,
       avatarUrl: getAvatarUrlFromPath(avatarPath),
     },
+  };
+}
+
+async function getPostViewerContext(postIds: string[], viewerId: string) {
+  if (postIds.length === 0) {
+    return {
+      likedPostIds: new Set<string>(),
+      sharedPostIds: new Set<string>(),
+    };
+  }
+
+  const [likes, shares] = await Promise.all([
+    prisma.postLike.findMany({
+      where: {
+        postId: { in: postIds },
+        userId: viewerId,
+      },
+      select: { postId: true },
+    }),
+    prisma.postShare.findMany({
+      where: {
+        postId: { in: postIds },
+        userId: viewerId,
+      },
+      select: { postId: true },
+    }),
+  ]);
+
+  return {
+    likedPostIds: new Set(likes.map((like) => like.postId)),
+    sharedPostIds: new Set(shares.map((share) => share.postId)),
   };
 }
 
@@ -51,8 +89,18 @@ postsRouter.get(
       include: postAuthorInclude,
     });
 
+    const { likedPostIds, sharedPostIds } = await getPostViewerContext(
+      posts.map((post) => post.id),
+      req.userId,
+    );
+
     return res.json({
-      items: posts.map(serializePost),
+      items: posts.map((post) =>
+        serializePost(post, {
+          likedByMe: likedPostIds.has(post.id),
+          sharedByMe: sharedPostIds.has(post.id),
+        }),
+      ),
       meta: {
         total: posts.length,
         order: 'createdAt_desc',
@@ -92,7 +140,12 @@ postsRouter.post(
       include: postAuthorInclude,
     });
 
-    return res.status(201).json(serializePost(post));
+    return res.status(201).json(
+      serializePost(post, {
+        likedByMe: false,
+        sharedByMe: false,
+      }),
+    );
   }),
 );
 
@@ -113,7 +166,14 @@ postsRouter.get(
       throw PostErrors.notFound();
     }
 
-    return res.json(serializePost(post));
+    const { likedPostIds, sharedPostIds } = await getPostViewerContext([post.id], req.userId);
+
+    return res.json(
+      serializePost(post, {
+        likedByMe: likedPostIds.has(post.id),
+        sharedByMe: sharedPostIds.has(post.id),
+      }),
+    );
   }),
 );
 
@@ -184,17 +244,46 @@ type CommentWithContext = Prisma.CommentGetPayload<{
   include: typeof commentContextIncluded;
 }>;
 
-function serializeComment(comment: CommentWithContext, viewerId: string) {
+type CommentViewerContext = {
+  likedByMe?: boolean;
+};
+
+function serializeComment(
+  comment: CommentWithContext,
+  viewerId: string,
+  viewerContext: CommentViewerContext = {},
+) {
   const { author, post, ...safeComment } = comment;
   const { avatarPath, ...safeAuthor } = author;
 
   return {
     ...safeComment,
+    likedByMe: viewerContext.likedByMe,
     author: {
       ...safeAuthor,
       avatarUrl: getAvatarUrlFromPath(avatarPath),
     },
     canDelete: comment.authorId === viewerId || post.authorId === viewerId,
+  };
+}
+
+async function getCommentViewerContext(commentIds: string[], viewerId: string) {
+  if (commentIds.length === 0) {
+    return {
+      likedCommentIds: new Set<string>(),
+    };
+  }
+
+  const likes = await prisma.commentLike.findMany({
+    where: {
+      userId: viewerId,
+      commentId: { in: commentIds },
+    },
+    select: { commentId: true },
+  });
+
+  return {
+    likedCommentIds: new Set(likes.map((like) => like.commentId)),
   };
 }
 
@@ -215,8 +304,17 @@ postsRouter.get(
     });
 
     const viewerId = req.userId;
+    const { likedCommentIds } = await getCommentViewerContext(
+      comments.map((comment) => comment.id),
+      viewerId,
+    );
+
     return res.json({
-      items: comments.map((comment) => serializeComment(comment, viewerId)),
+      items: comments.map((comment) =>
+        serializeComment(comment, viewerId, {
+          likedByMe: likedCommentIds.has(comment.id),
+        }),
+      ),
       meta: {
         total: comments.length,
         order: 'createdAt_asc',
@@ -274,7 +372,7 @@ postsRouter.post(
       return createdComment;
     });
 
-    return res.status(201).json(serializeComment(comment, viewerId));
+    return res.status(201).json(serializeComment(comment, viewerId, { likedByMe: false }));
   }),
 );
 
