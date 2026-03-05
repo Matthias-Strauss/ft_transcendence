@@ -12,6 +12,7 @@
     "@types/react": "^19.2.9",
     "@types/react-dom": "^19.2.0",
     "@typescript-eslint/eslint-plugin": "^8.53.1",
+	"@types/ws": "^8.18.1",
     "@vitejs/plugin-react": "^5.1.2",
     "eslint": "^8.57.1",
     "eslint-config-prettier": "^8.8.0",
@@ -27,6 +28,7 @@
     "lucide-react": "^0.563.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
-    "react-router-dom": "^7.13.1"
+	"react-router-dom": "^7.13.1",
+	"ws": "^8.19.0"
   }
 }

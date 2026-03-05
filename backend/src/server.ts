@@ -11,12 +11,13 @@ export function startServer() {
   const httpServer = createServer(app);
   const webSocketServer = new WebSocketServer({ port: 3002 });
 
+  console.log('Initialized Websocket server');
   webSocketServer.on('connection', function connection(webSocket: any) {
     webSocket.on('error', console.error);
     webSocket.on('message', function message(data: any) {
       console.log('received: %s', data);
     });
-    webSocket.send('Successfully established websocket connection');
+    console.log('Incoming Websocket connection');
   });
 
   httpServer.listen(PORT, () => {
