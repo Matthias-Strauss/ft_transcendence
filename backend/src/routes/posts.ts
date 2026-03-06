@@ -298,6 +298,63 @@ postsRouter.delete(
   }),
 );
 
+// BOOKMARK
+postsRouter.post(
+  '/posts/:id/bookmark',
+  requireAuth,
+  asyncHandler(async (req: AuthedRequest, res) => {
+    if (!req.userId) {
+      throw AuthErrors.invalidToken();
+    }
+
+    const viewerId = req.userId;
+
+    const result = await prisma.$transaction(async (tx) => {
+      const post = await tx.post.findUnique({
+        where: { id: req.params.id },
+        select: { id: true },
+      });
+      if (!post) {
+        throw PostErrors.notFound();
+      }
+
+      const deleted = await tx.postBookmark.deleteMany({
+        where: {
+          postId: req.params.id,
+          userId: viewerId,
+        },
+      });
+      if (deleted.count > 0) {
+        return {
+          postId: req.params.id,
+          bookmarkedByMe: false,
+        };
+      }
+
+      const created = await tx.postBookmark.createMany({
+        data: {
+          postId: req.params.id,
+          userId: viewerId,
+        },
+        skipDuplicates: true,
+      });
+      if (created.count > 0) {
+        return {
+          postId: req.params.id,
+          bookmarkedByMe: true,
+        };
+      }
+
+      return {
+        postId: req.params.id,
+        bookmarkedByMe: false,
+      };
+    });
+
+    return res.json(result);
+  }),
+);
+
 // LIKES / SHARES
 postsRouter.post(
   '/posts/:id/like',

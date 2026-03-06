@@ -70,6 +70,7 @@ export async function getPostViewerContext(postIds: string[], viewerId: string) 
         postId: { in: postIds },
         userId: viewerId,
       },
+      select: { postId: true }
     }),
   ]);
 
