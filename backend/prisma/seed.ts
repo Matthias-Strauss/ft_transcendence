@@ -175,6 +175,27 @@ async function seedCommentLike(commentId: string, userId: string) {
   console.log(`seed.ts: comment like seeded: commentId:'${commentId}' by userId:'${userId}'`);
 }
 
+async function seedBookmark(postId: string, userId: string) {
+  await prisma.postBookmark.upsert({
+    where: {
+      postId_userId: {
+        postId,
+        userId,
+      },
+    },
+    update: {
+      postId,
+      userId,
+    },
+    create: {
+      postId,
+      userId,
+    },
+  });
+
+  console.log(`seed.ts: bookmark seeded: postId:'${postId}' by userId:'${userId}'`);
+}
+
 function hoursAgo(hours: number): Date {
   return new Date(Date.now() - hours * 60 * 60 * 1000);
 }
@@ -337,6 +358,11 @@ async function main() {
   await seedCommentLike('seed-comment-1', seagullUser.id);
   await seedCommentLike('seed-comment-2', testUser.id);
   await seedCommentLike('seed-comment-3', seagullUser.id);
+
+  await seedBookmark('seed-post-1', seagullUser.id);
+  await seedBookmark('seed-post-2', testUser.id);
+  await seedBookmark('seed-post-3', seagullUser.id);
+  await seedBookmark('seed-post-4', testUser.id);
 
   await syncPostCommentLikeShareCounter([
     'seed-post-1',

@@ -85,6 +85,46 @@ usersRouter.get(
   }),
 );
 
+usersRouter.get(
+  '/users/me/bookmarks',
+  requireAuth,
+  asyncHandler(async (req: AuthedRequest, res) => {
+    if (!req.userId) {
+      throw AuthErrors.invalidToken();
+    }
+
+    const bookmarks = await prisma.postBookmark.findMany({
+      where: { userId: req.userId },
+      orderBy: [{ createdAt: 'desc'}, { postId: 'desc'}],
+      include: {
+        post: {
+          include: postAuthorInclude,
+        },
+      },
+    });
+
+    const posts = bookmarks.map((bookmark) => bookmark.post);
+    const { likedPostIds, sharedPostIds } = await getPostViewerContext(
+      posts.map((post) => post.id),
+      req.userId,
+    );
+
+    return res.json({
+      items: posts.map((post) =>
+        serializePost(post, {
+          likedByMe: likedPostIds.has(post.id),
+          sharedByMe: sharedPostIds.has(post.id),
+          bookmarkedByMe: true,
+        }),
+      ),
+      meta: {
+        total: posts.length,
+        order: 'bookmarkedAt_desc',
+      },
+    });
+  }),
+);
+
 const UpdateMeSchema = z
   .object({
     displayname: z

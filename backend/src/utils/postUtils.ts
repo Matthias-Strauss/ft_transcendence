@@ -22,6 +22,7 @@ type PostWithAuthor = Prisma.PostGetPayload<{
 type PostViewerContext = {
   likedByMe?: boolean;
   sharedByMe?: boolean;
+  bookmarkedByMe?: boolean;
 };
 
 export function serializePost(post: PostWithAuthor, viewerContext: PostViewerContext = {}) {
@@ -32,6 +33,7 @@ export function serializePost(post: PostWithAuthor, viewerContext: PostViewerCon
     ...safePost,
     likedByMe: viewerContext.likedByMe ?? false,
     sharedByMe: viewerContext.sharedByMe ?? false,
+    bookmarkedByMe: viewerContext.bookmarkedByMe ?? false,
     author: {
       ...safeAuthor,
       avatarUrl: getAvatarUrlFromPath(avatarPath),
@@ -44,10 +46,11 @@ export async function getPostViewerContext(postIds: string[], viewerId: string) 
     return {
       likedPostIds: new Set<string>(),
       sharedPostIds: new Set<string>(),
+      bookmarkedPostIds: new Set<string>(),
     };
   }
 
-  const [likes, shares] = await Promise.all([
+  const [likes, shares, bookmarks] = await Promise.all([
     prisma.postLike.findMany({
       where: {
         postId: { in: postIds },
@@ -62,11 +65,18 @@ export async function getPostViewerContext(postIds: string[], viewerId: string) 
       },
       select: { postId: true },
     }),
+    prisma.postBookmark.findMany({
+      where: {
+        postId: { in: postIds },
+        userId: viewerId,
+      },
+    }),
   ]);
 
   return {
     likedPostIds: new Set(likes.map((like) => like.postId)),
     sharedPostIds: new Set(shares.map((share) => share.postId)),
+    bookmarkedByMe: new Set(bookmarks.map((bookmark) => bookmark)),
   };
 }
 

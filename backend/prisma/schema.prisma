@@ -19,6 +19,7 @@ model User {
   comments      Comment[]
   postLikes     PostLike[]
   postShares    PostShare[]
+  postBookmarks PostBookmark[]
   commentLikes  CommentLike[]
 }
 
@@ -51,6 +52,7 @@ model Post {
   comments  Comment[]
   likes     PostLike[]
   shares    PostShare[]
+  bookmarks PostBookmark[]
 
   @@index([authorId])
   @@index([createdAt, id])
@@ -95,6 +97,18 @@ model PostShare {
 
   @@id([postId, userId])
   @@index([userId])
+}
+
+model PostBookmark {
+  postId    String
+  userId    String
+  createdAt DateTime @default(now())
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([postId, userId])
+  @@index([userId, createdAt, postId])
 }
 
 model CommentLike {
