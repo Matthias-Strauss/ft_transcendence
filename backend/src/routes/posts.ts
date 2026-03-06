@@ -30,7 +30,7 @@ postsRouter.get(
       include: postAuthorInclude,
     });
 
-    const { likedPostIds, sharedPostIds } = await getPostViewerContext(
+    const { likedPostIds, sharedPostIds, bookmarkedPostIds } = await getPostViewerContext(
       posts.map((post) => post.id),
       req.userId,
     );
@@ -40,6 +40,7 @@ postsRouter.get(
         serializePost(post, {
           likedByMe: likedPostIds.has(post.id),
           sharedByMe: sharedPostIds.has(post.id),
+          bookmarkedByMe: bookmarkedPostIds?.has(post.id),
         }),
       ),
       meta: {
@@ -85,6 +86,7 @@ postsRouter.post(
       serializePost(post, {
         likedByMe: false,
         sharedByMe: false,
+        bookmarkedByMe: false,
       }),
     );
   }),
@@ -107,12 +109,16 @@ postsRouter.get(
       throw PostErrors.notFound();
     }
 
-    const { likedPostIds, sharedPostIds } = await getPostViewerContext([post.id], req.userId);
+    const { likedPostIds, sharedPostIds, bookmarkedPostIds } = await getPostViewerContext(
+      [post.id],
+      req.userId,
+    );
 
     return res.json(
       serializePost(post, {
         likedByMe: likedPostIds.has(post.id),
         sharedByMe: sharedPostIds.has(post.id),
+        bookmarkedByMe: bookmarkedPostIds?.has(post.id),
       }),
     );
   }),

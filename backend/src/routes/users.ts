@@ -95,7 +95,7 @@ usersRouter.get(
 
     const bookmarks = await prisma.postBookmark.findMany({
       where: { userId: req.userId },
-      orderBy: [{ createdAt: 'desc'}, { postId: 'desc'}],
+      orderBy: [{ createdAt: 'desc' }, { postId: 'desc' }],
       include: {
         post: {
           include: postAuthorInclude,
