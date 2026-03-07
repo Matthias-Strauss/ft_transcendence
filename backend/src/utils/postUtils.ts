@@ -3,7 +3,7 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '../db.js';
 import { getAvatarUrlFromPath } from '../files/avatars.js';
 import { getPostImageUrlFromPath } from '../files/postings.js';
-import { PostErrors } from '../errors/catalog.js';
+import { PostErrors, CommentErrors } from '../errors/catalog.js';
 
 export const postAuthorInclude = {
   author: {
@@ -83,7 +83,6 @@ export async function getPostViewerContext(postIds: string[], viewerId: string) 
   };
 }
 
-// COMMENTS
 export async function checkPostExists(postId: string) {
   const post = await prisma.post.findUnique({
     where: { id: postId },
@@ -94,6 +93,7 @@ export async function checkPostExists(postId: string) {
   }
 }
 
+// COMMENTS
 export const commentContextIncluded = {
   author: {
     select: {
@@ -156,4 +156,18 @@ export async function getCommentViewerContext(commentIds: string[], viewerId: st
   return {
     likedCommentIds: new Set(likes.map((like) => like.commentId)),
   };
+}
+
+export async function checkCommentBelongsToPost(commentId: string, postId: string) {
+  const comment = await prisma.comment.findUnique({
+    where: { id: commentId },
+    select: {
+      id: true,
+      postId: true,
+    },
+  });
+
+  if (!comment || comment.postId !== postId) {
+    throw CommentErrors.notFound();
+  }
 }

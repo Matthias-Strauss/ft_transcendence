@@ -15,6 +15,7 @@ import {
   getCommentViewerContext,
   checkPostExists,
   commentContextIncluded,
+  checkCommentBelongsToPost,
 } from '../utils/postUtils.js';
 import {
   postImageUploadHandler,
@@ -72,7 +73,7 @@ const CreatePostSchema = z
   .strict();
 
 postsRouter.post(
-  '/posts/create',
+  '/posts',
   requireAuth,
   postImageUploadHandler,
   asyncHandler(async (req: AuthedRequest, res) => {
@@ -341,50 +342,49 @@ postsRouter.post(
     }
 
     const viewerId = req.userId;
+    const postId = req.params.id;
 
-    const result = await prisma.$transaction(async (tx) => {
-      const post = await tx.post.findUnique({
-        where: { id: req.params.id },
-        select: { id: true },
-      });
-      if (!post) {
-        throw PostErrors.notFound();
-      }
+    await checkPostExists(postId);
 
-      const deleted = await tx.postBookmark.deleteMany({
-        where: {
-          postId: req.params.id,
-          userId: viewerId,
-        },
-      });
-      if (deleted.count > 0) {
-        return {
-          postId: req.params.id,
-          bookmarkedByMe: false,
-        };
-      }
-
-      const created = await tx.postBookmark.createMany({
-        data: {
-          postId: req.params.id,
-          userId: viewerId,
-        },
-        skipDuplicates: true,
-      });
-      if (created.count > 0) {
-        return {
-          postId: req.params.id,
-          bookmarkedByMe: true,
-        };
-      }
-
-      return {
-        postId: req.params.id,
-        bookmarkedByMe: false,
-      };
+    await prisma.postBookmark.createMany({
+      data: {
+        postId,
+        userId: viewerId,
+      },
+      skipDuplicates: true,
     });
 
-    return res.json(result);
+    return res.json({
+      postId,
+      bookmarkedByMe: true,
+    });
+  }),
+);
+
+postsRouter.delete(
+  '/posts/:id/bookmark',
+  requireAuth,
+  asyncHandler(async (req: AuthedRequest, res) => {
+    if (!req.userId) {
+      throw AuthErrors.invalidToken();
+    }
+
+    const viewerId = req.userId;
+    const postId = req.params.id;
+
+    await checkPostExists(postId);
+
+    await prisma.postBookmark.deleteMany({
+      where: {
+        postId,
+        userId: viewerId,
+      },
+    });
+
+    return res.json({
+      postId,
+      bookmarkedByMe: false,
+    });
   }),
 );
 
@@ -396,47 +396,16 @@ postsRouter.post(
     if (!req.userId) {
       throw AuthErrors.invalidToken();
     }
+
     const viewerId = req.userId;
+    const postId = req.params.id;
+
+    await checkPostExists(postId);
 
     const result = await prisma.$transaction(async (tx) => {
-      const post = await tx.post.findUnique({
-        where: { id: req.params.id },
-        select: { id: true, likeCount: true },
-      });
-
-      if (!post) {
-        throw PostErrors.notFound();
-      }
-
-      const deleted = await tx.postLike.deleteMany({
-        where: {
-          postId: req.params.id,
-          userId: viewerId,
-        },
-      });
-
-      if (deleted.count > 0) {
-        const updatedPost = await tx.post.update({
-          where: { id: req.params.id },
-          data: {
-            likeCount: { decrement: 1 },
-          },
-          select: {
-            id: true,
-            likeCount: true,
-          },
-        });
-
-        return {
-          postId: updatedPost.id,
-          likedByMe: false,
-          likeCount: updatedPost.likeCount,
-        };
-      }
-
       const created = await tx.postLike.createMany({
         data: {
-          postId: req.params.id,
+          postId,
           userId: viewerId,
         },
         skipDuplicates: true,
@@ -444,7 +413,7 @@ postsRouter.post(
 
       if (created.count > 0) {
         const updatedPost = await tx.post.update({
-          where: { id: req.params.id },
+          where: { id: postId },
           data: {
             likeCount: { increment: 1 },
           },
@@ -462,7 +431,7 @@ postsRouter.post(
       }
 
       const unchangedPost = await tx.post.findUnique({
-        where: { id: req.params.id },
+        where: { id: postId },
         select: {
           id: true,
           likeCount: true,
@@ -476,6 +445,69 @@ postsRouter.post(
       return {
         postId: unchangedPost.id,
         likedByMe: true,
+        likeCount: unchangedPost.likeCount,
+      };
+    });
+
+    return res.json(result);
+  }),
+);
+
+postsRouter.delete(
+  '/posts/:id/like',
+  requireAuth,
+  asyncHandler(async (req: AuthedRequest, res) => {
+    if (!req.userId) {
+      throw AuthErrors.invalidToken();
+    }
+
+    const viewerId = req.userId;
+    const postId = req.params.id;
+
+    await checkPostExists(postId);
+
+    const result = await prisma.$transaction(async (tx) => {
+      const deleted = await tx.postLike.deleteMany({
+        where: {
+          postId,
+          userId: viewerId,
+        },
+      });
+
+      if (deleted.count > 0) {
+        const updatedPost = await tx.post.update({
+          where: { id: postId },
+          data: {
+            likeCount: { decrement: 1 },
+          },
+          select: {
+            id: true,
+            likeCount: true,
+          },
+        });
+
+        return {
+          postId: updatedPost.id,
+          likedByMe: false,
+          likeCount: updatedPost.likeCount,
+        };
+      }
+
+      const unchangedPost = await tx.post.findUnique({
+        where: { id: postId },
+        select: {
+          id: true,
+          likeCount: true,
+        },
+      });
+
+      if (!unchangedPost) {
+        throw PostErrors.notFound();
+      }
+
+      return {
+        postId: unchangedPost.id,
+        likedByMe: false,
         likeCount: unchangedPost.likeCount,
       };
     });
@@ -566,17 +598,70 @@ postsRouter.post(
     const { postId, commentId } = req.params;
     const viewerId = req.userId;
 
-    const comment = await prisma.comment.findUnique({
-      where: { id: commentId },
-      select: {
-        id: true,
-        postId: true,
-      },
+    await checkPostExists(postId);
+    await checkCommentBelongsToPost(commentId, postId);
+
+    const result = await prisma.$transaction(async (tx) => {
+      const created = await tx.commentLike.createMany({
+        data: {
+          commentId,
+          userId: viewerId,
+        },
+        skipDuplicates: true,
+      });
+
+      if (created.count > 0) {
+        const updatedComment = await tx.comment.update({
+          where: { id: commentId },
+          data: {
+            likeCount: { increment: 1 },
+          },
+          select: { likeCount: true },
+        });
+
+        return {
+          likedByMe: true,
+          likeCount: updatedComment.likeCount,
+        };
+      }
+
+      const unchangedComment = await tx.comment.findUnique({
+        where: { id: commentId },
+        select: { likeCount: true },
+      });
+
+      if (!unchangedComment) {
+        throw CommentErrors.notFound();
+      }
+
+      return {
+        likedByMe: true,
+        likeCount: unchangedComment.likeCount,
+      };
     });
 
-    if (!comment || comment.postId !== postId) {
-      throw CommentErrors.notFound();
+    return res.json({
+      postId,
+      commentId,
+      likedByMe: result.likedByMe,
+      likeCount: result.likeCount,
+    });
+  }),
+);
+
+postsRouter.delete(
+  '/posts/:postId/comments/:commentId/like',
+  requireAuth,
+  asyncHandler(async (req: AuthedRequest, res) => {
+    if (!req.userId) {
+      throw AuthErrors.invalidToken();
     }
+
+    const { postId, commentId } = req.params;
+    const viewerId = req.userId;
+
+    await checkPostExists(postId);
+    await checkCommentBelongsToPost(commentId, postId);
 
     const result = await prisma.$transaction(async (tx) => {
       const deleted = await tx.commentLike.deleteMany({
@@ -592,10 +677,7 @@ postsRouter.post(
           data: {
             likeCount: { decrement: 1 },
           },
-          select: {
-            id: true,
-            likeCount: true,
-          },
+          select: { likeCount: true },
         });
 
         return {
@@ -604,40 +686,18 @@ postsRouter.post(
         };
       }
 
-      const created = await tx.commentLike.createMany({
-        data: {
-          commentId,
-          userId: viewerId,
-        },
-        skipDuplicates: true,
-      });
-
-      if (created.count > 0) {
-        const updatedComment = await tx.comment.update({
-          where: { id: commentId },
-          data: {
-            likeCount: { increment: 1 },
-          },
-          select: {
-            id: true,
-            likeCount: true,
-          },
-        });
-
-        return {
-          likedByMe: true,
-          likeCount: updatedComment.likeCount,
-        };
-      }
-
-      const unchanged = await tx.comment.findUnique({
+      const unchangedComment = await tx.comment.findUnique({
         where: { id: commentId },
         select: { likeCount: true },
       });
 
+      if (!unchangedComment) {
+        throw CommentErrors.notFound();
+      }
+
       return {
-        likedByMe: true,
-        likeCount: unchanged!.likeCount,
+        likedByMe: false,
+        likeCount: unchangedComment.likeCount,
       };
     });
 
