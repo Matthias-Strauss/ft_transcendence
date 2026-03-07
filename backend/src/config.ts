@@ -95,4 +95,8 @@ export const COOKIE_SAME_SITE = getEnvEnum(
 
 export const FILES_DIR = getEnvString('FILES_DIR', '/data/uploads');
 export const AVATAR_MAX_FILE_SIZE_BYTES = getEnvNumber('AVATAR_MAX_FILE_SIZE_BYTES', 2097152);
+export const POST_IMAGE_MAX_FILE_SIZE_BYTES = getEnvNumber(
+  'POST_IMAGE_MAX_FILE_SIZE_BYTES',
+  5242880,
+);
 export const DEFAULT_AVATAR_FILENAME = getEnvString('DEFAULT_AVATAR_FILENAME', 'default.svg');
