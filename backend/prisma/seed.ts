@@ -249,8 +249,7 @@ async function main() {
     id: 'seed-post-1',
     authorId: testUser.id,
     content: 'Just wrapped up a close Hangman round. One wrong guess left and still pulled it off.',
-    imagePath:
-      'https://images.unsplash.com/photo-1451195090173-2e0781d7c33e?q=80&w=1470&auto=format&fit=crop',
+    imagePath: 'posts/seed-post-1.svg',
     gameTag: 'Hangman',
     createdAt: hoursAgo(1),
   });
@@ -260,8 +259,7 @@ async function main() {
     authorId: seagullUser.id,
     content:
       'Tic-Tac-Toe reminder: control the center early or you spend the rest of the match reacting.',
-    imagePath:
-      'https://images.unsplash.com/photo-1668901382969-8c73e450a1f5?q=80&w=880&auto=format&fit=crop',
+    imagePath: 'posts/seed-post-2.svg',
     gameTag: 'Tic-Tac-Toe',
     createdAt: hoursAgo(3),
   });
@@ -271,8 +269,7 @@ async function main() {
     authorId: testUser.id,
     content:
       'Spent the evening polishing the lobby flow. Tiny UX details really change the feel of a social game app.',
-    imagePath:
-      'https://images.unsplash.com/photo-1535222636729-76586bf52493?q=80&w=1470&auto=format&fit=crop',
+    imagePath: 'posts/seed-post-3.svg',
     createdAt: hoursAgo(6),
   });
 
@@ -280,6 +277,7 @@ async function main() {
     id: 'seed-post-4',
     authorId: seagullUser.id,
     content: 'New personal best in Hangman tonight. Guess pacing helped more than speed.',
+    imagePath: 'posts/seed-post-4.svg',
     gameTag: 'Hangman',
     createdAt: hoursAgo(10),
   });
