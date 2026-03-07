@@ -70,14 +70,14 @@ export async function getPostViewerContext(postIds: string[], viewerId: string) 
         postId: { in: postIds },
         userId: viewerId,
       },
-      select: { postId: true }
+      select: { postId: true },
     }),
   ]);
 
   return {
     likedPostIds: new Set(likes.map((like) => like.postId)),
     sharedPostIds: new Set(shares.map((share) => share.postId)),
-    bookmarkedByMe: new Set(bookmarks.map((bookmark) => bookmark)),
+    bookmarkedPostIds: new Set(bookmarks.map((bookmark) => bookmark.postId)),
   };
 }
 
