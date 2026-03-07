@@ -54,7 +54,7 @@ postsRouter.get(
 const CreatePostSchema = z
   .object({
     content: z.string().trim().min(1).max(500),
-    imageUrl: z.union([z.url(), z.null()]).optional(),
+    imagePath: z.union([z.url(), z.null()]).optional(),
     gameTag: z.union([z.string().trim().min(1).max(40), z.null()]).optional(),
   })
   .strict();
@@ -76,7 +76,7 @@ postsRouter.post(
       data: {
         authorId: req.userId,
         content: parsed.data.content,
-        imageUrl: parsed.data.imageUrl ?? null,
+        imagePath: parsed.data.imagePath ?? null,
         gameTag: parsed.data.gameTag ?? null,
       },
       include: postAuthorInclude,

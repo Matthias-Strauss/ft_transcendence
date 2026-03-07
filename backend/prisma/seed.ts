@@ -50,7 +50,7 @@ async function seedPost(post: {
   id: string;
   authorId: string;
   content: string;
-  imageUrl?: string;
+  imagePath?: string;
   gameTag?: string;
   likeCount?: number;
   commentCount?: number;
@@ -62,7 +62,7 @@ async function seedPost(post: {
     update: {
       authorId: post.authorId,
       content: post.content,
-      imageUrl: post.imageUrl ?? null,
+      imagePath: post.imagePath ?? null,
       gameTag: post.gameTag ?? null,
       likeCount: post.likeCount,
       commentCount: post.commentCount,
@@ -73,7 +73,7 @@ async function seedPost(post: {
       id: post.id,
       authorId: post.authorId,
       content: post.content,
-      imageUrl: post.imageUrl ?? null,
+      imagePath: post.imagePath ?? null,
       gameTag: post.gameTag ?? null,
       likeCount: post.likeCount,
       commentCount: post.commentCount,
@@ -249,7 +249,7 @@ async function main() {
     id: 'seed-post-1',
     authorId: testUser.id,
     content: 'Just wrapped up a close Hangman round. One wrong guess left and still pulled it off.',
-    imageUrl:
+    imagePath:
       'https://images.unsplash.com/photo-1451195090173-2e0781d7c33e?q=80&w=1470&auto=format&fit=crop',
     gameTag: 'Hangman',
     createdAt: hoursAgo(1),
@@ -260,7 +260,7 @@ async function main() {
     authorId: seagullUser.id,
     content:
       'Tic-Tac-Toe reminder: control the center early or you spend the rest of the match reacting.',
-    imageUrl:
+    imagePath:
       'https://images.unsplash.com/photo-1668901382969-8c73e450a1f5?q=80&w=880&auto=format&fit=crop',
     gameTag: 'Tic-Tac-Toe',
     createdAt: hoursAgo(3),
@@ -271,7 +271,7 @@ async function main() {
     authorId: testUser.id,
     content:
       'Spent the evening polishing the lobby flow. Tiny UX details really change the feel of a social game app.',
-    imageUrl:
+    imagePath:
       'https://images.unsplash.com/photo-1535222636729-76586bf52493?q=80&w=1470&auto=format&fit=crop',
     createdAt: hoursAgo(6),
   });
