@@ -2,6 +2,7 @@ import { Prisma } from '@prisma/client';
 
 import { prisma } from '../db.js';
 import { getAvatarUrlFromPath } from '../files/avatars.js';
+import { getPostImageUrlFromPath } from '../files/postings.js';
 import { PostErrors } from '../errors/catalog.js';
 
 export const postAuthorInclude = {
@@ -26,11 +27,12 @@ type PostViewerContext = {
 };
 
 export function serializePost(post: PostWithAuthor, viewerContext: PostViewerContext = {}) {
-  const { author, ...safePost } = post;
+  const { author, imagePath: _imagePath, ...safePost } = post;
   const { avatarPath, ...safeAuthor } = author;
 
   return {
     ...safePost,
+    imageUrl: post.imagePath ? getPostImageUrlFromPath(post.imagePath) : _imagePath,
     likedByMe: viewerContext.likedByMe ?? false,
     sharedByMe: viewerContext.sharedByMe ?? false,
     bookmarkedByMe: viewerContext.bookmarkedByMe ?? false,

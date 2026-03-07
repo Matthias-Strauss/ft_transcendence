@@ -1,5 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
+import path from 'node:path';
+import fs from 'node:fs/promises';
 
 import { AuthedRequest, requireAuth } from '../auth/middleware.js';
 import { asyncHandler } from '../errors/asyncHandler.js';
@@ -14,6 +16,12 @@ import {
   checkPostExists,
   commentContextIncluded,
 } from '../utils/postUtils.js';
+import {
+  postImageUploadHandler,
+  getUploadedPostImageFromReq,
+  cleanupUploadedPostImage,
+} from '../files/postings.js';
+import { resolveInFilesDir } from '../files/storage.js';
 
 export const postsRouter = Router();
 
@@ -54,14 +62,19 @@ postsRouter.get(
 const CreatePostSchema = z
   .object({
     content: z.string().trim().min(1).max(500),
-    imagePath: z.union([z.url(), z.null()]).optional(),
-    gameTag: z.union([z.string().trim().min(1).max(40), z.null()]).optional(),
+    gameTag: z.preprocess((value) => {
+      if (typeof value === 'string' && value.trim().length === 0) {
+        return null;
+      }
+      return value;
+    }, z.union([z.string().trim().min(1).max(40), z.null()]).optional()),
   })
   .strict();
 
 postsRouter.post(
   '/posts/create',
   requireAuth,
+  postImageUploadHandler,
   asyncHandler(async (req: AuthedRequest, res) => {
     if (!req.userId) {
       throw AuthErrors.invalidToken();
@@ -69,18 +82,32 @@ postsRouter.post(
 
     const parsed = CreatePostSchema.safeParse(req.body);
     if (!parsed.success) {
+      await cleanupUploadedPostImage(req);
       throw RequestErrors.badRequest(parsed.error.issues);
     }
 
-    const post = await prisma.post.create({
-      data: {
-        authorId: req.userId,
-        content: parsed.data.content,
-        imagePath: parsed.data.imagePath ?? null,
-        gameTag: parsed.data.gameTag ?? null,
-      },
-      include: postAuthorInclude,
-    });
+    const uploadedPostImage = getUploadedPostImageFromReq(req);
+    const imagePath = uploadedPostImage
+      ? path.posix.join('posts', uploadedPostImage.filename)
+      : null;
+
+    let post;
+    try {
+      post = await prisma.post.create({
+        data: {
+          authorId: req.userId,
+          content: parsed.data.content,
+          imagePath,
+          gameTag: parsed.data.gameTag ?? null,
+        },
+        include: postAuthorInclude,
+      });
+    } catch (err) {
+      if (uploadedPostImage) {
+        await fs.unlink(uploadedPostImage.path).catch(() => undefined);
+      }
+      throw err;
+    }
 
     return res.status(201).json(
       serializePost(post, {
@@ -137,6 +164,7 @@ postsRouter.delete(
       select: {
         id: true,
         authorId: true,
+        imagePath: true,
       },
     });
 
@@ -151,6 +179,11 @@ postsRouter.delete(
     await prisma.post.delete({
       where: { id: existingPost.id },
     });
+
+    if (existingPost.imagePath) {
+      const imageAbsPath = resolveInFilesDir(existingPost.imagePath);
+      await fs.unlink(imageAbsPath).catch(() => undefined);
+    }
 
     return res.json({
       ok: true,
