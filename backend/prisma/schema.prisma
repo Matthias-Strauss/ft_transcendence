@@ -15,6 +15,12 @@ model User {
   avatarPath  String?   //relative paht within FILES_DIR
 
   refreshTokens RefreshToken[]
+  posts         Post[]
+  comments      Comment[]
+  postLikes     PostLike[]
+  postShares    PostShare[]
+  postBookmarks PostBookmark[]
+  commentLikes  CommentLike[]
 }
 
 model RefreshToken {
@@ -27,5 +33,92 @@ model RefreshToken {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
+}
+
+model Post {
+  id           String   @id @default(cuid())
+  authorId     String
+  content      String
+  imagePath     String?
+  gameTag      String?
+  likeCount    Int      @default(0)
+  commentCount Int      @default(0)
+  shareCount   Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  author    User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  comments  Comment[]
+  likes     PostLike[]
+  shares    PostShare[]
+  bookmarks PostBookmark[]
+
+  @@index([authorId])
+  @@index([createdAt, id])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  postId    String
+  authorId  String
+  content   String
+  likeCount Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  post    Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author  User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  likes   CommentLike[]
+
+  @@index([postId, createdAt, id])
+  @@index([authorId])
+}
+
+model PostLike {
+  postId    String
+  userId    String
+  createdAt DateTime @default(now())
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([postId, userId])
+  @@index([userId])
+}
+
+model PostShare {
+  postId    String
+  userId    String
+  createdAt DateTime @default(now())
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([postId, userId])
+  @@index([userId])
+}
+
+model PostBookmark {
+  postId    String
+  userId    String
+  createdAt DateTime @default(now())
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([postId, userId])
+  @@index([userId, createdAt, postId])
+}
+
+model CommentLike {
+  commentId String
+  userId    String
+  createdAt DateTime @default(now())
+
+  comment Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([commentId, userId])
   @@index([userId])
 }

@@ -17,14 +17,37 @@ function copyDefaultAvatar(avatarsDir: string) {
   fs.copyFileSync(srcPath, targetPath);
 }
 
+function copySeedPostAssets(postsDir: string) {
+  const seedAssetImages = [
+    'seed-post-1.svg',
+    'seed-post-2.svg',
+    'seed-post-3.svg',
+    'seed-post-4.svg',
+  ];
+
+  for (const assetFilename of seedAssetImages) {
+    const srcPath = path.resolve(process.cwd(), 'assets', assetFilename);
+    const targetPath = path.join(postsDir, assetFilename);
+    if (!fs.existsSync(srcPath)) {
+      throw new Error(`[FILES] required asset missing at ${srcPath}`);
+    }
+    if (!fs.existsSync(targetPath)) {
+      fs.copyFileSync(srcPath, targetPath);
+    }
+  }
+}
+
 export function initFileStorage() {
   const baseDir = getFilesDir();
   const avatarsDir = path.join(baseDir, 'avatars');
+  const postsDir = path.join(baseDir, 'posts');
 
   fs.mkdirSync(baseDir, { recursive: true });
   fs.mkdirSync(avatarsDir, { recursive: true });
+  fs.mkdirSync(postsDir, { recursive: true });
 
   copyDefaultAvatar(avatarsDir);
+  copySeedPostAssets(postsDir);
 }
 
 export function resolveInFilesDir(relPath: string) {
