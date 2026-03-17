@@ -24,6 +24,7 @@ export function HomeFeed() {
           </button>
         </div>
       </div>
+      {/* here I should import the NewPost component */}
 
       <div className="border-b border-[#39444d] p-4">
         <div className="flex gap-3">
