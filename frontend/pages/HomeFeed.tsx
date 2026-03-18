@@ -1,6 +1,7 @@
 import { PostCard } from '../components/ui/PostCard';
 import { MOCK_POSTS } from '../mock_data/mock';
 import { Sparkles } from 'lucide-react';
+import CreatePostForm from '../components/ui/NewPost';
 
 export function HomeFeed() {
   return (
@@ -26,30 +27,7 @@ export function HomeFeed() {
       </div>
       {/* here I should import the NewPost component */}
 
-      <div className="border-b border-[#39444d] p-4">
-        <div className="flex gap-3">
-          <div className="size-12 rounded-full bg-gradient-to-br from-[var(--color-1)] to-[var(--color-2)] shrink-0" />
-          <div className="flex-1">
-            <textarea
-              placeholder="What's happening in your game?"
-              className="w-full bg-transparent text-[20px] text-[#f7f9f9] placeholder:text-[#8b98a5] resize-none outline-none mb-3"
-              rows={2}
-            />
-            <div className="flex items-center justify-between">
-              <div className="flex gap-2">{/* Icon buttons would go here */}</div>
-              <button
-                className="px-6 py-2 rounded-full font-bold text-[15px] transition-colors"
-                style={{
-                  background: 'var(--color-1)',
-                  color: '#f7f9f9',
-                }}
-              >
-                Post
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+      <CreatePostForm />
       <div>
         {MOCK_POSTS.map((post) => (
           <PostCard key={post.id} post={post} />

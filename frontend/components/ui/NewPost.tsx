@@ -3,9 +3,9 @@
 // The pop up modal should show only in desktop
 
 import { useState } from 'react';
+import { ImagePlus, X } from 'lucide-react';
 
 export default function CreatePostForm() {
-
   const [content, setContent] = useState('');
   const [imageFile, setImageFile] = useState(null);
   const [previewURL, setPreviewURL] = useState(null);
@@ -13,7 +13,7 @@ export default function CreatePostForm() {
   const handleContentChange = (e) => {
     setContent(e.target.value);
   };
-  
+
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -24,44 +24,88 @@ export default function CreatePostForm() {
       };
       reader.readAsDataURL(file);
     }
+    e.target.value = null;
   };
 
   const formData = new FormData();
-  formData.append("content", content);
-  formData.append("image", imageFile.file[0]);
+  formData.append('content', content);
+  formData.append('image', imageFile);
 
-    const token = localStorage.getItem('accessToken');
+  const token = localStorage.getItem('accessToken');
 
   const handleSubmit = async () => {
     await fetch('https://localhost/api/posts', {
-    method: 'POST',
-     headers: {
-    Authorization: `Bearer ${token}`,
-  },
-    body: formData,
-  }
-  )  .then(response => response.json())
-  .then(data => {
-    console.log('Post created:', data);
-    // Optionally reset form fields here
-  })
-  .catch(error => {
-    console.error('Error creating post:', error);
-  });
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    })
+      .then((response) => response.json())
+      .catch((error) => {
+        console.error('Error creating post:', error);
+      });
+  };
+
+  return (
+    <div className="border-b border-[#39444d] p-4">
+      <div className="flex gap-3">
+        <div className="size-12 rounded-full bg-gradient-to-br from-[var(--color-1)] to-[var(--color-2)] shrink-0" />
+
+        <div className="flex-1">
+          <textarea
+            placeholder="What's happening in your game?"
+            className="w-full bg-transparent text-[20px] text-[#f7f9f9] placeholder:text-[#8b98a5] resize-none outline-none mb-3"
+            value={content}
+            onChange={handleContentChange}
+            rows={2}
+          />
+
+          {previewURL && (
+            <div className="relative mb-3 inline-block w-full">
+              <img
+                src={previewURL}
+                alt="Preview"
+                className="w-full max-h-80 object-cover rounded-2xl border border-[#39444d]"
+              />
+              <button
+                onClick={() => {
+                  setPreviewURL(null);
+                  setImageFile(null);
+                }}
+                className="absolute top-0 right-0"
+              >
+                <X className="size-5" />
+              </button>
+            </div>
+          )}
+
+          <div className="flex items-center justify-between">
+            <div className="flex gap-2 items-center">
+              <label className="cursor-pointer text-xl hover:opacity-80 transition">
+                <ImagePlus className="size-6 text-[#8b98a5]" />
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  style={{ display: 'none' }}
+                />
+              </label>
+            </div>
+
+            <button
+              className="px-6 py-2 rounded-full font-bold text-[15px] transition-colors"
+              style={{
+                background: 'var(--color-1)',
+                color: '#f7f9f9',
+              }}
+              onClick={handleSubmit}
+            >
+              Post
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
-
-return (
-  <div className="create-post-form">
-    <textarea
-      placeholder="What's on your mind?"
-      value={content}
-      onChange={handleContentChange}
-    />
-    <input type="file" accept="image/*" onChange={handleImageChange} />
-    {previewURL && <img src={previewURL} alt="Preview" />}
-    <button onClick={handleSubmit}>Post</button>
-  </div>
-);
-
-}
-
