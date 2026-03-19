@@ -34,9 +34,9 @@ export function PostCard({ post }: PostCardProps) {
           <p className="text-[15px] text-[#f7f9f9] leading-5 mb-3 whitespace-pre-wrap">
             {post.content}
           </p>
-          {post.image && (
+          {post.imageUrl && (
             <div className="mb-3 rounded-2xl overflow-hidden border border-[#39444d]">
-              <img src={post.image} alt="Post image" className="w-full h-auto" />
+              <img src={post.imageUrl} alt="Post image" className="w-full h-auto" />
             </div>
           )}
 
@@ -46,7 +46,7 @@ export function PostCard({ post }: PostCardProps) {
                 <MessageCircle className="size-[18px] text-[#8b98a5] group-hover:text-[var(--color-1)]" />
               </div>
               <span className="text-[13px] text-[#8b98a5] group-hover:text-[var(--color-1)]">
-                {post.comments}
+                {post.commentCount}
               </span>
             </button>
 
@@ -55,7 +55,7 @@ export function PostCard({ post }: PostCardProps) {
                 <Heart className="size-[18px] text-[#8b98a5] group-hover:text-[var(--color-2)] group-hover:fill-[var(--color-2)]" />
               </div>
               <span className="text-[13px] text-[#8b98a5] group-hover:text-[var(--color-2)]">
-                {post.likes}
+                {post.likeCount}
               </span>
             </button>
 
@@ -64,7 +64,7 @@ export function PostCard({ post }: PostCardProps) {
                 <Share2 className="size-[18px] text-[#8b98a5] group-hover:text-[var(--color-3)]" />
               </div>
               <span className="text-[13px] text-[#8b98a5] group-hover:text-[var(--color-3)]">
-                {post.shares}
+                {post.shareCount}
               </span>
             </button>
           </div>

@@ -1,5 +1,4 @@
-import { PostCard } from '../components/ui/PostCard';
-import { MOCK_POSTS } from '../mock_data/mock';
+import { PostsFeed } from '../components/ui/PostsFeed';
 import { Sparkles } from 'lucide-react';
 import CreatePostForm from '../components/ui/NewPost';
 
@@ -25,14 +24,8 @@ export function HomeFeed() {
           </button>
         </div>
       </div>
-      {/* here I should import the NewPost component */}
-
       <CreatePostForm />
-      <div>
-        {MOCK_POSTS.map((post) => (
-          <PostCard key={post.id} post={post} />
-        ))}
-      </div>
+      <PostsFeed />
     </div>
   );
 }

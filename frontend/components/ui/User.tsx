@@ -1,10 +1,10 @@
 import { BadgeCheck } from 'lucide-react';
 
 interface UserProps {
-  avatar: string;
+  avatar: string | undefined;
   name: string;
   username: string;
-  verified: boolean;
+  verified: boolean | undefined;
 }
 
 export function User({ avatar, name, verified, username }: UserProps) {
