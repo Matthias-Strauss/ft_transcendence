@@ -34,7 +34,7 @@ export default function CreatePostForm() {
   const token = localStorage.getItem('accessToken');
 
   const handleSubmit = async () => {
-    await fetch('https://localhost/api/posts', {
+    await fetch('/api/posts', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
