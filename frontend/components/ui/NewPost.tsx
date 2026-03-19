@@ -9,9 +9,19 @@ export default function CreatePostForm() {
   const [content, setContent] = useState('');
   const [imageFile, setImageFile] = useState(null);
   const [previewURL, setPreviewURL] = useState(null);
+  const [gameTag, setGameTag] = useState('');
 
   const handleContentChange = (e) => {
-    setContent(e.target.value);
+    const value = e.target.value;
+
+    setContent(value);
+
+    if (value.startsWith('#')) {
+      const tag = value.split(' ')[0];
+      if (tag.length > 1) {
+        setGameTag(tag);
+      }
+    }
   };
 
   const handleImageChange = (e) => {
@@ -29,22 +39,29 @@ export default function CreatePostForm() {
 
   const formData = new FormData();
   formData.append('content', content);
-  formData.append('image', imageFile);
-
+  if (imageFile !== null) formData.append('image', imageFile);
+  if (gameTag !== '') formData.append('gameTag', gameTag);
   const token = localStorage.getItem('accessToken');
 
   const handleSubmit = async () => {
-    await fetch('/api/posts', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      body: formData,
-    })
-      .then((response) => response.json())
-      .catch((error) => {
-        console.error('Error creating post:', error);
+    try {
+      const response = await fetch('/api/posts', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
       });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('Post created:', data);
+    } catch (error) {
+      console.error('Error creating post:', error);
+    }
   };
 
   return (
