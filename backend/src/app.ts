@@ -11,6 +11,7 @@ import { usersRouter } from './routes/users.js';
 import { getFilesDir } from './files/storage.js';
 import { uploadsRouter } from './routes/upload.js';
 import { postsRouter } from './routes/posts.js';
+import { meRouter } from './routes/me.js';
 
 function createAPI() {
   const api = express.Router();
@@ -21,6 +22,7 @@ function createAPI() {
   api.use(usersRouter);
   api.use(uploadsRouter);
   api.use(postsRouter);
+  api.use(meRouter);
 
   return api;
 }
