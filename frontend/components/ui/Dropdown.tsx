@@ -4,11 +4,43 @@ interface DropdownProps {
   items: DropdownItem[];
 }
 
+async function handleAction({
+  action,
+  postId,
+  authorId,
+}: {
+  action: string;
+  postId: string;
+  authorId: string;
+}) {
+  console.log(`Action: ${action}, Post ID: ${postId}`);
+  switch (action) {
+    case 'Save':
+      const token = localStorage.getItem('accessToken');
+      if (!token) return new Error(`Access token is not valid`);
+      const res = await fetch(`/api/posts/${postId}/bookmark`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ postId, authorId }),
+      });
+      console.log(res);
+  }
+}
+
 export default function Dropdown({
   items,
   isOpen,
   setIsOpen,
-}: DropdownProps & { isOpen: boolean; setIsOpen: (v: boolean) => void }) {
+  postId,
+  authorId,
+}: DropdownProps & {
+  isOpen: boolean;
+  setIsOpen: (v: boolean) => void;
+  postId: string;
+  authorId: string;
+}) {
   return (
     <div className="relative border-[#39444d] p-1 cursor-pointer">
       <div className="flex">
@@ -20,6 +52,7 @@ export default function Dropdown({
                 key={item.id}
                 onClick={() => {
                   setIsOpen(false);
+                  void handleAction({ action: item.text, postId, authorId });
                 }}
               >
                 {item.text}

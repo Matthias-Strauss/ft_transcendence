@@ -32,7 +32,15 @@ export function PostCard({ post }: PostCardProps) {
               >
                 <MoreHorizontal className="size-5 text-[#8b98a5]" />
               </button>
-              {isOpen && <Dropdown items={items} isOpen={isOpen} setIsOpen={setIsOpen} />}
+              {isOpen && (
+                <Dropdown
+                  items={items}
+                  isOpen={isOpen}
+                  setIsOpen={setIsOpen}
+                  postId={post.id}
+                  authorId={post.authorId}
+                />
+              )}
             </div>
           </div>
 
