@@ -1,4 +1,4 @@
-_This project has been created as part of the 42 curriculum by [mstrauss], [kruseva], [jmuhlber], [ghodges]._
+_This project has been created as part of the 42 curriculum by [mstrauss], [kruseva], [jmuhlber], [bszikora], [mohrahma]._
 
 # ft_transcendence
 
@@ -70,10 +70,11 @@ This project currently uses Docker for the backend, database, and shared infrast
 
 | Team Member    | Role            | Responsibilities                                                    |
 | :------------- | :-------------- | :------------------------------------------------------------------ |
-| **[mstrauss]** | Product Owner   | Defined vision, prioritized features, maintained backlog.           |
-| **[ghodges]**  | Tech Lead       | Oversaw architecture, code quality, and technology stack decisions. |
-| **[kruseva]**  | Developer       | Designed and implemented frontend features, participated in reviews, and helped shape the UI direction. |
-| **[jmuhlber]** | Developer       | Implemented backend foundation work, authentication flows, and infrastructure-related setup. |
+| **[mstrauss]** | Product Owner   | Defined vision, prioritized features, and maintained the project direction and module strategy. |
+| **[kruseva]**  | Project Manager | Coordinated team communication, tracked open work, and helped keep the team aligned across meetings and reviews. |
+| **[jmuhlber]** | Tech Lead       | Oversaw backend architecture, infrastructure discussions, and key technical decisions around auth, APIs, and deployment. |
+| **[bszikora]** | Developer       | Joined the team during the implementation phase to support game-related planning and additional feature delivery. |
+| **[mohrahma]** | Developer       | Added during the active implementation phase to reinforce development capacity as the team structure changed. |
 
 ---
 
@@ -88,6 +89,9 @@ We organized our work around a shared monorepo and split the project into fronte
 - **Communication:** WhatsApp
 - **Version Control:** Git & GitHub
 - **Documentation / Planning:** `QUESTIONS.md`, `INSTRUCTIONS.md`, `Project_Plan.md`
+
+**Workflow:**
+We used feature branches, pull requests, and peer review as the normal delivery path. Team changes during the project were reflected in role redistribution, milestone planning, and ongoing coordination through chat and review comments.
 
 ---
 
@@ -132,48 +136,24 @@ We organized our work around a shared monorepo and split the project into fronte
 
 ---
 
-## ✅ Implemented Modules
+## ✅ Planned / Active Modules
 
-We have implemented the following modules to achieve the required **14 points** (Planned Target: 19 Core + 3 Optional = 22 Points).
+At this point in the project, the team is targeting a social-media-first implementation path that reaches the required score with one clear multiplayer game and a strong web foundation.
 
-### 1. Web (Total: 6 Points)
+| Category | Module | Type | Points | Why This Module Fits The Project |
+| :------- | :----- | :--- | :----- | :------------------------------- |
+| Web | Framework for frontend + backend | Major | 2 | The project is being built as a structured full-stack application rather than a loose prototype, with React on the frontend and Express on the backend. |
+| Web | User interaction | Major | 2 | A social media concept depends on profiles, messaging, and friendship-related interaction, so this is core to the product direction. |
+| Web | Real-time features | Major | 2 | Real-time communication is needed for chat and for the multiplayer game layer planned around the social platform. |
+| Web | ORM | Minor | 1 | Prisma reduces friction in managing the relational database as auth, users, and future social/game entities expand. |
+| Web | File upload and management system | Minor | 1 | Avatar handling is already relevant for profiles and is a natural extension for social posts later. |
+| User Management | Standard user management and authentication | Major | 2 | Authentication, editable profiles, and account handling are foundation features for every other planned module. |
+| Gaming and User Experience | Complete web-based game | Major | 2 | The team agreed that one 1v1 web-based game is enough to unlock the gaming branch while keeping the project manageable. |
+| Gaming and User Experience | Remote players | Major | 2 | The selected game should be played live between users on different devices, making multiplayer support part of the core scope. |
+| Gaming and User Experience | Advanced chat features | Minor | 1 | Chat is a natural bridge between the social platform and the game, especially for invites and user blocking. |
+| Web | Complete notification system for all creation, update, and deletion actions | Minor | 1 | Notifications strengthen the social experience and were discussed as a low-cost way to add value beyond the feed itself. |
 
-| Module                 | Type  | Points | Description/Implementation                                          |
-| :--------------------- | :---- | :----- | :------------------------------------------------------------------ |
-| **Use a Framework**    | Major | 2      | Implemented using [Frontend Framework] and [Backend Framework].     |
-| **User Interaction**   | Major | 2      | Users can chat, add friends, and view profiles.                     |
-| **Real-time Features** | Major | 2      | Used [e.g., Socket.io] for live game updates and chat broadcasting. |
-| **File Upload**        | Minor | 1      | Users can upload avatars (validated for size/type).                 |
-| **Use an ORM**         | Minor | 1      | Database interaction handled via [ORM Name].                        |
-
-### 2. User Management (Total: 2 Points + Optional)
-
-| Module                 | Type  | Points | Description/Implementation                                |
-| :--------------------- | :---- | :----- | :-------------------------------------------------------- |
-| **Standard User Mgmt** | Major | 2      | Secure auth, profile updates, and avatar management.      |
-| **Game Statistics**    | Minor | 1      | _(Optional)_ Detailed win/loss tracking and leaderboards. |
-
-### 3. Gaming & Experience (Total: 5 Points + Optional)
-
-| Module                 | Type  | Points | Description/Implementation                                        |
-| :--------------------- | :---- | :----- | :---------------------------------------------------------------- |
-| **Web-based Game**     | Major | 2      | **Tic-Tac-Toe**: A logic-based game with clear win/loss states.   |
-| **Remote Players**     | Major | 2      | Two users on different devices can play via WebSockets.           |
-| **Tournament System**  | Minor | 1      | Bracket system for organized player matchmaking.                  |
-| **Game Customization** | Minor | 1      | _(Optional)_ Users can customize game assets/themes.              |
-| **Advanced Chat**      | Minor | 1      | _(Optional)_ Invite to play, block users, and persistent history. |
-
-### 4. Artificial Intelligence (Total: 2 Points)
-
-| Module          | Type  | Points | Description/Implementation                                                          |
-| :-------------- | :---- | :----- | :---------------------------------------------------------------------------------- |
-| **AI Opponent** | Major | 2      | An AI using the Minimax algorithm that simulates human play for the game TicTacToe. |
-
-### 5. Blockchain (Total: 2 Points)
-
-| Module         | Type  | Points | Description/Implementation                                              |
-| :------------- | :---- | :----- | :---------------------------------------------------------------------- |
-| **Blockchain** | Major | 2      | Integration with Avalanche (using Solidity) to store tournament scores. |
+**Planned score at this stage: 16 points before optional refinements to the game branch.**
 
 ---
 
@@ -233,13 +213,11 @@ We have implemented the following modules to achieve the required **14 points** 
 
 ### Documentation
 
-- **Category Title (if neccessary)**
-- [Link to Framework Docs]
-- [Link to ...]
-- **Blockchain:**
-  - [Link to Avalanche Blockchain Docs](https://build.avax.network/docs/)
-  - [Hardhat Docs](https://hardhat.org/docs/)
-  - [Metamask Docs](https://docs.metamask.io/)
+- [React Documentation](https://react.dev/)
+- [Express Documentation](https://expressjs.com/)
+- [Prisma Documentation](https://www.prisma.io/docs)
+- [Docker Documentation](https://docs.docker.com/)
+- [Socket.IO Documentation](https://socket.io/docs/v4/)
 
 ### AI Usage
 
