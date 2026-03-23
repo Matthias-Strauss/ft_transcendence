@@ -1,12 +1,19 @@
 import { Heart, MessageCircle, Share2, MoreHorizontal } from 'lucide-react';
 import { Post } from '../../mock_data/mock';
 import { User } from './User';
+import { DropdownItem } from '../../mock_data/mock';
+import { Bookmark } from 'lucide-react';
+import { useState } from 'react';
+import Dropdown from './Dropdown';
 
 interface PostCardProps {
   post: Post;
 }
 
 export function PostCard({ post }: PostCardProps) {
+  const items: DropdownItem[] = [{ id: 0, text: 'Save', icon: <Bookmark /> }];
+
+  const [isOpen, setIsOpen] = useState(false);
   return (
     <div className="border-b border-[#39444d] p-4 hover:bg-[#1e293b]/30 transition-colors cursor-pointer">
       <div className="flex gap-3">
@@ -18,9 +25,15 @@ export function PostCard({ post }: PostCardProps) {
               username={post.author.username}
               verified={post.author.verified}
             />
-            <button className="p-1 hover:bg-[var(--color-1)]/10 rounded-full transition-colors">
-              <MoreHorizontal className="size-5 text-[#8b98a5]" />
-            </button>
+            <div className="relative">
+              <button
+                className="p-1 hover:bg-[var(--color-1)]/10 rounded-full transition-colors"
+                onClick={() => setIsOpen((prev) => !prev)}
+              >
+                <MoreHorizontal className="size-5 text-[#8b98a5]" />
+              </button>
+              {isOpen && <Dropdown items={items} isOpen={isOpen} setIsOpen={setIsOpen} />}
+            </div>
           </div>
 
           {post.gameTag && (

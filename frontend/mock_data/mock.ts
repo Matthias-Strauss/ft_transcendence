@@ -5,6 +5,12 @@ export interface Game {
   color: string;
 }
 
+export interface DropdownItem {
+  id: number;
+  text: string;
+  icon: React.ReactNode;
+}
+
 export interface Post {
   id: string;
   authorId: string;
