@@ -16,8 +16,8 @@ export default function CreatePostForm() {
 
     setContent(value);
 
-    if (value.startsWith('#')) {
-      const tag = value.split(' ')[0];
+    if (value.includes('#')) {
+      const tag = value.split('#')[1];
       if (tag.length > 1) {
         setGameTag(tag);
       }
