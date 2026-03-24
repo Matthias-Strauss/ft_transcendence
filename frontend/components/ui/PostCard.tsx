@@ -16,6 +16,14 @@ export function PostCard({ post }: PostCardProps) {
 
   const [isOpen, setIsOpen] = useState(false);
   const [commentOpen, setCommentOpen] = useState(false);
+  const [commentCount, setCommentCount] = useState(
+    post.commentCount ?? post.comments?.meta?.total ?? 0,
+  );
+
+  const handleCommentCreated = () => {
+    setCommentCount((prev) => prev + 1);
+  };
+
   return (
     <div className="border-b border-[#39444d] p-4 hover:bg-[#1e293b]/30 transition-colors cursor-pointer">
       <div className="flex gap-3">
@@ -72,7 +80,7 @@ export function PostCard({ post }: PostCardProps) {
                 <MessageCircle className="size-[18px] text-[#8b98a5] group-hover:text-[var(--color-1)]" />
               </div>
               <span className="text-[13px] text-[#8b98a5] group-hover:text-[var(--color-1)]">
-                {post.commentCount}
+                {commentCount}
               </span>
             </button>
 
@@ -94,7 +102,7 @@ export function PostCard({ post }: PostCardProps) {
               </span>
             </button>
           </div>
-          {commentOpen && <CommentSection post={post} />}
+          {commentOpen && <CommentSection post={post} onCommentCreated={handleCommentCreated} />}
         </div>
       </div>
     </div>

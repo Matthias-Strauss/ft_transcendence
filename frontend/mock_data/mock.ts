@@ -31,12 +31,37 @@ export interface Post {
     avatarUrl?: string;
     verified?: boolean;
   };
-  //   comments: Comment[];
+  comments: CommentsResponse;
   //   likes: PostLike[];
   //   shares: PostShare[];
   //   bookmarks: PostBookmark[];
 }
 
+export interface CommentsResponse {
+  items: Comment[];
+  meta: {
+    total: number;
+    order: string;
+  };
+}
+
+export interface Comment {
+  id: string;
+  postId: string;
+  authorId: string;
+  content: string;
+  likeCount: number;
+  likedByMe: boolean;
+  canDelete: boolean;
+  createdAt: string;
+  updatedAt: string;
+  author?: {
+    id: string;
+    username: string;
+    displayname: string;
+    avatarUrl: string;
+  };
+}
 // export interface Comment {
 //   id: string;
 //   content: string;

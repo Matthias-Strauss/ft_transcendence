@@ -1,35 +1,12 @@
 import { Post } from '../../mock_data/mock';
 import { Heart, Send } from 'lucide-react';
 import { useState, useEffect } from 'react';
-
-interface Comment {
-  id: string;
-  postId: string;
-  authorId: string;
-  content: string;
-  likeCount: number;
-  likedByMe: boolean;
-  canDelete: boolean;
-  createdAt: string;
-  updatedAt: string;
-  author?: {
-    id: string;
-    username: string;
-    displayname: string;
-    avatarUrl: string;
-  };
-}
-
-interface CommentsResponse {
-  items: Comment[];
-  meta: {
-    total: number;
-    order: string;
-  };
-}
+import { Comment } from '../../mock_data/mock';
+import { CommentsResponse } from '../../mock_data/mock';
 
 interface PostProp {
   post: Post;
+  onCommentCreated?: () => void;
 }
 
 async function getComment({ postId }: { postId: string }): Promise<CommentsResponse> {
@@ -52,7 +29,7 @@ async function getComment({ postId }: { postId: string }): Promise<CommentsRespo
   return res.json();
 }
 
-export default function CommentSection({ post }: PostProp) {
+export default function CommentSection({ post, onCommentCreated }: PostProp) {
   const [commentInput, setCommentInput] = useState('');
   const [comments, setComments] = useState<CommentsResponse | null>(null);
 
@@ -105,6 +82,7 @@ export default function CommentSection({ post }: PostProp) {
       };
     });
 
+    onCommentCreated?.();
     setCommentInput('');
   };
 
