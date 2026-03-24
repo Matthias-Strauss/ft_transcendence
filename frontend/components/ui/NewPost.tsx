@@ -2,16 +2,20 @@
 // the device of the user
 // The pop up modal should show only in desktop
 
-import { useState } from 'react';
+import { useState, type ChangeEvent } from 'react';
 import { ImagePlus, X } from 'lucide-react';
 
-export default function CreatePostForm() {
+interface CreatePostFormProps {
+  onPostCreated?: () => void;
+}
+
+export default function CreatePostForm({ onPostCreated }: CreatePostFormProps) {
   const [content, setContent] = useState('');
-  const [imageFile, setImageFile] = useState(null);
-  const [previewURL, setPreviewURL] = useState(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [previewURL, setPreviewURL] = useState<string | null>(null);
   const [gameTag, setGameTag] = useState('');
 
-  const handleContentChange = (e) => {
+  const handleContentChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value;
 
     setContent(value);
@@ -24,27 +28,33 @@ export default function CreatePostForm() {
     }
   };
 
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
+  const handleImageChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
     if (file) {
       setImageFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
-        setPreviewURL(reader.result);
+        if (typeof reader.result === 'string') {
+          setPreviewURL(reader.result);
+        }
       };
       reader.readAsDataURL(file);
     }
-    e.target.value = null;
+    e.target.value = '';
   };
-
-  const formData = new FormData();
-  formData.append('content', content);
-  if (imageFile !== null) formData.append('image', imageFile);
-  if (gameTag !== '') formData.append('gameTag', gameTag);
-  const token = localStorage.getItem('accessToken');
 
   const handleSubmit = async () => {
     try {
+      const token = localStorage.getItem('accessToken');
+      if (!token) {
+        throw new Error('Access token missing');
+      }
+
+      const formData = new FormData();
+      formData.append('content', content);
+      if (imageFile !== null) formData.append('image', imageFile);
+      if (gameTag !== '') formData.append('gameTag', gameTag);
+
       const response = await fetch('/api/posts', {
         method: 'POST',
         headers: {
@@ -57,8 +67,13 @@ export default function CreatePostForm() {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const data = await response.json();
-      console.log('Post created:', data);
+      await response.json();
+
+      setContent('');
+      setImageFile(null);
+      setPreviewURL(null);
+      setGameTag('');
+      onPostCreated?.();
     } catch (error) {
       console.error('Error creating post:', error);
     }

@@ -9,12 +9,17 @@ interface ApiResponse {
   };
 }
 
-export function PostsFeed() {
+interface PostsFeedProps {
+  refreshKey?: number;
+}
+
+export function PostsFeed({ refreshKey = 0 }: PostsFeedProps) {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchPosts = async () => {
+      setLoading(true);
       const token = localStorage.getItem('accessToken');
       try {
         const response = await fetch('/api/posts', {
@@ -27,7 +32,6 @@ export function PostsFeed() {
         if (!response.ok) throw new Error('Failed to fetch posts');
 
         const data: ApiResponse = await response.json();
-        console.log('API response:', data);
         setPosts(data.items);
       } catch (err) {
         console.error(err);
@@ -36,8 +40,8 @@ export function PostsFeed() {
       }
     };
 
-    fetchPosts();
-  }, []);
+    void fetchPosts();
+  }, [refreshKey]);
 
   if (loading) return <p>Loading posts...</p>;
   if (posts.length === 0) return <p>No posts found.</p>;

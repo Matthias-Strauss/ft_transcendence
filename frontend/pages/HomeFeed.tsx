@@ -1,8 +1,15 @@
 import { PostsFeed } from '../components/ui/PostsFeed';
 import { Sparkles } from 'lucide-react';
 import CreatePostForm from '../components/ui/NewPost';
+import { useState } from 'react';
 
 export function HomeFeed() {
+  const [postsRefreshKey, setPostsRefreshKey] = useState(0);
+
+  const handlePostCreated = () => {
+    setPostsRefreshKey((prev) => prev + 1);
+  };
+
   return (
     <div className="border-b border-[#39444d]">
       <div className="sticky top-0 backdrop-blur-xl bg-[#0f172a]/80 border-b border-[#39444d] z-10">
@@ -24,8 +31,8 @@ export function HomeFeed() {
           </button>
         </div>
       </div>
-      <CreatePostForm />
-      <PostsFeed />
+      <CreatePostForm onPostCreated={handlePostCreated} />
+      <PostsFeed refreshKey={postsRefreshKey} />
     </div>
   );
 }

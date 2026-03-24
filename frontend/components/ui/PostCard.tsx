@@ -22,7 +22,7 @@ export function PostCard({ post }: PostCardProps) {
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between mb-1">
             <User
-              avatar={post.author.avatar}
+              avatar={post.author.avatarUrl}
               name={post.author.name}
               username={post.author.username}
               verified={post.author.verified}
