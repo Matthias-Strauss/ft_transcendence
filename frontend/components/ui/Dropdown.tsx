@@ -13,19 +13,17 @@ async function handleAction({
   postId: string;
   authorId: string;
 }) {
-  console.log(`Action: ${action}, Post ID: ${postId}`);
   switch (action) {
     case 'Save':
       const token = localStorage.getItem('accessToken');
       if (!token) return new Error(`Access token is not valid`);
-      const res = await fetch(`/api/posts/${postId}/bookmark`, {
+      await fetch(`/api/posts/${postId}/bookmark`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ postId, authorId }),
       });
-      console.log(res);
   }
 }
 

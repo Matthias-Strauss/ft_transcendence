@@ -5,6 +5,7 @@ import { DropdownItem } from '../../mock_data/mock';
 import { Bookmark } from 'lucide-react';
 import { useState } from 'react';
 import Dropdown from './Dropdown';
+import CommentSection from './CommentSection';
 
 interface PostCardProps {
   post: Post;
@@ -14,6 +15,7 @@ export function PostCard({ post }: PostCardProps) {
   const items: DropdownItem[] = [{ id: 0, text: 'Save', icon: <Bookmark /> }];
 
   const [isOpen, setIsOpen] = useState(false);
+  const [commentOpen, setCommentOpen] = useState(false);
   return (
     <div className="border-b border-[#39444d] p-4 hover:bg-[#1e293b]/30 transition-colors cursor-pointer">
       <div className="flex gap-3">
@@ -62,7 +64,10 @@ export function PostCard({ post }: PostCardProps) {
           )}
 
           <div className="flex items-center justify-between max-w-md mt-2">
-            <button className="flex items-center gap-2 group hover:text-[var(--color-1)] transition-colors">
+            <button
+              className="flex items-center gap-2 group hover:text-[var(--color-1)] transition-colors"
+              onClick={() => setCommentOpen((prev) => !prev)}
+            >
               <div className="p-2 rounded-full group-hover:bg-[var(--color-1)]/10 transition-colors">
                 <MessageCircle className="size-[18px] text-[#8b98a5] group-hover:text-[var(--color-1)]" />
               </div>
@@ -89,6 +94,7 @@ export function PostCard({ post }: PostCardProps) {
               </span>
             </button>
           </div>
+          {commentOpen && <CommentSection post={post} />}
         </div>
       </div>
     </div>
