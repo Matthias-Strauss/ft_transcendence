@@ -11,10 +11,14 @@ import { clearRefreshCookie } from '../auth/refresh.js';
 import { getAvatarUrlFromPath } from '../files/avatars.js';
 import { getPostViewerContext, postAuthorInclude, serializePost } from '../utils/postUtils.js';
 import { prismaUniqueToUserError } from '../utils/meUtils.js';
+import {
+  getOtherFriendUser,
+  serializeFriendUser,
+  friendshipUserSelect,
+  friendUserSelect,
+} from '../utils/friendUtils.js';
 
 export const meRouter = Router();
-
-type FriendStatusValue = 'friend' | 'requested' | 'none';
 
 meRouter.get(
   '/me',
@@ -128,57 +132,6 @@ meRouter.get(
   }),
 );
 
-const friendUserSelect = {
-  id: true,
-  username: true,
-  displayname: true,
-  avatarPath: true,
-} satisfies Prisma.UserSelect;
-
-const friendshipUserSelect = {
-  userOneId: true,
-  userTwoId: true,
-  userOne: {
-    select: friendUserSelect,
-  },
-  userTwo: {
-    select: friendUserSelect,
-  },
-} satisfies Prisma.FriendshipSelect;
-
-type FriendshipWithUsers = Prisma.FriendshipGetPayload<{
-  select: typeof friendshipUserSelect;
-}>;
-
-type FriendListUser = Prisma.UserGetPayload<{
-  select: typeof friendUserSelect;
-}>;
-
-function getOtherFriendUser(friendship: FriendshipWithUsers, currentUserId: string) {
-  return friendship.userOneId === currentUserId ? friendship.userTwo : friendship.userOne;
-}
-
-function serializeFriendUser(
-  user: FriendListUser,
-  relation: Partial<{
-    isFriend: boolean;
-    friendStatus: FriendStatusValue;
-    friendRequestIncoming: boolean;
-    friendRequestSentByMe: boolean;
-  }> = {},
-) {
-  const { avatarPath, ...safeUser } = user;
-
-  return {
-    ...safeUser,
-    avatarUrl: getAvatarUrlFromPath(avatarPath),
-    isFriend: relation.isFriend ?? false,
-    friendStatus: relation.friendStatus ?? 'none',
-    friendRequestIncoming: relation.friendRequestIncoming ?? false,
-    friendRequestSentByMe: relation.friendRequestSentByMe ?? false,
-  };
-}
-
 meRouter.get(
   '/me/friends',
   requireAuth,
@@ -209,6 +162,47 @@ meRouter.get(
       meta: {
         total: friendUsers.length,
         order: 'updatedAt_desc',
+      },
+    });
+  }),
+);
+
+meRouter.get(
+  '/me/friends/requests',
+  requireAuth,
+  asyncHandler(async (req: AuthedRequest, res) => {
+    if (!req.userId) {
+      throw AuthErrors.invalidToken();
+    }
+
+    const viewerId = req.userId;
+    const friendships = await prisma.friendship.findMany({
+      where: {
+        status: 'PENDING',
+        addresseeId: viewerId,
+      },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      select: {
+        requester: {
+          select: friendUserSelect,
+        },
+      },
+    });
+
+    const requesterUsers = friendships.map((friendship) => friendship.requester);
+
+    return res.json({
+      items: requesterUsers.map((requesterUser) =>
+        serializeFriendUser(requesterUser, {
+          isFriend: false,
+          friendStatus: 'requested',
+          friendRequestIncoming: true,
+          friendRequestSentByMe: false,
+        }),
+      ),
+      meta: {
+        total: requesterUsers.length,
+        order: 'createdAt_desc',
       },
     });
   }),

@@ -7,6 +7,16 @@ import { AuthErrors, RequestErrors, UserErrors } from '../errors/catalog.js';
 import { getAvatarUrlFromPath } from '../files/avatars.js';
 import { getPostViewerContext, postAuthorInclude, serializePost } from '../utils/postUtils.js';
 import { UsernameSchema } from '../utils/userUtils.js';
+import {
+  serializeFriendUser,
+  getOtherFriendUser,
+  friendshipUserSelect,
+  findFriendTargetUserByUsername,
+  getAcceptedFriendUserIds,
+  findFriendship,
+  getFriendshipUserIdsOrdered,
+} from '../utils/friendUtils.js';
+import { FriendErrors } from '../errors/catalog.js';
 
 export const usersRouter = Router();
 
@@ -85,6 +95,112 @@ usersRouter.get(
         total: posts.length,
         order: 'createdAt_desc',
       },
+    });
+  }),
+);
+
+usersRouter.get(
+  '/users/:username/friends',
+  requireAuth,
+  asyncHandler(async (req: AuthedRequest, res) => {
+    if (!req.userId) {
+      throw AuthErrors.invalidToken();
+    }
+
+    const parsed = UsernameSchema.safeParse(req.params);
+    if (!parsed.success) {
+      throw RequestErrors.badRequest(parsed.error.issues);
+    }
+
+    const user = await findFriendTargetUserByUsername(parsed.data.username);
+
+    const friendships = await prisma.friendship.findMany({
+      where: {
+        status: 'ACCEPTED',
+        OR: [{ userOneId: user.id }, { userTwoId: user.id }],
+      },
+      orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }],
+      select: friendshipUserSelect,
+    });
+
+    const friendUsers = friendships.map((friendship) => getOtherFriendUser(friendship, user.id));
+    const acceptedFriendIds = await getAcceptedFriendUserIds(
+      req.userId,
+      friendUsers.map((friendUser) => friendUser.id),
+    );
+
+    return res.json({
+      items: friendUsers.map((friendUser) =>
+        serializeFriendUser(friendUser, {
+          isFriend: acceptedFriendIds.has(friendUser.id),
+          friendStatus: acceptedFriendIds.has(friendUser.id) ? 'friend' : 'none',
+        }),
+      ),
+      meta: {
+        total: friendUsers.length,
+        order: 'updatedAt_desc',
+      },
+    });
+  }),
+);
+
+usersRouter.post(
+  '/users/:username/request',
+  requireAuth,
+  asyncHandler(async (req: AuthedRequest, res) => {
+    if (!req.userId) {
+      throw AuthErrors.invalidToken();
+    }
+
+    const parsed = UsernameSchema.safeParse(req.params);
+    if (!parsed.success) {
+      throw RequestErrors.badRequest(parsed.error.issues);
+    }
+
+    const viewerId = req.userId;
+    const targetUser = await findFriendTargetUserByUsername(parsed.data.username);
+
+    const pairIds = getFriendshipUserIdsOrdered(viewerId, targetUser.id);
+    const existingFriendship = await findFriendship(viewerId, targetUser.id);
+
+    if (existingFriendship?.status === 'ACCEPTED') {
+      throw FriendErrors.alreadyFriends();
+    }
+
+    if (existingFriendship?.status === 'PENDING') {
+      if (existingFriendship.requesterId === viewerId) {
+        return res.json({
+          ok: true,
+          requested: true,
+          user: serializeFriendUser(targetUser, {
+            friendStatus: 'requested',
+            friendRequestIncoming: false,
+            friendRequestSentByMe: true,
+          }),
+        });
+      }
+
+      throw FriendErrors.requestAlreadyIncoming();
+    }
+
+    await prisma.friendship.create({
+      data: {
+        userOneId: pairIds.userOneId,
+        userTwoId: pairIds.userTwoId,
+        requesterId: viewerId,
+        addresseeId: targetUser.id,
+        status: 'PENDING',
+      },
+    });
+
+    return res.status(201).json({
+      ok: true,
+      requested: true,
+      user: serializeFriendUser(targetUser, {
+        friendStatus: 'requested',
+        friendRequestIncoming: false,
+        friendRequestSentByMe: true,
+      }),
     });
   }),
 );

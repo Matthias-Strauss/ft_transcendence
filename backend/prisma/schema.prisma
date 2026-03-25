@@ -19,15 +19,17 @@ model User {
   displayname String
   avatarPath  String?   //relative paht within FILES_DIR
 
-  refreshTokens         RefreshToken[]
-  posts                 Post[]
-  comments              Comment[]
-  postLikes             PostLike[]
-  postShares            PostShare[]
-  postBookmarks         PostBookmark[]
-  commentLikes          CommentLike[]
-  friendshipsAsUserOne  Friendship[] @relation("FriendshipUserOne")
-  friendshipsAsUserTwo  Friendship[] @relation("FriendshipUserTwo")
+  refreshTokens           RefreshToken[]
+  posts                   Post[]
+  comments                Comment[]
+  postLikes               PostLike[]
+  postShares              PostShare[]
+  postBookmarks           PostBookmark[]
+  commentLikes            CommentLike[]
+  friendshipsAsUserOne    Friendship[] @relation("FriendshipUserOne")
+  friendshipsAsUserTwo    Friendship[] @relation("FriendshipUserTwo")
+  sentFriendRequests      Friendship[] @relation("FriendshipRequester")
+  receivedFriendRequests  Friendship[] @relation("FriendshipAddressee")
 }
 
 model RefreshToken {
@@ -134,6 +136,8 @@ model Friendship {
   id          Int               @id @default(autoincrement())
   userOneId   String
   userTwoId   String
+  requesterId String
+  addresseeId String
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
   acceptedAt  DateTime?
@@ -141,8 +145,12 @@ model Friendship {
 
   userOne     User @relation("FriendshipUserOne", fields: [userOneId], references: [id], onDelete: Cascade)
   userTwo     User @relation("FriendshipUserTwo", fields: [userTwoId], references: [id], onDelete: Cascade)
+  requester   User @relation("FriendshipRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  addressee   User @relation("FriendshipAddressee", fields: [addresseeId], references: [id], onDelete: Cascade)
 
   @@unique([userOneId, userTwoId])
+  @@index([requesterId, status])
+  @@index([addresseeId, status, createdAt])
   @@index([userOneId, status])
   @@index([userTwoId, status])
 }
