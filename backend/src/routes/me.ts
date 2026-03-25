@@ -14,6 +14,8 @@ import { prismaUniqueToUserError } from '../utils/meUtils.js';
 
 export const meRouter = Router();
 
+type FriendStatusValue = 'friend' | 'requested' | 'none';
+
 meRouter.get(
   '/me',
   requireAuth,
@@ -121,6 +123,92 @@ meRouter.get(
       meta: {
         total: posts.length,
         order: 'bookmarkedAt_desc',
+      },
+    });
+  }),
+);
+
+const friendUserSelect = {
+  id: true,
+  username: true,
+  displayname: true,
+  avatarPath: true,
+} satisfies Prisma.UserSelect;
+
+const friendshipUserSelect = {
+  userOneId: true,
+  userTwoId: true,
+  userOne: {
+    select: friendUserSelect,
+  },
+  userTwo: {
+    select: friendUserSelect,
+  },
+} satisfies Prisma.FriendshipSelect;
+
+type FriendshipWithUsers = Prisma.FriendshipGetPayload<{
+  select: typeof friendshipUserSelect;
+}>;
+
+type FriendListUser = Prisma.UserGetPayload<{
+  select: typeof friendUserSelect;
+}>;
+
+function getOtherFriendUser(friendship: FriendshipWithUsers, currentUserId: string) {
+  return friendship.userOneId === currentUserId ? friendship.userTwo : friendship.userOne;
+}
+
+function serializeFriendUser(
+  user: FriendListUser,
+  relation: Partial<{
+    isFriend: boolean;
+    friendStatus: FriendStatusValue;
+    friendRequestIncoming: boolean;
+    friendRequestSentByMe: boolean;
+  }> = {},
+) {
+  const { avatarPath, ...safeUser } = user;
+
+  return {
+    ...safeUser,
+    avatarUrl: getAvatarUrlFromPath(avatarPath),
+    isFriend: relation.isFriend ?? false,
+    friendStatus: relation.friendStatus ?? 'none',
+    friendRequestIncoming: relation.friendRequestIncoming ?? false,
+    friendRequestSentByMe: relation.friendRequestSentByMe ?? false,
+  };
+}
+
+meRouter.get(
+  '/me/friends',
+  requireAuth,
+  asyncHandler(async (req: AuthedRequest, res) => {
+    if (!req.userId) {
+      throw AuthErrors.invalidToken();
+    }
+
+    const viewerId = req.userId;
+    const friendships = await prisma.friendship.findMany({
+      where: {
+        status: 'ACCEPTED',
+        OR: [{ userOneId: viewerId }, { userTwoId: viewerId }],
+      },
+      orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }],
+      select: friendshipUserSelect,
+    });
+
+    const friendUsers = friendships.map((friendship) => getOtherFriendUser(friendship, viewerId));
+
+    return res.json({
+      items: friendUsers.map((friendUser) =>
+        serializeFriendUser(friendUser, {
+          isFriend: true,
+          friendStatus: 'friend',
+        }),
+      ),
+      meta: {
+        total: friendUsers.length,
+        order: 'updatedAt_desc',
       },
     });
   }),

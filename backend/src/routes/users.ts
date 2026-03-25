@@ -1,5 +1,4 @@
 import { Router } from 'express';
-import { z } from 'zod';
 
 import { prisma } from '../db.js';
 import { requireAuth, AuthedRequest } from '../auth/middleware.js';
@@ -7,18 +6,9 @@ import { asyncHandler } from '../errors/asyncHandler.js';
 import { AuthErrors, RequestErrors, UserErrors } from '../errors/catalog.js';
 import { getAvatarUrlFromPath } from '../files/avatars.js';
 import { getPostViewerContext, postAuthorInclude, serializePost } from '../utils/postUtils.js';
+import { UsernameSchema } from '../utils/userUtils.js';
 
 export const usersRouter = Router();
-
-const UsernameSchema = z.object({
-  username: z
-    .string()
-    .trim()
-    .toLowerCase()
-    .min(3)
-    .max(30)
-    .regex(/^[a-z0-9._-]+$/),
-});
 
 usersRouter.get(
   '/users/:username',
