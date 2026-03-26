@@ -146,7 +146,7 @@ usersRouter.get(
 );
 
 usersRouter.post(
-  '/users/:username/friends/request/accept',
+  '/users/:username/request/accept',
   requireAuth,
   asyncHandler(async (req: AuthedRequest, res) => {
     if (!req.userId) {
@@ -192,7 +192,7 @@ usersRouter.post(
 );
 
 usersRouter.post(
-  '/users/:username/friends/request/decline',
+  '/users/:username/request/decline',
   requireAuth,
   asyncHandler(async (req: AuthedRequest, res) => {
     if (!req.userId) {
@@ -287,6 +287,40 @@ usersRouter.post(
         friendRequestIncoming: false,
         friendRequestSentByMe: true,
       }),
+    });
+  }),
+);
+
+usersRouter.delete(
+  '/users/:username/request',
+  requireAuth,
+  asyncHandler(async (req: AuthedRequest, res) => {
+    if (!req.userId) {
+      throw AuthErrors.invalidToken();
+    }
+
+    const parsed = UsernameSchema.safeParse(req.params);
+    if (!parsed.success) {
+      throw RequestErrors.badRequest(parsed.error.issues);
+    }
+
+    const viewerId = req.userId;
+    const targetUser = await findFriendTargetUserByUsername(parsed.data.username);
+    const pairIds = getFriendshipUserIdsOrdered(viewerId, targetUser.id);
+
+    const deletedFriendships = await prisma.friendship.deleteMany({
+      where: {
+        userOneId: pairIds.userOneId,
+        userTwoId: pairIds.userTwoId,
+        status: 'PENDING',
+        requesterId: viewerId,
+      },
+    });
+
+    return res.json({
+      ok: true,
+      withdrawn: deletedFriendships.count > 0,
+      user: serializeFriendUser(targetUser),
     });
   }),
 );
