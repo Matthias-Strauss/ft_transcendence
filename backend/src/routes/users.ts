@@ -15,6 +15,7 @@ import {
   getAcceptedFriendUserIds,
   findFriendship,
   getFriendshipUserIdsOrdered,
+  getFriendRelation,
 } from '../utils/friendUtils.js';
 import { FriendErrors } from '../errors/catalog.js';
 
@@ -145,6 +146,91 @@ usersRouter.get(
 );
 
 usersRouter.post(
+  '/users/:username/friends/request/accept',
+  requireAuth,
+  asyncHandler(async (req: AuthedRequest, res) => {
+    if (!req.userId) {
+      throw AuthErrors.invalidToken();
+    }
+
+    const parsed = UsernameSchema.safeParse(req.params);
+    if (!parsed.success) {
+      throw RequestErrors.badRequest(parsed.error.issues);
+    }
+
+    const viewerId = req.userId;
+    const targetUser = await findFriendTargetUserByUsername(parsed.data.username);
+    const pairIds = getFriendshipUserIdsOrdered(viewerId, targetUser.id);
+
+    const updatedFriendships = await prisma.friendship.updateMany({
+      where: {
+        userOneId: pairIds.userOneId,
+        userTwoId: pairIds.userTwoId,
+        status: 'PENDING',
+        requesterId: targetUser.id,
+        addresseeId: viewerId,
+      },
+      data: {
+        status: 'ACCEPTED',
+        acceptedAt: new Date(),
+      },
+    });
+
+    if (updatedFriendships.count === 0) {
+      throw FriendErrors.requestNotFound();
+    }
+
+    return res.json({
+      ok: true,
+      accepted: true,
+      user: serializeFriendUser(targetUser, {
+        isFriend: true,
+        friendStatus: 'friend',
+      }),
+    });
+  }),
+);
+
+usersRouter.post(
+  '/users/:username/friends/request/decline',
+  requireAuth,
+  asyncHandler(async (req: AuthedRequest, res) => {
+    if (!req.userId) {
+      throw AuthErrors.invalidToken();
+    }
+
+    const parsed = UsernameSchema.safeParse(req.params);
+    if (!parsed.success) {
+      throw RequestErrors.badRequest(parsed.error.issues);
+    }
+
+    const viewerId = req.userId;
+    const targetUser = await findFriendTargetUserByUsername(parsed.data.username);
+    const pairIds = getFriendshipUserIdsOrdered(viewerId, targetUser.id);
+
+    const deletedFriendships = await prisma.friendship.deleteMany({
+      where: {
+        userOneId: pairIds.userOneId,
+        userTwoId: pairIds.userTwoId,
+        status: 'PENDING',
+        requesterId: targetUser.id,
+        addresseeId: viewerId,
+      },
+    });
+
+    if (deletedFriendships.count === 0) {
+      throw FriendErrors.requestNotFound();
+    }
+
+    return res.json({
+      ok: true,
+      declined: true,
+      user: serializeFriendUser(targetUser),
+    });
+  }),
+);
+
+usersRouter.post(
   '/users/:username/request',
   requireAuth,
   asyncHandler(async (req: AuthedRequest, res) => {
@@ -201,6 +287,41 @@ usersRouter.post(
         friendRequestIncoming: false,
         friendRequestSentByMe: true,
       }),
+    });
+  }),
+);
+
+usersRouter.delete(
+  '/users/:username/friends',
+  requireAuth,
+  asyncHandler(async (req: AuthedRequest, res) => {
+    if (!req.userId) {
+      throw AuthErrors.invalidToken();
+    }
+
+    const parsed = UsernameSchema.safeParse(req.params);
+    if (!parsed.success) {
+      throw RequestErrors.badRequest(parsed.error.issues);
+    }
+
+    const viewerId = req.userId;
+    const targetUser = await findFriendTargetUserByUsername(parsed.data.username);
+    const pairIds = getFriendshipUserIdsOrdered(viewerId, targetUser.id);
+
+    const deletedFriendships = await prisma.friendship.deleteMany({
+      where: {
+        userOneId: pairIds.userOneId,
+        userTwoId: pairIds.userTwoId,
+        status: 'ACCEPTED',
+      },
+    });
+
+    const relation = await getFriendRelation(viewerId, targetUser.id);
+
+    return res.json({
+      ok: true,
+      removed: deletedFriendships.count > 0,
+      user: serializeFriendUser(targetUser, relation),
     });
   }),
 );
