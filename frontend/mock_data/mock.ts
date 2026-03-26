@@ -22,6 +22,7 @@ export interface Post {
   shareCount: number;
   createdAt: string;
   updatedAt: string;
+  likedByMe: boolean;
 
   // Relations
   author: {

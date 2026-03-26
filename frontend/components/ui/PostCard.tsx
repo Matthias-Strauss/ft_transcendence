@@ -3,7 +3,7 @@ import { Post } from '../../mock_data/mock';
 import { User } from './User';
 import { DropdownItem } from '../../mock_data/mock';
 import { Bookmark } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Dropdown from './Dropdown';
 import CommentSection from './CommentSection';
 
@@ -13,15 +13,66 @@ interface PostCardProps {
 
 export function PostCard({ post }: PostCardProps) {
   const items: DropdownItem[] = [{ id: 0, text: 'Save', icon: <Bookmark /> }];
-
+  const token = localStorage.getItem('accessToken');
   const [isOpen, setIsOpen] = useState(false);
   const [commentOpen, setCommentOpen] = useState(false);
   const [commentCount, setCommentCount] = useState(
     post.commentCount ?? post.comments?.meta?.total ?? 0,
   );
+  const [likeCount, setLikeCount] = useState(post.likeCount ?? 0);
+  const [isLiked, setLiked] = useState(post.likedByMe);
+  const [isLikePending, setIsLikePending] = useState(false);
+
+  useEffect(() => {
+    setCommentCount(post.commentCount ?? post.comments?.meta?.total ?? 0);
+    setLikeCount(post.likeCount ?? 0);
+    setLiked(post.likedByMe);
+  }, [post.commentCount, post.comments?.meta?.total, post.likeCount, post.likedByMe]);
 
   const handleCommentCreated = () => {
     setCommentCount((prev) => prev + 1);
+  };
+
+  const handlePostLike = async () => {
+    if (isLikePending || !token) {
+      return;
+    }
+
+    const previousLiked = isLiked;
+    const previousLikeCount = likeCount;
+    const nextLiked = !isLiked;
+
+    setIsLikePending(true);
+    setLiked(nextLiked);
+    setLikeCount((prev) => Math.max(0, prev + (nextLiked ? 1 : -1)));
+
+    try {
+      const response = await fetch(`/api/posts/${post.id}/like`, {
+        method: nextLiked ? 'POST' : 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update like state');
+      }
+
+      const payload = (await response.json()) as { likeCount?: number; likedByMe?: boolean };
+
+      if (typeof payload.likeCount === 'number') {
+        setLikeCount(payload.likeCount);
+      }
+
+      if (typeof payload.likedByMe === 'boolean') {
+        setLiked(payload.likedByMe);
+      }
+    } catch {
+      setLiked(previousLiked);
+      setLikeCount(previousLikeCount);
+    } finally {
+      setIsLikePending(false);
+    }
   };
 
   return (
@@ -84,12 +135,32 @@ export function PostCard({ post }: PostCardProps) {
               </span>
             </button>
 
-            <button className="flex items-center gap-2 group hover:text-[var(--color-2)] transition-colors">
-              <div className="p-2 rounded-full group-hover:bg-[var(--color-2)]/10 transition-colors">
-                <Heart className="size-[18px] text-[#8b98a5] group-hover:text-[var(--color-2)] group-hover:fill-[var(--color-2)]" />
+            <button
+              className="flex items-center gap-2 group transition-colors"
+              onClick={handlePostLike}
+              aria-pressed={isLiked}
+              disabled={isLikePending}
+            >
+              <div
+                className={`p-2 rounded-full transition-colors
+      ${isLiked ? 'bg-[var(--color-2)]/10' : 'group-hover:bg-[var(--color-2)]/10'}`}
+              >
+                <Heart
+                  fill={isLiked ? 'currentColor' : 'none'}
+                  className={`
+    size-[18px] transition-colors stroke-current
+    ${isLiked ? 'text-[var(--color-2)]' : 'text-[#8b98a5] group-hover:text-[var(--color-2)]'}
+  `}
+                />
               </div>
-              <span className="text-[13px] text-[#8b98a5] group-hover:text-[var(--color-2)]">
-                {post.likeCount}
+
+              <span
+                className={`
+      text-[13px] transition-colors
+      ${isLiked ? 'text-[var(--color-2)]' : 'text-[#8b98a5] group-hover:text-[var(--color-2)]'}
+    `}
+              >
+                {likeCount}
               </span>
             </button>
 
