@@ -157,19 +157,6 @@ export default function CommentSection({ post, onCommentCreated }: PostProp) {
                   </span>
                 </div>
                 <p className="text-[14px] text-[#f7f9f9] leading-5 mb-2">{comment.content}</p>
-                <div className="flex items-center gap-4">
-                  <button className="flex items-center gap-1 group hover:text-[var(--color-2)] transition-colors">
-                    <Heart className="size-4 text-[#8b98a5] group-hover:text-[var(--color-2)]" />
-                    {comment.likeCount > 0 && (
-                      <span className="text-[12px] text-[#8b98a5] group-hover:text-[var(--color-2)]">
-                        {comment.likeCount}
-                      </span>
-                    )}
-                  </button>
-                  <button className="text-[12px] text-[#8b98a5] hover:text-[var(--color-1)] transition-colors">
-                    Reply
-                  </button>
-                </div>
               </div>
             </div>
           </div>

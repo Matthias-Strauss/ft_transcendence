@@ -2,7 +2,7 @@ import { Heart, MessageCircle, Share2, MoreHorizontal } from 'lucide-react';
 import { Post } from '../../mock_data/mock';
 import { User } from './User';
 import { DropdownItem } from '../../mock_data/mock';
-import { Bookmark } from 'lucide-react';
+import { Bookmark, Repeat2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import Dropdown from './Dropdown';
 import CommentSection from './CommentSection';
@@ -12,7 +12,10 @@ interface PostCardProps {
 }
 
 export function PostCard({ post }: PostCardProps) {
-  const items: DropdownItem[] = [{ id: 0, text: 'Save', icon: <Bookmark /> }];
+  const items: DropdownItem[] = [
+    { id: 0, text: 'Save', icon: <Bookmark /> },
+    { id: 1, text: 'Share', icon: <Repeat2 /> },
+  ];
   const token = localStorage.getItem('accessToken');
   const [isOpen, setIsOpen] = useState(false);
   const [commentOpen, setCommentOpen] = useState(false);
@@ -22,15 +25,29 @@ export function PostCard({ post }: PostCardProps) {
   const [likeCount, setLikeCount] = useState(post.likeCount ?? 0);
   const [isLiked, setLiked] = useState(post.likedByMe);
   const [isLikePending, setIsLikePending] = useState(false);
+  const [shareCount, setShared] = useState(post.shareCount ?? 0);
 
   useEffect(() => {
     setCommentCount(post.commentCount ?? post.comments?.meta?.total ?? 0);
     setLikeCount(post.likeCount ?? 0);
     setLiked(post.likedByMe);
-  }, [post.commentCount, post.comments?.meta?.total, post.likeCount, post.likedByMe]);
+    setShared(post.shareCount ?? 0);
+  }, [
+    post.commentCount,
+    post.comments?.meta?.total,
+    post.likeCount,
+    post.likedByMe,
+    post.shareCount,
+  ]);
 
   const handleCommentCreated = () => {
     setCommentCount((prev) => prev + 1);
+  };
+
+  const handleDropdownActionSuccess = (action: string) => {
+    if (action === 'Share') {
+      setShared((prev) => prev + 1);
+    }
   };
 
   const handlePostLike = async () => {
@@ -100,6 +117,7 @@ export function PostCard({ post }: PostCardProps) {
                   setIsOpen={setIsOpen}
                   postId={post.id}
                   authorId={post.authorId}
+                  onActionSuccess={handleDropdownActionSuccess}
                 />
               )}
             </div>
@@ -124,15 +142,13 @@ export function PostCard({ post }: PostCardProps) {
 
           <div className="flex items-center justify-between max-w-md mt-2">
             <button
-              className="flex items-center gap-2 group hover:text-[var(--color-1)] transition-colors"
+              className="flex items-center gap-2 transition-colors"
               onClick={() => setCommentOpen((prev) => !prev)}
             >
-              <div className="p-2 rounded-full group-hover:bg-[var(--color-1)]/10 transition-colors">
-                <MessageCircle className="size-[18px] text-[#8b98a5] group-hover:text-[var(--color-1)]" />
+              <div className="p-2 rounded-full transition-colors">
+                <MessageCircle className="size-[18px] text-[#8b98a5]" />
               </div>
-              <span className="text-[13px] text-[#8b98a5] group-hover:text-[var(--color-1)]">
-                {commentCount}
-              </span>
+              <span className="text-[13px] text-[#8b98a5]">{commentCount}</span>
             </button>
 
             <button
@@ -164,13 +180,11 @@ export function PostCard({ post }: PostCardProps) {
               </span>
             </button>
 
-            <button className="flex items-center gap-2 group hover:text-[var(--color-3)] transition-colors">
-              <div className="p-2 rounded-full group-hover:bg-[var(--color-3)]/10 transition-colors">
-                <Share2 className="size-[18px] text-[#8b98a5] group-hover:text-[var(--color-3)]" />
+            <button className="flex items-center gap-2 group transition-colors">
+              <div className="p-2 rounded-full transition-colors">
+                <Share2 className="size-[18px] text-[#8b98a5]" />
               </div>
-              <span className="text-[13px] text-[#8b98a5] group-hover:text-[var(--color-3)]">
-                {post.shareCount}
-              </span>
+              <span className="text-[13px] text-[#8b98a5] ">{shareCount}</span>
             </button>
           </div>
           {commentOpen && <CommentSection post={post} onCommentCreated={handleCommentCreated} />}

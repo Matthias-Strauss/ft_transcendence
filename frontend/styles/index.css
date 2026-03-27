@@ -160,7 +160,7 @@
     display: list-item;
   }
 
-  ol, ul, menu {
+  ol, menu {
     list-style: none;
   }
 
