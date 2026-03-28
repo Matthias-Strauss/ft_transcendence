@@ -23,6 +23,7 @@ import {
   cleanupUploadedPostImage,
 } from '../files/postings.js';
 import { resolveInFilesDir } from '../files/storage.js';
+import { getAcceptedFriendUserIds } from '../utils/friendUtils.js';
 
 export const postsRouter = Router();
 
@@ -115,6 +116,7 @@ postsRouter.post(
         likedByMe: false,
         sharedByMe: false,
         bookmarkedByMe: false,
+        authorIsFriend: false,
       }),
     );
   }),
@@ -137,9 +139,11 @@ postsRouter.get(
       throw PostErrors.notFound();
     }
 
-    const { likedPostIds, sharedPostIds, bookmarkedPostIds } = await getPostViewerContext(
-      [post.id],
-      req.userId,
+    const [{ likedPostIds, sharedPostIds, bookmarkedPostIds }, friendAuthorIds] = await Promise.all(
+      [
+        getPostViewerContext([post.id], req.userId),
+        getAcceptedFriendUserIds(req.userId, [post.authorId]),
+      ],
     );
 
     return res.json(
@@ -147,6 +151,7 @@ postsRouter.get(
         likedByMe: likedPostIds.has(post.id),
         sharedByMe: sharedPostIds.has(post.id),
         bookmarkedByMe: bookmarkedPostIds?.has(post.id),
+        authorIsFriend: friendAuthorIds.has(post.authorId),
       }),
     );
   }),
@@ -211,15 +216,22 @@ postsRouter.get(
     });
 
     const viewerId = req.userId;
-    const { likedCommentIds } = await getCommentViewerContext(
-      comments.map((comment) => comment.id),
-      viewerId,
-    );
+    const [{ likedCommentIds }, friendAuthorIds] = await Promise.all([
+      getCommentViewerContext(
+        comments.map((comment) => comment.id),
+        viewerId,
+      ),
+      getAcceptedFriendUserIds(
+        viewerId,
+        comments.map((comment) => comment.authorId),
+      ),
+    ]);
 
     return res.json({
       items: comments.map((comment) =>
         serializeComment(comment, viewerId, {
           likedByMe: likedCommentIds.has(comment.id),
+          authorIsFriend: friendAuthorIds.has(comment.authorId),
         }),
       ),
       meta: {
@@ -279,7 +291,12 @@ postsRouter.post(
       return createdComment;
     });
 
-    return res.status(201).json(serializeComment(comment, viewerId, { likedByMe: false }));
+    return res.status(201).json(
+      serializeComment(comment, viewerId, {
+        likedByMe: false,
+        authorIsFriend: false,
+      }),
+    );
   }),
 );
 

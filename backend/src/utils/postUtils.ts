@@ -24,6 +24,7 @@ type PostViewerContext = {
   likedByMe?: boolean;
   sharedByMe?: boolean;
   bookmarkedByMe?: boolean;
+  authorIsFriend?: boolean;
 };
 
 export function serializePost(post: PostWithAuthor, viewerContext: PostViewerContext = {}) {
@@ -39,6 +40,7 @@ export function serializePost(post: PostWithAuthor, viewerContext: PostViewerCon
     author: {
       ...safeAuthor,
       avatarUrl: getAvatarUrlFromPath(avatarPath),
+      isFriend: viewerContext.authorIsFriend ?? false,
     },
   };
 }
@@ -117,6 +119,7 @@ type CommentWithContext = Prisma.CommentGetPayload<{
 
 type CommentViewerContext = {
   likedByMe?: boolean;
+  authorIsFriend?: boolean;
 };
 
 export function serializeComment(
@@ -129,10 +132,11 @@ export function serializeComment(
 
   return {
     ...safeComment,
-    likedByMe: viewerContext.likedByMe,
+    likedByMe: viewerContext.likedByMe ?? false,
     author: {
       ...safeAuthor,
       avatarUrl: getAvatarUrlFromPath(avatarPath),
+      isFriend: viewerContext.authorIsFriend ?? false,
     },
     canDelete: comment.authorId === viewerId || post.authorId === viewerId,
   };

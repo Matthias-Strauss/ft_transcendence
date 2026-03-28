@@ -16,6 +16,7 @@ import {
   serializeFriendUser,
   friendshipUserSelect,
   friendUserSelect,
+  getAcceptedFriendUserIds,
 } from '../utils/friendUtils.js';
 
 export const meRouter = Router();
@@ -72,16 +73,23 @@ meRouter.get(
       include: postAuthorInclude,
     });
 
-    const { likedPostIds, sharedPostIds } = await getPostViewerContext(
-      posts.map((post) => post.id),
-      req.userId,
-    );
+    const [{ likedPostIds, sharedPostIds }, friendAuthorIds] = await Promise.all([
+      getPostViewerContext(
+        posts.map((post) => post.id),
+        req.userId,
+      ),
+      getAcceptedFriendUserIds(
+        req.userId,
+        posts.map((post) => post.authorId),
+      ),
+    ]);
 
     return res.json({
       items: posts.map((post) =>
         serializePost(post, {
           likedByMe: likedPostIds.has(post.id),
           sharedByMe: sharedPostIds.has(post.id),
+          authorIsFriend: friendAuthorIds.has(post.authorId),
         }),
       ),
       meta: {
@@ -111,10 +119,16 @@ meRouter.get(
     });
 
     const posts = bookmarks.map((bookmark) => bookmark.post);
-    const { likedPostIds, sharedPostIds } = await getPostViewerContext(
-      posts.map((post) => post.id),
-      req.userId,
-    );
+    const [{ likedPostIds, sharedPostIds }, friendAuthorIds] = await Promise.all([
+      getPostViewerContext(
+        posts.map((post) => post.id),
+        req.userId,
+      ),
+      getAcceptedFriendUserIds(
+        req.userId,
+        posts.map((post) => post.authorId),
+      ),
+    ]);
 
     return res.json({
       items: posts.map((post) =>
@@ -122,6 +136,7 @@ meRouter.get(
           likedByMe: likedPostIds.has(post.id),
           sharedByMe: sharedPostIds.has(post.id),
           bookmarkedByMe: true,
+          authorIsFriend: friendAuthorIds.has(post.authorId),
         }),
       ),
       meta: {

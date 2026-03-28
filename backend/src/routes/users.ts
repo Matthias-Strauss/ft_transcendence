@@ -37,6 +37,7 @@ usersRouter.get(
     const user = await prisma.user.findUnique({
       where: { username: parsed.data.username },
       select: {
+        id: true,
         username: true,
         displayname: true,
         avatarPath: true,
@@ -46,10 +47,16 @@ usersRouter.get(
       throw UserErrors.userNotFound();
     }
 
+    const relation = await getFriendRelation(req.userId, user.id);
+
     return res.json({
       username: user.username,
       displayname: user.displayname,
       avatarUrl: getAvatarUrlFromPath(user.avatarPath),
+      isFriend: relation.isFriend,
+      friendStatus: relation.friendStatus,
+      friendRequestIncoming: relation.friendRequestIncoming,
+      friendRequestSentByMe: relation.friendRequestSentByMe,
     });
   }),
 );
@@ -81,15 +88,23 @@ usersRouter.get(
       include: postAuthorInclude,
     });
 
-    const { likedPostIds, sharedPostIds } = await getPostViewerContext(
-      posts.map((post) => post.id),
-      req.userId,
-    );
+    const [{ likedPostIds, sharedPostIds }, friendAuthorIds] = await Promise.all([
+      getPostViewerContext(
+        posts.map((post) => post.id),
+        req.userId,
+      ),
+      getAcceptedFriendUserIds(
+        req.userId,
+        posts.map((post) => post.authorId),
+      ),
+    ]);
+
     return res.json({
       items: posts.map((post) =>
         serializePost(post, {
           likedByMe: likedPostIds.has(post.id),
           sharedByMe: sharedPostIds.has(post.id),
+          authorIsFriend: friendAuthorIds.has(post.authorId),
         }),
       ),
       meta: {
