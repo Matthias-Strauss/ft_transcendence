@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { z } from 'zod';
+import { check, z } from 'zod';
 import path from 'node:path';
 import fs from 'node:fs/promises';
 
@@ -16,6 +16,7 @@ import {
   checkPostExists,
   commentContextIncluded,
   checkCommentBelongsToPost,
+  checkPostVisibility,
 } from '../utils/postUtils.js';
 import {
   postImageUploadHandler,
@@ -130,6 +131,8 @@ postsRouter.get(
       throw AuthErrors.invalidToken();
     }
 
+    await checkPostVisibility(req.params.id, req.userId);
+
     const post = await prisma.post.findUnique({
       where: { id: req.params.id },
       include: postAuthorInclude,
@@ -207,7 +210,7 @@ postsRouter.get(
       throw AuthErrors.invalidToken();
     }
 
-    await checkPostExists(req.params.id);
+    await checkPostVisibility(req.params.id, req.userId);
 
     const comments = await prisma.comment.findMany({
       where: { postId: req.params.id },
@@ -262,6 +265,8 @@ postsRouter.post(
     }
 
     const viewerId = req.userId;
+    await checkPostVisibility(req.params.id, viewerId);
+
     const comment = await prisma.$transaction(async (tx) => {
       const post = await tx.post.findUnique({
         where: { id: req.params.id },
@@ -310,6 +315,8 @@ postsRouter.delete(
 
     const { postId, commentId } = req.params;
     const viewerId = req.userId;
+
+    await checkPostVisibility(postId, viewerId);
 
     const comment = await prisma.comment.findUnique({
       where: { id: commentId },
@@ -361,7 +368,7 @@ postsRouter.post(
     const viewerId = req.userId;
     const postId = req.params.id;
 
-    await checkPostExists(postId);
+    await checkPostVisibility(postId, viewerId);
 
     await prisma.postBookmark.createMany({
       data: {
@@ -389,7 +396,7 @@ postsRouter.delete(
     const viewerId = req.userId;
     const postId = req.params.id;
 
-    await checkPostExists(postId);
+    await checkPostVisibility(postId, viewerId);
 
     await prisma.postBookmark.deleteMany({
       where: {
@@ -417,7 +424,7 @@ postsRouter.post(
     const viewerId = req.userId;
     const postId = req.params.id;
 
-    await checkPostExists(postId);
+    await checkPostVisibility(postId, viewerId);
 
     const result = await prisma.$transaction(async (tx) => {
       const created = await tx.postLike.createMany({
@@ -481,7 +488,7 @@ postsRouter.delete(
     const viewerId = req.userId;
     const postId = req.params.id;
 
-    await checkPostExists(postId);
+    await checkPostVisibility(postId, viewerId);
 
     const result = await prisma.$transaction(async (tx) => {
       const deleted = await tx.postLike.deleteMany({
@@ -541,6 +548,8 @@ postsRouter.post(
       throw AuthErrors.invalidToken();
     }
     const viewerId = req.userId;
+
+    await checkPostVisibility(req.params.id, viewerId);
 
     const result = await prisma.$transaction(async (tx) => {
       const post = await tx.post.findUnique({
@@ -615,7 +624,7 @@ postsRouter.post(
     const { postId, commentId } = req.params;
     const viewerId = req.userId;
 
-    await checkPostExists(postId);
+    await checkPostVisibility(postId, viewerId);
     await checkCommentBelongsToPost(commentId, postId);
 
     const result = await prisma.$transaction(async (tx) => {
@@ -677,7 +686,7 @@ postsRouter.delete(
     const { postId, commentId } = req.params;
     const viewerId = req.userId;
 
-    await checkPostExists(postId);
+    await checkPostVisibility(postId, viewerId);
     await checkCommentBelongsToPost(commentId, postId);
 
     const result = await prisma.$transaction(async (tx) => {

@@ -82,6 +82,17 @@ usersRouter.get(
       throw UserErrors.userNotFound();
     }
 
+    const relation = await getFriendRelation(req.userId, user.id);
+    if (!relation.isFriend && user.id !== req.userId) {
+      return res.json({
+        items: [],
+        meta: {
+          total: 0,
+          order: 'createdAt_desc',
+        },
+      });
+    }
+
     const posts = await prisma.post.findMany({
       where: { authorId: user.id },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
@@ -129,6 +140,20 @@ usersRouter.get(
     }
 
     const user = await findFriendTargetUserByUsername(parsed.data.username);
+
+    if (req.userId !== user.id) {
+      const relation = await getFriendRelation(req.userId, user.id);
+
+      if (!relation.isFriend) {
+        return res.json({
+          items: [],
+          meta: {
+            total: 0,
+            order: 'updatedAt_desc',
+          },
+        });
+      }
+    }
 
     const friendships = await prisma.friendship.findMany({
       where: {
