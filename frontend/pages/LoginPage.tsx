@@ -65,6 +65,11 @@ export default function LoginPage() {
         <button className="secondary-btn" onClick={() => navigate('/register')}>
           Don&apos;t have an account? Register
         </button>
+{/* Socket.io test begin */}
+        <button className="secondary-btn" onClick={() => navigate('/socket-test')}>
+          Open Socket Test Page
+        </button>
+{/* Socket.io test end */}
       </div>
     </div>
   );

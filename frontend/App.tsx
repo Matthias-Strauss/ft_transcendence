@@ -3,6 +3,7 @@ import LoginPage from './pages/LoginPage';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import SocialApp from './SocialApp';
 import RegistrationPage from './pages/RegistrationPage';
+import SocketTestPage from './pages/temp_SocketTestPage';
 // import { Navigate } from 'react-router-dom';
 
 export default function App() {
@@ -18,6 +19,7 @@ export default function App() {
       />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegistrationPage />} />
+      <Route path="/socket-test" element={<SocketTestPage />} />
     </Routes>
   );
 }

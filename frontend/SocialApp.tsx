@@ -3,6 +3,18 @@ import { RightPanel } from './components/RightPanel';
 import { LeftSidebar } from './components/LeftSidebar';
 import { HomeFeed } from './pages/HomeFeed';
 import { FriendsPage } from './pages/FriendsPage';
+import { io } from 'socket.io-client';
+
+// Socket.io test begin
+const socket = io(window.location.origin, {
+  path: '/socket.io',
+  withCredentials: true,
+  transports: ['websocket'],
+});
+
+socket.on('chat:message', (msg) => console.log(msg));
+socket.emit('chat:message', { text: 'hello' });
+// Socket.io test end
 import { useRef } from 'react';
 
 export default function SocialApp() {
