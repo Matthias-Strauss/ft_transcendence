@@ -118,6 +118,11 @@ export const ERROR_CATALOG = {
     message: 'Friend request not found',
     errCode: 'FRIEND_REQUEST_NOT_FOUND',
   },
+  FRIEND_REQUEST_TO_SELF_FORBIDDEN: {
+    statusCode: 400,
+    message: 'You cannot send a friend request to yourself',
+    errCode: 'FRIEND_REQUEST_TO_SELF_FORBIDDEN',
+  },
 } as const;
 
 export type ErrorKey = keyof typeof ERROR_CATALOG;
@@ -177,4 +182,5 @@ export const FriendErrors = {
   alreadyFriends: () => appError('FRIENDSHIP_ALREADY_EXISTS'),
   requestAlreadyIncoming: () => appError('FRIEND_REQUEST_ALREADY_INCOMING'),
   requestNotFound: () => appError('FRIEND_REQUEST_NOT_FOUND'),
+  requestToSelfForbidden: () => appError('FRIEND_REQUEST_TO_SELF_FORBIDDEN'),
 };

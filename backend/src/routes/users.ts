@@ -261,6 +261,10 @@ usersRouter.post(
     const viewerId = req.userId;
     const targetUser = await findFriendTargetUserByUsername(parsed.data.username);
 
+    if (targetUser.id === viewerId) {
+      throw FriendErrors.requestToSelfForbidden();
+    }
+
     const pairIds = getFriendshipUserIdsOrdered(viewerId, targetUser.id);
     const existingFriendship = await findFriendship(viewerId, targetUser.id);
 
