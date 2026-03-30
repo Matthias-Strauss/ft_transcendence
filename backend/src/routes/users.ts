@@ -47,7 +47,25 @@ usersRouter.get(
       throw UserErrors.userNotFound();
     }
 
-    const relation = await getFriendRelation(req.userId, user.id);
+    const [relation, postsCount, friendsCount] = await Promise.all([
+      req.userId === user.id
+        ? Promise.resolve({
+            isFriend: false,
+            friendStatus: 'none' as const,
+            friendRequestIncoming: false,
+            friendRequestSentByMe: false,
+          })
+        : getFriendRelation(req.userId, user.id),
+      prisma.post.count({
+        where: { authorId: user.id },
+      }),
+      prisma.friendship.count({
+        where: {
+          status: 'ACCEPTED',
+          OR: [{ userOneId: user.id }, { userTwoId: user.id }],
+        },
+      }),
+    ]);
 
     return res.json({
       username: user.username,
@@ -57,6 +75,8 @@ usersRouter.get(
       friendStatus: relation.friendStatus,
       friendRequestIncoming: relation.friendRequestIncoming,
       friendRequestSentByMe: relation.friendRequestSentByMe,
+      postsCount,
+      friendsCount,
     });
   }),
 );

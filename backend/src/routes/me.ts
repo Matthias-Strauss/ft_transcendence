@@ -9,7 +9,12 @@ import { AuthErrors, RequestErrors, UserErrors } from '../errors/catalog.js';
 import { hashPassword, verifyPassword } from '../auth/password.js';
 import { clearRefreshCookie } from '../auth/refresh.js';
 import { getAvatarUrlFromPath } from '../files/avatars.js';
-import { getPostViewerContext, getVisiblePostAuthorIds, postAuthorInclude, serializePost } from '../utils/postUtils.js';
+import {
+  getPostViewerContext,
+  getVisiblePostAuthorIds,
+  postAuthorInclude,
+  serializePost,
+} from '../utils/postUtils.js';
 import { prismaUniqueToUserError } from '../utils/meUtils.js';
 import {
   getOtherFriendUser,
@@ -43,10 +48,24 @@ meRouter.get(
       throw AuthErrors.invalidToken();
     }
 
+    const [postsCount, friendsCount] = await Promise.all([
+      prisma.post.count({
+        where: { authorId: user.id },
+      }),
+      prisma.friendship.count({
+        where: {
+          status: 'ACCEPTED',
+          OR: [{ userOneId: user.id }, { userTwoId: user.id }],
+        },
+      }),
+    ]);
+
     const { avatarPath, ...safeUser } = user;
     return res.json({
       ...safeUser,
       avatarUrl: getAvatarUrlFromPath(avatarPath),
+      postsCount,
+      friendsCount,
     });
   }),
 );

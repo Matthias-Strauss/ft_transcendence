@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { check, z } from 'zod';
+import { z } from 'zod';
 import path from 'node:path';
 import fs from 'node:fs/promises';
 
@@ -13,7 +13,6 @@ import {
   postAuthorInclude,
   serializeComment,
   getCommentViewerContext,
-  checkPostExists,
   commentContextIncluded,
   checkCommentBelongsToPost,
   checkPostVisibility,
