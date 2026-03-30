@@ -86,7 +86,7 @@ export function LeftSidebar({ activeTab, onTabChange, onNewPost }: LeftSidebarPr
         onClick={onNewPost}
         className="bg-[var(--color-1)] hover:bg-[var(--color-1)]/90 text-[#f7f9f9] rounded-full py-3 px-6 transition-colors mt-2"
       >
-        <span className="font-bold text-[15px]">Post</span>
+        <span className="font-bold text-[15px]">Write a post</span>
       </button>
 
       <div className="mt-auto">

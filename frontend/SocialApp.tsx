@@ -1,20 +1,34 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { RightPanel } from './components/RightPanel';
 import { LeftSidebar } from './components/LeftSidebar';
 import { HomeFeed } from './pages/HomeFeed';
 import { FriendsPage } from './pages/FriendsPage';
+import { useRef } from 'react';
 
 export default function SocialApp() {
+  const inputRef = useRef<HTMLTextAreaElement | null>(null);
+  const shouldFocusComposerRef = useRef(false);
   const [activeTab, setActiveTab] = useState('home');
 
   const handleNewPost = () => {
-    // Logic for creating a new post
+    shouldFocusComposerRef.current = true;
+    setActiveTab('home');
   };
+
+  useEffect(() => {
+    if (!shouldFocusComposerRef.current || activeTab !== 'home') {
+      return;
+    }
+
+    inputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    inputRef.current?.focus();
+    shouldFocusComposerRef.current = false;
+  }, [activeTab]);
 
   const renderContent = () => {
     switch (activeTab) {
       case 'home':
-        return <HomeFeed />;
+        return <HomeFeed ref={inputRef} />;
       case 'leaderboard':
         return (
           <div className="p-8 text-center">
@@ -52,8 +66,6 @@ export default function SocialApp() {
             <p className="text-[#8b98a5]">Your profile will appear here</p>
           </div>
         );
-      default:
-        return <HomeFeed />;
     }
   };
 
@@ -61,7 +73,8 @@ export default function SocialApp() {
     <div className="min-h-screen bg-[#0f172a]">
       <LeftSidebar activeTab={activeTab} onTabChange={setActiveTab} onNewPost={handleNewPost} />
       <main className="ml-[220px] mr-[520px] min-h-screen border-x border-[#39444d]">
-        {renderContent()}
+        <HomeFeed ref={inputRef} isVisible={activeTab === 'home'} />
+        {activeTab !== 'home' && renderContent()}
       </main>
       <RightPanel />
     </div>
