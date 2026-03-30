@@ -1,5 +1,5 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { io, Socket } from 'socket.io-client';
+import { FormEvent, useEffect, useState } from 'react';
+import { connectSocketFromStorage, socket } from '../socket';
 
 type ChatMessage = {
   text: string;
@@ -7,28 +7,14 @@ type ChatMessage = {
 };
 
 export default function SocketTestPage() {
-  const socketBaseUrl = useMemo(() => {
-    if (window.location.port === '3000') {
-      return `${window.location.protocol}//${window.location.hostname}:8080`;
-    }
-    return window.location.origin;
-  }, []);
-
-  const [socket, setSocket] = useState<Socket | null>(null);
-  const [connected, setConnected] = useState(false);
+  const [connected, setConnected] = useState(socket.connected);
   const [inputText, setInputText] = useState('');
   const [messages, setMessages] = useState<string[]>([]);
 
   useEffect(() => {
-    const s = io(socketBaseUrl, {
-      path: '/socket.io',
-      withCredentials: true,
-      transports: ['websocket'],
-    });
-
     const onConnect = () => {
       setConnected(true);
-      setMessages((prev) => [...prev, `connected: ${s.id}`]);
+      setMessages((prev) => [...prev, `connected: ${socket.id}`]);
     };
 
     const onDisconnect = () => {
@@ -41,25 +27,29 @@ export default function SocketTestPage() {
       setMessages((prev) => [...prev, `received from ${from}: ${payload.text}`]);
     };
 
-    s.on('connect', onConnect);
-    s.on('disconnect', onDisconnect);
-    s.on('chat:message', onChatMessage);
+    const onWelcome = (message: string) => {
+      setMessages((prev) => [...prev, `welcome: ${message}`]);
+    };
 
-    setSocket(s);
+    socket.on('connect', onConnect);
+    socket.on('disconnect', onDisconnect);
+    socket.on('chat:message', onChatMessage);
+    socket.on('welcome', onWelcome);
+    connectSocketFromStorage();
 
     return () => {
-      s.off('connect', onConnect);
-      s.off('disconnect', onDisconnect);
-      s.off('chat:message', onChatMessage);
-      s.disconnect();
+      socket.off('connect', onConnect);
+      socket.off('disconnect', onDisconnect);
+      socket.off('chat:message', onChatMessage);
+      socket.off('welcome', onWelcome);
     };
-  }, [socketBaseUrl]);
+  }, []);
 
   const sendMessage = (event: FormEvent) => {
     event.preventDefault();
     const text = inputText.trim();
 
-    if (!text || !socket) {
+    if (!text || !connected) {
       return;
     }
 
@@ -71,7 +61,6 @@ export default function SocketTestPage() {
   return (
     <div style={{ maxWidth: 700, margin: '40px auto', padding: 16 }}>
       <h1>Socket.IO Chat Test</h1>
-      <p>Backend URL: {socketBaseUrl}</p>
       <p>Status: {connected ? 'connected' : 'disconnected'}</p>
 
       <form onSubmit={sendMessage} style={{ display: 'flex', gap: 8, marginBottom: 16 }}>

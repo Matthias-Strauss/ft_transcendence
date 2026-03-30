@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { connectSocketWithToken } from '../socket';
 
 interface LoginResponse {
   accessToken: string;
@@ -28,6 +29,7 @@ export default function LoginPage() {
 
       const data: LoginResponse = await res.json();
       localStorage.setItem('accessToken', data.accessToken);
+      connectSocketWithToken(data.accessToken);
       navigate('/');
     } catch (err) {
       setError('Network error. Please try again. ');
@@ -65,11 +67,11 @@ export default function LoginPage() {
         <button className="secondary-btn" onClick={() => navigate('/register')}>
           Don&apos;t have an account? Register
         </button>
-{/* Socket.io test begin */}
+        {/* Socket.io test begin */}
         <button className="secondary-btn" onClick={() => navigate('/socket-test')}>
           Open Socket Test Page
         </button>
-{/* Socket.io test end */}
+        {/* Socket.io test end */}
       </div>
     </div>
   );
