@@ -4,7 +4,7 @@ import { prisma } from '../db.js';
 import { getAvatarUrlFromPath } from '../files/avatars.js';
 import { getPostImageUrlFromPath } from '../files/postings.js';
 import { PostErrors, CommentErrors } from '../errors/catalog.js';
-import { getFriendRelation } from './friendUtils.js';
+import { getAllAcceptedFriendUserIds, getFriendRelation } from './friendUtils.js';
 
 export const postAuthorInclude = {
   author: {
@@ -120,6 +120,13 @@ export async function checkPostVisibility(postId: string, viewerId: string) {
   }
 
   return post;
+}
+
+export async function getVisiblePostAuthorIds(viewerId: string) {
+  const acceptedFriendIds = await getAllAcceptedFriendUserIds(viewerId);
+  acceptedFriendIds.add(viewerId);
+
+  return acceptedFriendIds;
 }
 
 // COMMENTS

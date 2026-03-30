@@ -174,3 +174,22 @@ export async function getFriendRelation(viewerId: string, otherUserId: string) {
     friendRequestSentByMe: friendship.requesterId === viewerId,
   };
 }
+
+export async function getAllAcceptedFriendUserIds(viewerId: string) {
+  const friendships = await prisma.friendship.findMany({
+    where: {
+      status: 'ACCEPTED',
+      OR: [{ userOneId: viewerId }, { userTwoId: viewerId }],
+    },
+    select: {
+      userOneId: true,
+      userTwoId: true,
+    },
+  });
+
+  return new Set(
+    friendships.map((friendship) =>
+      friendship.userOneId === viewerId ? friendship.userTwoId : friendship.userOneId,
+    ),
+  );
+}
