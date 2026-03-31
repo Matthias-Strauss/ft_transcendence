@@ -4,6 +4,7 @@ import { prisma } from '../db.js';
 import { getAvatarUrlFromPath } from '../files/avatars.js';
 import { getPostImageUrlFromPath } from '../files/postings.js';
 import { PostErrors, CommentErrors } from '../errors/catalog.js';
+import { getAllAcceptedFriendUserIds, getFriendRelation } from './friendUtils.js';
 
 export const postAuthorInclude = {
   author: {
@@ -93,6 +94,39 @@ export async function checkPostExists(postId: string) {
   if (!post) {
     throw PostErrors.notFound();
   }
+}
+
+export async function checkPostVisibility(postId: string, viewerId: string) {
+  const post = await prisma.post.findUnique({
+    where: { id: postId },
+    select: {
+      id: true,
+      authorId: true,
+    },
+  });
+
+  if (!post) {
+    throw PostErrors.notFound();
+  }
+
+  if (post.authorId === viewerId) {
+    return post;
+  }
+
+  const relation = getFriendRelation(viewerId, post.authorId);
+
+  if (!(await relation).isFriend) {
+    throw PostErrors.notFound();
+  }
+
+  return post;
+}
+
+export async function getVisiblePostAuthorIds(viewerId: string) {
+  const acceptedFriendIds = await getAllAcceptedFriendUserIds(viewerId);
+  acceptedFriendIds.add(viewerId);
+
+  return acceptedFriendIds;
 }
 
 // COMMENTS
