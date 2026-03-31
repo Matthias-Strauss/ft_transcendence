@@ -215,3 +215,5 @@ dist
 .svelte-kit
 
 package-lock.json
+uploads/
+dbdata/
