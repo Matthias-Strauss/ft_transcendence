@@ -16,6 +16,7 @@ import {
   commentContextIncluded,
   checkCommentBelongsToPost,
   checkPostVisibility,
+  getVisiblePostAuthorIds,
 } from '../utils/postUtils.js';
 import {
   postImageUploadHandler,
@@ -35,14 +36,29 @@ postsRouter.get(
       throw AuthErrors.invalidToken();
     }
 
+    const visibleAuthorIds = await getVisiblePostAuthorIds(req.userId);
+
     const posts = await prisma.post.findMany({
+      where: {
+        authorId: {
+          in: [...visibleAuthorIds],
+        },
+      },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       include: postAuthorInclude,
     });
 
-    const { likedPostIds, sharedPostIds, bookmarkedPostIds } = await getPostViewerContext(
-      posts.map((post) => post.id),
-      req.userId,
+    const [{ likedPostIds, sharedPostIds, bookmarkedPostIds }, friendAuthorIds] = await Promise.all(
+      [
+        getPostViewerContext(
+          posts.map((post) => post.id),
+          req.userId,
+        ),
+        getAcceptedFriendUserIds(
+          req.userId,
+          posts.map((post) => post.authorId),
+        ),
+      ],
     );
 
     return res.json({
@@ -50,12 +66,14 @@ postsRouter.get(
         serializePost(post, {
           likedByMe: likedPostIds.has(post.id),
           sharedByMe: sharedPostIds.has(post.id),
-          bookmarkedByMe: bookmarkedPostIds?.has(post.id),
+          bookmarkedByMe: bookmarkedPostIds.has(post.id),
+          authorIsFriend: friendAuthorIds.has(post.authorId),
         }),
       ),
       meta: {
         total: posts.length,
         order: 'createdAt_desc',
+        scope: 'personal_feed',
       },
     });
   }),
