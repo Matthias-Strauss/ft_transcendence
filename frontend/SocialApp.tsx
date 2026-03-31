@@ -3,6 +3,7 @@ import { RightPanel } from './components/RightPanel';
 import { LeftSidebar } from './components/LeftSidebar';
 import { HomeFeed } from './pages/HomeFeed';
 import { FriendsPage } from './pages/FriendsPage';
+import { ProfilePage } from './pages/ProfilePage';
 import { useRef } from 'react';
 
 export default function SocialApp() {
@@ -60,12 +61,7 @@ export default function SocialApp() {
           </div>
         );
       case 'profile':
-        return (
-          <div className="p-8 text-center">
-            <h2 className="font-bold text-[20px] text-[#f7f9f9] mb-2">Profile</h2>
-            <p className="text-[#8b98a5]">Your profile will appear here</p>
-          </div>
-        );
+        return <ProfilePage />;
     }
   };
 

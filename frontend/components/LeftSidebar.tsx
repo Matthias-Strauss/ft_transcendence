@@ -90,7 +90,11 @@ export function LeftSidebar({ activeTab, onTabChange, onNewPost }: LeftSidebarPr
       </button>
 
       <div className="mt-auto">
-        <div className="flex items-center gap-3 py-4 hover:bg-[#1e293b] rounded-full px-3 cursor-pointer transition-colors">
+        <div
+          className="flex items-center gap-3 py-4 hover:bg-[#1e293b] rounded-full px-3 cursor-pointer transition-colors"
+          onClick={() => onTabChange('profile')}
+          role="button"
+        >
           <div className="size-10 rounded-full bg-gradient-to-br from-[var(--color-1)] to-[var(--color-2)] flex items-center justify-center shrink-0">
             <UserIcon className="size-5 text-white" />
           </div>
