@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import {
   Home,
   Gamepad2,
@@ -27,6 +28,36 @@ interface LeftSidebarProps {
 }
 
 export function LeftSidebar({ activeTab, onTabChange, onNewPost }: LeftSidebarProps) {
+  interface MeResponse {
+    id?: string;
+    username?: string;
+    displayname?: string;
+    avatarUrl?: string | null;
+  }
+
+  const [me, setMe] = useState<MeResponse | null>(null);
+
+  useEffect(() => {
+    const token = localStorage.getItem('accessToken');
+
+    async function load() {
+      if (!token) return;
+
+      try {
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+        const res = await fetch('api/me', { headers });
+        if (res.ok) {
+          const data = await res.json();
+          setMe(data);
+        }
+      } catch (err) {}
+    }
+
+    load();
+  }, []);
+
   return (
     <div className="bg-[#0f172a] flex flex-col gap-3 h-screen fixed left-0 top-0 w-[220px] px-4 pt-0 pb-4 border-r border-[#39444d]">
       <Logo />
@@ -95,14 +126,28 @@ export function LeftSidebar({ activeTab, onTabChange, onNewPost }: LeftSidebarPr
           onClick={() => onTabChange('profile')}
           role="button"
         >
-          <div className="size-10 rounded-full bg-gradient-to-br from-[var(--color-1)] to-[var(--color-2)] flex items-center justify-center shrink-0">
-            <UserIcon className="size-5 text-white" />
-          </div>
+          {me?.avatarUrl ? (
+            <div className="size-10 rounded-full overflow-hidden shrink-0">
+              <img
+                src={me.avatarUrl}
+                alt={me.displayname ?? me.username}
+                className="w-full h-full object-cover"
+              />
+            </div>
+          ) : (
+            <div className="size-10 rounded-full bg-gradient-to-br from-[var(--color-1)] to-[var(--color-2)] flex items-center justify-center shrink-0">
+              <UserIcon className="size-5 text-white" />
+            </div>
+          )}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1">
-              <p className="font-bold text-[15px] text-[#f7f9f9] truncate">Player One</p>
+              <p className="font-bold text-[15px] text-[#f7f9f9] truncate">
+                {me?.displayname ?? 'Player One'}
+              </p>
             </div>
-            <p className="text-[13px] text-[#8b98a5] truncate">@playerone</p>
+            <p className="text-[13px] text-[#8b98a5] truncate">
+              {me?.username ? `@${me.username}` : '@playerone'}
+            </p>
           </div>
         </div>
       </div>
