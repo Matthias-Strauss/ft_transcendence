@@ -1,18 +1,18 @@
-_This project has been created as part of the 42 curriculum by [mstrauss], [kruseva], [jmuhlber], [bszikora], [mohrahma]._
+_This project has been created as part of the 42 curriculum by [mstrauss], [kruseva], [jmuhlber], [bszikora], [vmamoten]._
 
 # ft_transcendence
 
 ## 📖 Description
 
 ft_transcendence is the final project of the 42 Common Core. It is a full-stack web application designed around a social media concept with an integrated multiplayer game layer.
-At this stage of the project, the focus is on building the core platform first: user authentication, profiles, a frontend foundation, a backend API, and the infrastructure needed to support social features and game-related extensions later on.
+By the end of March, the project had moved beyond pure planning: authentication, profiles, friends, posts, and chat persistence were already in active development, while the first playable game prototype was being explored in parallel.
 
 **Key Features:**
 
 - **Platform Foundation:** Monorepo structure with separated frontend, backend, database, and proxy setup.
-- **Social Core:** Authentication, user profiles, and the first steps toward user-to-user interaction.
-- **Technical Direction:** Containerized deployment, relational database support, and a framework-based frontend/backend stack.
-- **Planned Extension:** A multiplayer game module that will integrate into the social platform once the core foundation is stable.
+- **Social Core:** Authentication, user profiles, friendships, posts, and direct user-to-user interaction.
+- **Chat Progress:** Real-time chat flow and database-backed message history were already under active implementation.
+- **Game Prototype:** A first simple browser game prototype existed while the team was still deciding how the final multiplayer loop would be integrated.
 
 ---
 
@@ -74,7 +74,7 @@ This project currently uses Docker for the backend, database, and shared infrast
 | **[kruseva]**  | Project Manager | Coordinated team communication, tracked open work, and helped keep the team aligned across meetings and reviews. |
 | **[jmuhlber]** | Tech Lead       | Oversaw backend architecture, infrastructure discussions, and key technical decisions around auth, APIs, and deployment. |
 | **[bszikora]** | Developer       | Joined the team during the implementation phase to support game-related planning and additional feature delivery. |
-| **[mohrahma]** | Developer       | Added during the active implementation phase to reinforce development capacity as the team structure changed. |
+| **[vmamoten]** | Developer       | Joined during the late-March implementation phase and contributed to profile, auth-flow, and frontend integration work. |
 
 ---
 
@@ -127,12 +127,31 @@ We used feature branches, pull requests, and peer review as the normal delivery 
 
 ## 🗄 Database Schema
 
-![Database Schema](./path/to/schema_image.png) # ✏️ WE WILL ADD THIS ONCE DATABASE IS FINAL FEEL FREE TO TRACK THE CURRENT STATE BELOW THOUGH!!!
+The database had already moved past the placeholder stage by late March. The current Prisma schema was centered around user accounts and the first social features, with room to grow into the game layer later.
 
-- **Users:** Stores authentication data, social-posts, likes & dislikes, stats, and profile info.
-- **Matches:** Stores history of games played.
-- **Friendships:** Manages user relationships.
-- **Tournaments:** Tracks tournament brackets and results.
+- **User**
+  - Key fields: `id`, `username`, `password`, `displayName`, `email`, `avatarPath`
+  - Purpose: Stores account credentials and profile information.
+- **RefreshToken**
+  - Key fields: `id`, `token`, `userId`, `createdAt`, `expiresAt`
+  - Purpose: Supports session persistence and secure token refresh flows.
+- **Friendship**
+  - Key fields: `id`, `requesterId`, `receiverId`, `status`, `createdAt`
+  - Purpose: Tracks friend requests and accepted social connections between users.
+- **DirectMessage**
+  - Key fields: `id`, `senderId`, `receiverId`, `content`, `createdAt`
+  - Purpose: Stores chat history in the database instead of keeping messages only in memory.
+- **Post**
+  - Key fields: `id`, `authorId`, `content`, `createdAt`
+  - Purpose: Supports the social feed and user-generated content.
+- **Comment**
+  - Key fields: `id`, `authorId`, `postId`, `content`, `createdAt`
+  - Purpose: Supports interaction around posts.
+
+**Key relationships:**
+- One `User` can have many `RefreshToken`, `Post`, `Comment`, and `DirectMessage` records.
+- `Friendship` links two users and represents the current relationship state between them.
+- A `Post` belongs to one user and can have many `Comment` records.
 
 ---
 
@@ -153,59 +172,55 @@ At this point in the project, the team is targeting a social-media-first impleme
 | Gaming and User Experience | Advanced chat features | Minor | 1 | Chat is a natural bridge between the social platform and the game, especially for invites and user blocking. |
 | Web | Complete notification system for all creation, update, and deletion actions | Minor | 1 | Notifications strengthen the social experience and were discussed as a low-cost way to add value beyond the feed itself. |
 
-**Planned score at this stage: 16 points before optional refinements to the game branch.**
+**Planned score at this stage: 16 points, with the social platform already actively covering a large part of the web and user-management scope.**
 
 ---
 
 ## ✨ Features List & Assignment
 
-**✏️ DOCUMENT THE INDIVIDUAL FEATURES YOU ARE WORKING ON, USE YOUR 42 LOGIN NAME. THE BELOW ARE EXAMPLES!!!**
-
-| Feature               | Developer(s) | Description                                      |
-| :-------------------- | :----------- | :----------------------------------------------- |
-| **Auth System**       | [Login]      | OAuth, JWT handling, and 2FA.                    |
-| **Tic-Tac-Toe Logic** | [Login]      | Game state management and win detection.         |
-| **Chat System**       | [Login]      | WebSocket integration for real-time messaging.   |
-| **Blockchain**        | [mstrauss]   | Smart contract development and Web3 integration. |
-| **Tournament Logic**  | [mstrauss]   | Developed tournament logic for Minigame(s).      |
-| **Frontend UI**       | [Login]      | Responsive design and component structure.       |
-| **DevOps**            | [Login]      | Docker configuration and deployment scripts.     |
+| Feature | Developer(s) | Description |
+| :------ | :----------- | :---------- |
+| **Authentication Flow** | [jmuhlber], [vmamoten] | Login, registration, token handling, and backend auth endpoints were already being integrated into the app flow. |
+| **Profiles** | [vmamoten], [kruseva] | Profile page work was in progress, including styling updates and account-facing UI. |
+| **Friends System** | [jmuhlber] | Friend requests and relationship handling were close to functional by the end of March. |
+| **Posts / Feed Foundation** | [kruseva], [jmuhlber] | The project already had the basis for social content and feed-related backend/frontend work. |
+| **Chat With History** | [kruseva], [jmuhlber] | Real-time messaging was being connected to persistent database storage for chat history. |
+| **Game Prototype** | [bszikora], [mstrauss] | A first simple browser game prototype existed as an early test bed for the final multiplayer direction. |
+| **Infrastructure & Setup** | [mstrauss], [jmuhlber] | Docker, service layout, and local setup flow were already established to support team-wide development. |
 
 ---
 
 ## 👷 Individual Contributions
 
-**✏️ DOCUMENT THE MODULES YOU ARE WORKING ON AND THE CHALLENGES YOU FACE. USE YOUR 42 LOGIN NAME. I HAVE PROVIDED AN EXAMPLE!!!**
-
 ### [mstrauss]
 
-- **Modules:** e.g. Blockchain, Tournament System.
-- **Contribution:** e.g. Wrote the Solidity smart contract. Built the tournament bracket generation logic.
-- **Challenges:** e.g., "Integrating the Web3 provider with the existing frontend state."
+- **Modules:** Product direction, setup coordination, early game planning.
+- **Contribution:** Defined the project scope, kept the module strategy aligned with the subject, and supported the first game-prototype direction.
+- **Challenges:** Keeping the project achievable while still aiming for a strong module score and social-platform identity.
 
 ### [kruseva]
 
-- **Modules:**
-- **Contribution:**
-- **Challenges:**
+- **Modules:** Frontend UI, chat, feed-related interfaces.
+- **Contribution:** Drove frontend implementation work, including chat UX, social-page structure, and the visual direction of the application.
+- **Challenges:** Connecting evolving backend behavior to a frontend that was still changing quickly during active feature development.
 
 ### [jmuhlber]
 
-- **Modules:**
-- **Contribution:**
-- **Challenges:**
+- **Modules:** Backend API, authentication, Prisma schema, friendship logic.
+- **Contribution:** Built core backend foundations, auth flows, database-backed models, and the friends-system groundwork.
+- **Challenges:** Designing backend structures that would support both current social features and the later game integration.
 
-### [rriebsch]
+### [bszikora]
 
-- **Modules:**
-- **Contribution:**
-- **Challenges:**
+- **Modules:** Game prototype, multiplayer planning.
+- **Contribution:** Joined during implementation and began exploring the first browser-game prototype and how game session logic could fit the project.
+- **Challenges:** Starting game work while the final integration and real-time architecture were still being refined.
 
-### [ghodges]
+### [vmamoten]
 
-- **Modules:**
-- **Contribution:**
-- **Challenges:**
+- **Modules:** Profiles, auth-flow integration, frontend polish.
+- **Contribution:** Contributed to profile-page work, login/register improvements, and frontend-side integration tasks after joining in late March.
+- **Challenges:** Integrating quickly into an already moving codebase and picking up unfinished UI and auth work without slowing feature progress.
 
 ---
 
