@@ -1,4 +1,4 @@
-import {useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { PostCard } from '../components/ui/PostCard';
 import { Post } from '../mock_data/mock';
 
@@ -10,61 +10,55 @@ interface MeResponse {
 }
 
 export function ProfilePage() {
+  const [me, setMe] = useState<MeResponse | null>(null);
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [loading, setLoading] = useState(true);
 
-	const [me, setMe] = useState<MeResponse | null>(null);
-	const [posts, setPosts] = useState<Post[]>([]);
-	const [loading, setLoading ] = useState(true);
-
-	useEffect(() => {
+  useEffect(() => {
     const token = localStorage.getItem('accessToken');
 
-	async function load() {
-		if (!token)
-		{
-			setLoading(false);
-			return;
-		}
+    async function load() {
+      if (!token) {
+        setLoading(false);
+        return;
+      }
 
-		try {
-			const headers: Record<string, string> = {'Content-Type': 'application/json' };
-			if (token) headers['Authorization'] = `Bearer ${token}`;
+      try {
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
 
-			const meRes = await fetch('api/me', {headers});
-			if (meRes.ok) {
-				const data = await meRes.json();
-				setMe(data);
-			}
+        const meRes = await fetch('api/me', { headers });
+        if (meRes.ok) {
+          const data = await meRes.json();
+          setMe(data);
+        }
 
-			const postRes = await fetch('api/me/posts', {headers});
-			if( postRes.ok) {
-				const payload = await postRes.json();
-				setPosts(payload.items || []);
-			}
-		}
-			catch (err) {
-			}
-			finally {
-				setLoading(false);
-			}
-		}
-		load();
-	}, []);
+        const postRes = await fetch('api/me/posts', { headers });
+        if (postRes.ok) {
+          const payload = await postRes.json();
+          setPosts(payload.items || []);
+        }
+      } catch (err) {
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, []);
 
-	if (loading) {
-		return <div className="p-8 text-[#8b98a5]">Loading profile...</div>
-	}
-	
-	const token = localStorage.getItem('accessToken');
-	if(!token)
-	{
-		return (
-			<div className="p-8 text-[#8b98a5]">
-				Please log in to view your profile. Open the Login page to continue.
-			</div>
-		);
-	}
+  if (loading) {
+    return <div className="p-8 text-[#8b98a5]">Loading profile...</div>;
+  }
 
- 
+  const token = localStorage.getItem('accessToken');
+  if (!token) {
+    return (
+      <div className="p-8 text-[#8b98a5]">
+        Please log in to view your profile. Open the Login page to continue.
+      </div>
+    );
+  }
+
   return (
     <div>
       <div className="sticky top-0 backdrop-blur-xl bg-[#0f172a]/80 border-b border-[#39444d] z-10">
