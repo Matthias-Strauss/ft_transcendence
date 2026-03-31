@@ -1,15 +1,18 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { RightPanel } from './components/RightPanel';
 import { LeftSidebar } from './components/LeftSidebar';
 import { HomeFeed } from './pages/HomeFeed';
 import { FriendsPage } from './pages/FriendsPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { useRef } from 'react';
+import { setLogoutHandler, setAccessTokenListener } from './utils/api';
 
 export default function SocialApp() {
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const shouldFocusComposerRef = useRef(false);
   const [activeTab, setActiveTab] = useState('home');
+  const navigate = useNavigate();
 
   const handleNewPost = () => {
     shouldFocusComposerRef.current = true;
@@ -25,6 +28,50 @@ export default function SocialApp() {
     inputRef.current?.focus();
     shouldFocusComposerRef.current = false;
   }, [activeTab]);
+
+  useEffect(() => {
+    setLogoutHandler(() => navigate('/login', { replace: true }));
+
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    function clearTimer() {
+      if (timer) {
+        clearTimeout(timer);
+        timer = null;
+      }
+    }
+
+    function scheduleForToken(token: string | null) {
+      clearTimer();
+      if (!token) return;
+      try {
+        const parts = token.split('.');
+        if (parts.length < 2) return;
+        const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+        const exp = payload.exp;
+        if (!exp) return;
+        const expMs = exp * 1000;
+        const now = Date.now();
+        const msLeft = expMs - now;
+        if (msLeft <= 0) {
+          console.log('[tokenWatcher] token already expired — logging out');
+          localStorage.removeItem('accessToken');
+          navigate('/login', { replace: true });
+          return;
+        }
+        console.log(`[tokenWatcher] scheduling logout in ${msLeft}ms`);
+        timer = setTimeout(() => {
+          console.log('[tokenWatcher] token expired — logging out');
+          localStorage.removeItem('accessToken');
+          navigate('/login', { replace: true });
+        }, msLeft + 500);
+      } catch (e) {}
+    }
+
+    scheduleForToken(localStorage.getItem('accessToken'));
+
+    setAccessTokenListener((t) => scheduleForToken(t));
+  }, [navigate]);
 
   const renderContent = () => {
     switch (activeTab) {

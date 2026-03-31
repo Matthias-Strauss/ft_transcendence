@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { apiFetch } from '../utils/api';
 import { PostCard } from '../components/ui/PostCard';
 import { Post } from '../mock_data/mock';
 
@@ -24,16 +25,13 @@ export function ProfilePage() {
       }
 
       try {
-        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-        if (token) headers['Authorization'] = `Bearer ${token}`;
-
-        const meRes = await fetch('api/me', { headers });
+        const meRes = await apiFetch('/api/me');
         if (meRes.ok) {
           const data = await meRes.json();
           setMe(data);
         }
 
-        const postRes = await fetch('api/me/posts', { headers });
+        const postRes = await apiFetch('/api/me/posts');
         if (postRes.ok) {
           const payload = await postRes.json();
           setPosts(payload.items || []);

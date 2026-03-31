@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { apiFetch } from '../utils/api';
 import {
   Home,
   Gamepad2,
@@ -38,16 +39,9 @@ export function LeftSidebar({ activeTab, onTabChange, onNewPost }: LeftSidebarPr
   const [me, setMe] = useState<MeResponse | null>(null);
 
   useEffect(() => {
-    const token = localStorage.getItem('accessToken');
-
     async function load() {
-      if (!token) return;
-
       try {
-        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-        if (token) headers['Authorization'] = `Bearer ${token}`;
-
-        const res = await fetch('api/me', { headers });
+        const res = await apiFetch('/api/me');
         if (res.ok) {
           const data = await res.json();
           setMe(data);
@@ -55,7 +49,7 @@ export function LeftSidebar({ activeTab, onTabChange, onNewPost }: LeftSidebarPr
       } catch (err) {}
     }
 
-    load();
+    void load();
   }, []);
 
   return (

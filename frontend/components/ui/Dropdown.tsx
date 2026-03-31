@@ -1,4 +1,5 @@
 import { DropdownItem } from '../../mock_data/mock';
+import { apiFetch } from '../../utils/api';
 
 interface DropdownProps {
   items: DropdownItem[];
@@ -21,10 +22,9 @@ async function handleAction({
 
   switch (action) {
     case 'Save': {
-      const response = await fetch(`/api/posts/${postId}/bookmark`, {
+      const response = await apiFetch(`/api/posts/${postId}/bookmark`, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ postId, authorId }),
@@ -33,10 +33,9 @@ async function handleAction({
       return response.ok;
     }
     case 'Share': {
-      const response = await fetch(`/api/posts/${postId}/share`, {
+      const response = await apiFetch(`/api/posts/${postId}/share`, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ postId, authorId }),
