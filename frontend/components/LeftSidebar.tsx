@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { apiFetch } from '../utils/api';
 import {
   Home,
@@ -37,6 +38,7 @@ export function LeftSidebar({ activeTab, onTabChange, onNewPost }: LeftSidebarPr
   }
 
   const [me, setMe] = useState<MeResponse | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     async function load() {
@@ -61,7 +63,10 @@ export function LeftSidebar({ activeTab, onTabChange, onNewPost }: LeftSidebarPr
           icon={<Home className="size-6" />}
           label="Home"
           active={activeTab === 'home'}
-          onClick={() => onTabChange('home')}
+          onClick={() => {
+            onTabChange('home');
+            navigate('/');
+          }}
         />
         <SidebarItem
           icon={<Trophy className="size-6" />}

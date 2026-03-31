@@ -1,11 +1,10 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState, useRef } from 'react';
+import { useNavigate, Outlet, useMatch } from 'react-router-dom';
 import { RightPanel } from './components/RightPanel';
 import { LeftSidebar } from './components/LeftSidebar';
 import { HomeFeed } from './pages/HomeFeed';
 import { FriendsPage } from './pages/FriendsPage';
 import { ProfilePage } from './pages/ProfilePage';
-import { useRef } from 'react';
 import { setLogoutHandler, setAccessTokenListener } from './utils/api';
 
 export default function SocialApp() {
@@ -13,6 +12,7 @@ export default function SocialApp() {
   const shouldFocusComposerRef = useRef(false);
   const [activeTab, setActiveTab] = useState('home');
   const navigate = useNavigate();
+  const viewingUser = Boolean(useMatch('/users/:username'));
 
   const handleNewPost = () => {
     shouldFocusComposerRef.current = true;
@@ -116,8 +116,9 @@ export default function SocialApp() {
     <div className="min-h-screen bg-[#0f172a]">
       <LeftSidebar activeTab={activeTab} onTabChange={setActiveTab} onNewPost={handleNewPost} />
       <main className="ml-[220px] mr-[520px] min-h-screen border-x border-[#39444d]">
-        <HomeFeed ref={inputRef} isVisible={activeTab === 'home'} />
-        {activeTab !== 'home' && renderContent()}
+        {!viewingUser && <HomeFeed ref={inputRef} isVisible={activeTab === 'home'} />}
+        {!viewingUser && activeTab !== 'home' && renderContent()}
+        {viewingUser && <Outlet />}
       </main>
       <RightPanel />
     </div>
