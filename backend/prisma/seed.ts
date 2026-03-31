@@ -55,6 +55,7 @@ async function seedPost(post: {
   likeCount?: number;
   commentCount?: number;
   shareCount?: number;
+  visibility?: 'PUBLIC' | 'FRIENDS' | 'PRIVATE';
   createdAt: Date;
 }) {
   await prisma.post.upsert({
@@ -67,6 +68,7 @@ async function seedPost(post: {
       likeCount: post.likeCount,
       commentCount: post.commentCount,
       shareCount: post.shareCount,
+      visibility: post.visibility ?? 'PUBLIC',
       createdAt: post.createdAt,
     },
     create: {
@@ -78,6 +80,7 @@ async function seedPost(post: {
       likeCount: post.likeCount,
       commentCount: post.commentCount,
       shareCount: post.shareCount,
+      visibility: post.visibility ?? 'PUBLIC',
       createdAt: post.createdAt,
     },
   });
@@ -109,7 +112,9 @@ async function seedComment(comment: {
     },
   });
 
-  console.log(`seed.ts: comment seeded: commentId:'${comment.id}' on postId:'${comment.postId}' by userId:'${comment.authorId}'`);
+  console.log(
+    `seed.ts: comment seeded: commentId:'${comment.id}' on postId:'${comment.postId}' by userId:'${comment.authorId}'`,
+  );
 }
 
 async function seedLike(postId: string, userId: string) {

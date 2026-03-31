@@ -63,12 +63,16 @@ postsRouter.get(
 const CreatePostSchema = z
   .object({
     content: z.string().trim().min(1).max(500),
-    gameTag: z.preprocess((value) => {
-      if (typeof value === 'string' && value.trim().length === 0) {
-        return null;
-      }
-      return value;
-    }, z.union([z.string().trim().min(1).max(40), z.null()]).optional()),
+    gameTag: z.preprocess(
+      (value) => {
+        if (typeof value === 'string' && value.trim().length === 0) {
+          return null;
+        }
+        return value;
+      },
+      z.union([z.string().trim().min(1).max(40), z.null()]).optional(),
+    ),
+    visibility: z.enum(['PUBLIC', 'FRIENDS', 'PRIVATE']).optional(),
   })
   .strict();
 
@@ -100,6 +104,7 @@ postsRouter.post(
           content: parsed.data.content,
           imagePath,
           gameTag: parsed.data.gameTag ?? null,
+          visibility: parsed.data.visibility ?? 'PUBLIC',
         },
         include: postAuthorInclude,
       });
