@@ -121,3 +121,17 @@ export async function apiFetch(input: RequestInfo | URL, init?: RequestInit): Pr
 
   return retryResponse;
 }
+
+export async function logout(): Promise<void> {
+  try {
+    const res = await fetch('/api/auth/logout', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    console.log('[api] logout response', res.status);
+  } catch (e) {
+    console.error('[api] logout request failed', e);
+  }
+  handleLogout();
+}

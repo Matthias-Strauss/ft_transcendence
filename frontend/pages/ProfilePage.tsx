@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { apiFetch } from '../utils/api';
+import { apiFetch, logout } from '../utils/api';
 import { PostCard } from '../components/ui/PostCard';
 import { Post } from '../mock_data/mock';
 
@@ -83,9 +83,21 @@ export function ProfilePage() {
                 {me?.username ? `@${me.username}` : ''}
               </div>
             </div>
-            <div className="ml-auto">
+            <div className="ml-auto flex gap-2">
               <button className="bg-[var(--color-1)] hover:bg-[var(--color-1)]/90 text-[#f7f9f9] rounded-full py-2 px-4 transition-colors">
                 Edit profile
+              </button>
+              <button
+                onClick={async () => {
+                  try {
+                    await logout();
+                  } catch (e) {
+                    console.error('Logout failed', e);
+                  }
+                }}
+                className="bg-transparent border border-[#39444d] text-[#f7f9f9] rounded-full py-2 px-4 transition-colors"
+              >
+                Logout
               </button>
             </div>
           </div>
