@@ -1,12 +1,13 @@
 import { z } from 'zod';
 
 import { RequestErrors } from '../errors/catalog.js';
+import { PAGINATION_DEFAULT_LIMIT, PAGINATION_MAX_LIMIT } from '../config.js';
 
 const CursorPaginationQuerySchema = z
   .object({
     limit: z.preprocess((value) => {
       if (value === undefined) {
-        return 20;
+        return PAGINATION_DEFAULT_LIMIT;
       }
 
       if (typeof value === 'string' && value.trim().length > 0) {
@@ -14,7 +15,7 @@ const CursorPaginationQuerySchema = z
       }
 
       return value;
-    }, z.number().int().min(1).max(50)),
+    }, z.number().int().min(1).max(PAGINATION_MAX_LIMIT)),
     cursor: z.preprocess((value) => {
       if (typeof value === 'string' && value.trim().length > 0) {
         return value;
@@ -52,7 +53,6 @@ export function encodeDateIdCursorToB64(cursor: { id: string; createdAt: Date | 
     id: cursor.id,
     createdAt: cursor.createdAt instanceof Date ? cursor.createdAt.toISOString() : cursor.createdAt,
   };
-  console.log('encoding cursor: ', payload);
 
   return Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url');
 }
@@ -84,7 +84,6 @@ export function decodeDateIdCursorFromB64(cursor: string): DateIdCursor {
     ]);
   }
 
-  console.log('decoded cursor: ', parsed.data);
   return {
     id: parsed.data.id,
     createdAt: new Date(parsed.data.createdAt),
@@ -125,10 +124,6 @@ export function getCursorPage<T>(
 ) {
   const hasMore = items.length > limit;
   const pageItems = hasMore ? items.slice(0, limit) : items;
-
-  console.log('getCursorPage > hasMore: ', hasMore);
-  console.log('getCursorPage > pageItems.length: ', pageItems.length);
-  console.log('getCursorPage > pageItems: ', pageItems);
 
   return {
     items: pageItems,

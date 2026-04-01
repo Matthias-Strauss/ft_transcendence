@@ -42,7 +42,6 @@ postsRouter.get(
     }
 
     const { limit, cursor } = parseCursorPaginationFromQuery(req.query);
-    console.log('parsed >limit, >cursor: ', { limit, cursor });
 
     const visibleAuthorIds = await getVisiblePostAuthorIds(req.userId);
 
