@@ -18,6 +18,11 @@ import {
   getFriendRelation,
 } from '../utils/friendUtils.js';
 import { FriendErrors } from '../errors/catalog.js';
+import {
+  buildDescDateIdCursor,
+  getCursorPage,
+  parseCursorPaginationFromQuery,
+} from '../utils/paginationUtils.js';
 
 export const usersRouter = Router();
 
@@ -89,57 +94,80 @@ usersRouter.get(
       throw AuthErrors.invalidToken();
     }
 
-    const parsed = UsernameSchema.safeParse(req.params);
-    if (!parsed.success) {
-      throw RequestErrors.badRequest(parsed.error.issues);
+    const paramsParsed = UsernameSchema.safeParse(req.params);
+    if (!paramsParsed.success) {
+      throw RequestErrors.badRequest(paramsParsed.error.issues);
     }
 
+    const { limit, cursor } = parseCursorPaginationFromQuery(req.query);
+
     const user = await prisma.user.findUnique({
-      where: { username: parsed.data.username },
+      where: { username: paramsParsed.data.username },
       select: { id: true },
     });
     if (!user) {
       throw UserErrors.userNotFound();
     }
 
-    const relation = await getFriendRelation(req.userId, user.id);
-    if (!relation.isFriend && user.id !== req.userId) {
-      return res.json({
-        items: [],
-        meta: {
-          total: 0,
-          order: 'createdAt_desc',
-        },
-      });
+    if (req.userId !== user.id) {
+      const relation = await getFriendRelation(req.userId, user.id);
+
+      if (!relation.isFriend) {
+        return res.json({
+          items: [],
+          meta: {
+            count: 0,
+            limit,
+            hasMore: false,
+            nextCursor: null,
+            order: 'createdAt_desc',
+          },
+        });
+      }
     }
 
     const posts = await prisma.post.findMany({
-      where: { authorId: user.id },
+      where: {
+        authorId: user.id,
+        ...(cursor ? buildDescDateIdCursor(cursor) : {}),
+      },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: limit + 1,
       include: postAuthorInclude,
     });
 
-    const [{ likedPostIds, sharedPostIds }, friendAuthorIds] = await Promise.all([
-      getPostViewerContext(
-        posts.map((post) => post.id),
-        req.userId,
-      ),
-      getAcceptedFriendUserIds(
-        req.userId,
-        posts.map((post) => post.authorId),
-      ),
-    ]);
+    const pagedPosts = getCursorPage(posts, limit, (post) => ({
+      id: post.id,
+      createdAt: post.createdAt,
+    }));
+
+    const [{ likedPostIds, sharedPostIds, bookmarkedPostIds }, friendAuthorIds] = await Promise.all(
+      [
+        getPostViewerContext(
+          pagedPosts.items.map((post) => post.id),
+          req.userId,
+        ),
+        getAcceptedFriendUserIds(
+          req.userId,
+          pagedPosts.items.map((post) => post.authorId),
+        ),
+      ],
+    );
 
     return res.json({
-      items: posts.map((post) =>
+      items: pagedPosts.items.map((post) =>
         serializePost(post, {
           likedByMe: likedPostIds.has(post.id),
           sharedByMe: sharedPostIds.has(post.id),
+          bookmarkedByMe: bookmarkedPostIds.has(post.id),
           authorIsFriend: friendAuthorIds.has(post.authorId),
         }),
       ),
       meta: {
-        total: posts.length,
+        count: pagedPosts.items.length,
+        limit,
+        hasMore: pagedPosts.hasMore,
+        nextCursor: pagedPosts.nextCursor,
         order: 'createdAt_desc',
       },
     });

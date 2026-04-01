@@ -25,6 +25,11 @@ import {
 } from '../files/postings.js';
 import { resolveInFilesDir } from '../files/storage.js';
 import { getAcceptedFriendUserIds } from '../utils/friendUtils.js';
+import {
+  parseCursorPaginationFromQuery,
+  buildDescDateIdCursor,
+  getCursorPage,
+} from '../utils/paginationUtils.js';
 
 export const postsRouter = Router();
 
@@ -36,6 +41,9 @@ postsRouter.get(
       throw AuthErrors.invalidToken();
     }
 
+    const { limit, cursor } = parseCursorPaginationFromQuery(req.query);
+    console.log('parsed >limit, >cursor: ', { limit, cursor });
+
     const visibleAuthorIds = await getVisiblePostAuthorIds(req.userId);
 
     const posts = await prisma.post.findMany({
@@ -43,26 +51,33 @@ postsRouter.get(
         authorId: {
           in: [...visibleAuthorIds],
         },
+        ...(cursor ? buildDescDateIdCursor(cursor) : {}),
       },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: limit + 1,
       include: postAuthorInclude,
     });
+
+    const pagedPosts = getCursorPage(posts, limit, (post) => ({
+      id: post.id,
+      createdAt: post.createdAt,
+    }));
 
     const [{ likedPostIds, sharedPostIds, bookmarkedPostIds }, friendAuthorIds] = await Promise.all(
       [
         getPostViewerContext(
-          posts.map((post) => post.id),
+          pagedPosts.items.map((post) => post.id),
           req.userId,
         ),
         getAcceptedFriendUserIds(
           req.userId,
-          posts.map((post) => post.authorId),
+          pagedPosts.items.map((post) => post.authorId),
         ),
       ],
     );
 
     return res.json({
-      items: posts.map((post) =>
+      items: pagedPosts.items.map((post) =>
         serializePost(post, {
           likedByMe: likedPostIds.has(post.id),
           sharedByMe: sharedPostIds.has(post.id),
@@ -71,7 +86,10 @@ postsRouter.get(
         }),
       ),
       meta: {
-        total: posts.length,
+        count: pagedPosts.items.length,
+        limit,
+        hasMore: pagedPosts.hasMore,
+        nextCursor: pagedPosts.nextCursor,
         order: 'createdAt_desc',
         scope: 'personal_feed',
       },
