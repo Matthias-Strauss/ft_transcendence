@@ -252,29 +252,35 @@ meRouter.get(
     const friendships = await prisma.friendship.findMany({
       where: {
         status: 'PENDING',
-        addresseeId: viewerId,
+        OR: [{ requesterId: viewerId }, { addresseeId: viewerId }],
       },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       select: {
+        requesterId: true,
+        addresseeId: true,
         requester: {
+          select: friendUserSelect,
+        },
+        addressee: {
           select: friendUserSelect,
         },
       },
     });
 
-    const requesterUsers = friendships.map((friendship) => friendship.requester);
-
     return res.json({
-      items: requesterUsers.map((requesterUser) =>
-        serializeFriendUser(requesterUser, {
+      items: friendships.map((friendship) => {
+        const isIncomingRequest = friendship.addresseeId === viewerId;
+        const requestUser = isIncomingRequest ? friendship.requester : friendship.addressee;
+
+        return serializeFriendUser(requestUser, {
           isFriend: false,
           friendStatus: 'requested',
-          friendRequestIncoming: true,
-          friendRequestSentByMe: false,
-        }),
-      ),
+          friendRequestIncoming: isIncomingRequest,
+          friendRequestSentByMe: !isIncomingRequest,
+        });
+      }),
       meta: {
-        total: requesterUsers.length,
+        total: friendships.length,
         order: 'createdAt_desc',
       },
     });
