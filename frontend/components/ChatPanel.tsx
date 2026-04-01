@@ -13,6 +13,7 @@ interface Message {
 interface ChatPayload {
   text: string;
   from?: string;
+  username?: string;
 }
 
 const MOCK_MESSAGES: Message[] = [
@@ -67,7 +68,7 @@ export function ChatPanel() {
 
     const onChatMessage = (payload: ChatPayload) => {
       const isOwn = payload.from === socket.id;
-      const userName = isOwn ? 'You' : payload.from ?? 'Player';
+      const userName = isOwn ? 'You' : payload.username ?? 'Player';
 
       setMessages((prev) => [
         ...prev,

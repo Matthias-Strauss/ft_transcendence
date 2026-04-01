@@ -55,7 +55,7 @@ export function startServer() {
     const user = (socket as any).user;
     console.log('Authenticated user connected:', user);
     socket.on('chat:message', (payload: { text: string }) => {
-      io.emit('chat:message', { ...payload, from: socket.id });
+      io.emit('chat:message', { ...payload, from: socket.id, username: user.username });
     });
     socket.on('disconnect', () => {
       console.log('socket disconnected:', socket.id);
