@@ -48,6 +48,7 @@ usersRouter.get(
         },
       },
       select: {
+        id: true,
         username: true,
         displayname: true,
         avatarPath: true,
@@ -56,13 +57,31 @@ usersRouter.get(
       take: 20,
     });
 
-    return res.json({
-      items: users.map((u) => ({
-        username: u.username,
-        displayname: u.displayname,
-        avatarUrl: getAvatarUrlFromPath(u.avatarPath),
-      })),
-    });
+    const items = await Promise.all(
+      users.map(async (u) => {
+        const [postsCount, friendsCount] = await Promise.all([
+          prisma.post.count({
+            where: { authorId: u.id },
+          }),
+          prisma.friendship.count({
+            where: {
+              status: 'ACCEPTED',
+              OR: [{ userOneId: u.id }, { userTwoId: u.id }],
+            },
+          }),
+        ]);
+
+        return {
+          username: u.username,
+          displayname: u.displayname,
+          avatarUrl: getAvatarUrlFromPath(u.avatarPath),
+          postsCount,
+          friendsCount,
+        };
+      }),
+    );
+
+    return res.json({ items });
   }),
 );
 
