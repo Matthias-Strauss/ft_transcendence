@@ -1,6 +1,7 @@
 import { Post } from '../../mock_data/mock';
 import { Heart, Send } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { apiFetch } from '../../utils/api';
 import { Comment } from '../../mock_data/mock';
 import { CommentsResponse } from '../../mock_data/mock';
 
@@ -15,11 +16,8 @@ async function getComment({ postId }: { postId: string }): Promise<CommentsRespo
     throw new Error('Access token is invalid');
   }
 
-  const res = await fetch(`/api/posts/${postId}/comments`, {
+  const res = await apiFetch(`/api/posts/${postId}/comments`, {
     method: 'GET',
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
   });
 
   if (!res.ok) {
@@ -45,10 +43,9 @@ export default function CommentSection({ post, onCommentCreated }: PostProp) {
       return;
     }
 
-    const res = await fetch(`/api/posts/${post.id}/comments`, {
+    const res = await apiFetch(`/api/posts/${post.id}/comments`, {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ content }),

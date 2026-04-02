@@ -3,6 +3,7 @@
 // The pop up modal should show only in desktop
 
 import { forwardRef, useState, type ChangeEvent } from 'react';
+import { apiFetch } from '../../utils/api';
 import { ImagePlus, X } from 'lucide-react';
 
 interface CreatePostFormProps {
@@ -56,11 +57,8 @@ const CreatePostForm = forwardRef<HTMLTextAreaElement, CreatePostFormProps>(
         if (imageFile !== null) formData.append('image', imageFile);
         if (gameTag !== '') formData.append('gameTag', gameTag);
 
-        const response = await fetch('/api/posts', {
+        const response = await apiFetch('/api/posts', {
           method: 'POST',
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
           body: formData,
         });
 

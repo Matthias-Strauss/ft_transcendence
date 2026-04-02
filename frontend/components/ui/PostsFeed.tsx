@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { apiFetch } from '../../utils/api';
 import { PostCard } from './PostCard';
 import { Post } from '../../mock_data/mock';
 
@@ -20,14 +21,8 @@ export function PostsFeed({ refreshKey = 0 }: PostsFeedProps) {
   useEffect(() => {
     const fetchPosts = async () => {
       setLoading(true);
-      const token = localStorage.getItem('accessToken');
       try {
-        const response = await fetch('/api/posts', {
-          method: 'GET',
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        const response = await apiFetch('/api/posts', { method: 'GET' });
 
         if (!response.ok) throw new Error('Failed to fetch posts');
 

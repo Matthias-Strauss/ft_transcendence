@@ -4,6 +4,7 @@ import LoginPage from './pages/LoginPage';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import SocialApp from './SocialApp';
 import RegistrationPage from './pages/RegistrationPage';
+import UserProfile from './pages/UserProfile';
 import SocketTestPage from './pages/temp_SocketTestPage';
 import { connectSocketFromStorage, disconnectSocket, socket } from './socket';
 
@@ -27,6 +28,9 @@ export default function App() {
 
   return (
     <Routes>
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/register" element={<RegistrationPage />} />
+
       <Route
         path="/"
         element={
@@ -34,17 +38,9 @@ export default function App() {
             <SocialApp />
           </ProtectedRoute>
         }
-      />
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/register" element={<RegistrationPage />} />
-      <Route
-        path="/socket-test"
-        element={
-          <ProtectedRoute>
-            <SocketTestPage />
-          </ProtectedRoute>
-        }
-      />
+      >
+        <Route path="users/:username" element={<UserProfile />} />
+      </Route>
     </Routes>
   );
 }
