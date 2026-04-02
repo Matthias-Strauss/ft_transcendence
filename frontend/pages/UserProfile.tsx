@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { apiFetch } from '../utils/api';
+import { apiFetch, logout } from '../utils/api';
 import { PostCard } from '../components/ui/PostCard';
 import { Post } from '../mock_data/mock';
 
@@ -13,6 +13,7 @@ interface UserResponse {
 export default function UserProfile() {
   const { username } = useParams();
   const [user, setUser] = useState<UserResponse | null>(null);
+  const [me, setMe] = useState<UserResponse | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -42,6 +43,24 @@ export default function UserProfile() {
 
     void load();
   }, [username]);
+
+  useEffect(() => {
+    async function loadMe() {
+      try {
+        const res = await apiFetch('/api/me');
+        if (res.ok) {
+          const data = await res.json();
+          setMe(data);
+        }
+      } catch (e) {
+        console.error('Failed to load current user', e);
+      }
+    }
+
+    void loadMe();
+  }, []);
+  const normalize = (s?: string | null) => (s ?? '').toString().replace(/^@/, '').toLowerCase();
+  const isMine = normalize(me?.username) === normalize(username as string | undefined);
   if (loading) return <div className="p-8 text-[#8b98a5]">Loading profile...</div>;
 
   if (!user) return <div className="p-8 text-[#8b98a5]">User not found</div>;
@@ -73,6 +92,27 @@ export default function UserProfile() {
               <div className="text-[15px] text-[#8b98a5]">
                 {user.username ? `@${user.username}` : ''}
               </div>
+            </div>
+            <div className="ml-auto flex gap-2">
+              {isMine && (
+                <>
+                  <button className="bg-[var(--color-1)] hover:bg-[var(--color-1)]/90 text-[#f7f9f9] rounded-full py-2 px-4 transition-colors">
+                    Edit profile
+                  </button>
+                  <button
+                    onClick={async () => {
+                      try {
+                        await logout();
+                      } catch (e) {
+                        console.error('Logout failed', e);
+                      }
+                    }}
+                    className="bg-transparent border border-[#39444d] text-[#f7f9f9] rounded-full py-2 px-4 transition-colors"
+                  >
+                    Logout
+                  </button>
+                </>
+              )}
             </div>
           </div>
           <div className="mt-3 text-[#8b98a5]">

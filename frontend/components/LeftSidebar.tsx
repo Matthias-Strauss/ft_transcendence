@@ -40,6 +40,22 @@ export function LeftSidebar({ activeTab, onTabChange, onNewPost }: LeftSidebarPr
   const [me, setMe] = useState<MeResponse | null>(null);
   const navigate = useNavigate();
 
+  const handleProfileNavigate = async () => {
+    onTabChange('profile');
+    if (me?.username) {
+      navigate(`/users/${me.username}`);
+      return;
+    }
+
+    try {
+      const res = await apiFetch('/api/me');
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.username) navigate(`/users/${data.username}`);
+      }
+    } catch (e) {}
+  };
+
   useEffect(() => {
     async function load() {
       try {
@@ -102,7 +118,7 @@ export function LeftSidebar({ activeTab, onTabChange, onNewPost }: LeftSidebarPr
           icon={<UserIcon className="size-6" />}
           label="Profile"
           active={activeTab === 'profile'}
-          onClick={() => onTabChange('profile')}
+          onClick={handleProfileNavigate}
         />
         <SidebarItem
           icon={<MoreHorizontal className="size-6" />}
@@ -122,7 +138,7 @@ export function LeftSidebar({ activeTab, onTabChange, onNewPost }: LeftSidebarPr
       <div className="mt-auto">
         <div
           className="flex items-center gap-3 py-4 hover:bg-[#1e293b] rounded-full px-3 cursor-pointer transition-colors"
-          onClick={() => onTabChange('profile')}
+          onClick={handleProfileNavigate}
           role="button"
         >
           {me?.avatarUrl ? (
