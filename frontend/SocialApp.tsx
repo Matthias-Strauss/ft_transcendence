@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { RightPanel } from './components/RightPanel';
+// import { RightPanel } from './components/RightPanel';
+import { ChatPanel } from './components/ChatPanel';
 import { LeftSidebar } from './components/LeftSidebar';
 import { HomeFeed } from './pages/HomeFeed';
 import { FriendsPage } from './pages/FriendsPage';
@@ -72,11 +73,17 @@ export default function SocialApp() {
   return (
     <div className="min-h-screen bg-[#0f172a]">
       <LeftSidebar activeTab={activeTab} onTabChange={setActiveTab} onNewPost={handleNewPost} />
-      <main className="ml-[220px] mr-[520px] min-h-screen border-x border-[#39444d]">
-        <HomeFeed ref={inputRef} isVisible={activeTab === 'home'} />
-        {activeTab !== 'home' && renderContent()}
-      </main>
-      <RightPanel />
+
+      <div className="ml-[220px] gap-6 px-4 py-4 flex">
+        <main className="min-h-[calc(100vh-2rem)] flex-1 border-x border-[#39444d] bg-[#0f172a]">
+          <HomeFeed ref={inputRef} isVisible={activeTab === 'home'} />
+          {activeTab !== 'home' && renderContent()}
+        </main>
+
+        <aside className="fixed right-0 top-0 hidden h-[calc(100vh-2rem)] w-[390px] xl:block">
+          <ChatPanel />
+        </aside>
+      </div>
     </div>
   );
 }

@@ -2,7 +2,7 @@ import { createServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 import type { Socket } from 'socket.io';
 
-import { APP_ORIGIN, PORT, CORS_ALLOWED_ORIGINS } from './config.js';
+import { APP_ORIGIN, PORT, CORS_ALLOWED_ORIGINS, FRONTEND_ORIGIN } from './config.js';
 import { createApp } from './app.js';
 import { initFileStorage } from './files/storage.js';
 import { verifyAccessToken } from './auth/jwt.js';
