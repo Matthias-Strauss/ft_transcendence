@@ -11,6 +11,18 @@ import { clearRefreshCookie } from '../auth/refresh.js';
 import { getAvatarUrlFromPath } from '../files/avatars.js';
 import { getPostViewerContext, postAuthorInclude, serializePost } from '../utils/postUtils.js';
 import { prismaUniqueToUserError } from '../utils/meUtils.js';
+import {
+  getOtherFriendUser,
+  serializeFriendUser,
+  friendshipUserSelect,
+  friendUserSelect,
+  getAcceptedFriendUserIds,
+} from '../utils/friendUtils.js';
+import {
+  parseCursorPaginationFromQuery,
+  buildDescDateIdCursor,
+  getCursorPage,
+} from '../utils/paginationUtils.js';
 
 export const meRouter = Router();
 
@@ -36,10 +48,24 @@ meRouter.get(
       throw AuthErrors.invalidToken();
     }
 
+    const [postsCount, friendsCount] = await Promise.all([
+      prisma.post.count({
+        where: { authorId: user.id },
+      }),
+      prisma.friendship.count({
+        where: {
+          status: 'ACCEPTED',
+          OR: [{ userOneId: user.id }, { userTwoId: user.id }],
+        },
+      }),
+    ]);
+
     const { avatarPath, ...safeUser } = user;
     return res.json({
       ...safeUser,
       avatarUrl: getAvatarUrlFromPath(avatarPath),
+      postsCount,
+      friendsCount,
     });
   }),
 );
@@ -52,6 +78,8 @@ meRouter.get(
       throw AuthErrors.invalidToken();
     }
 
+    const { limit, cursor } = parseCursorPaginationFromQuery(req.query);
+
     const user = await prisma.user.findUnique({
       where: { id: req.userId },
       select: { id: true },
@@ -61,25 +89,47 @@ meRouter.get(
     }
 
     const posts = await prisma.post.findMany({
-      where: { authorId: user.id },
+      where: {
+        authorId: user.id,
+        ...(cursor ? buildDescDateIdCursor(cursor) : {}),
+      },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: limit + 1,
       include: postAuthorInclude,
     });
 
-    const { likedPostIds, sharedPostIds } = await getPostViewerContext(
-      posts.map((post) => post.id),
-      req.userId,
+    const pagedPosts = getCursorPage(posts, limit, (post) => ({
+      id: post.id,
+      createdAt: post.createdAt,
+    }));
+
+    const [{ likedPostIds, sharedPostIds, bookmarkedPostIds }, friendAuthorIds] = await Promise.all(
+      [
+        getPostViewerContext(
+          pagedPosts.items.map((post) => post.id),
+          req.userId,
+        ),
+        getAcceptedFriendUserIds(
+          req.userId,
+          pagedPosts.items.map((post) => post.authorId),
+        ),
+      ],
     );
 
     return res.json({
-      items: posts.map((post) =>
+      items: pagedPosts.items.map((post) =>
         serializePost(post, {
           likedByMe: likedPostIds.has(post.id),
           sharedByMe: sharedPostIds.has(post.id),
+          bookmarkedByMe: bookmarkedPostIds.has(post.id),
+          authorIsFriend: friendAuthorIds.has(post.authorId),
         }),
       ),
       meta: {
-        total: posts.length,
+        count: pagedPosts.items.length,
+        limit,
+        hasMore: pagedPosts.hasMore,
+        nextCursor: pagedPosts.nextCursor,
         order: 'createdAt_desc',
       },
     });
@@ -94,9 +144,20 @@ meRouter.get(
       throw AuthErrors.invalidToken();
     }
 
+    const { limit, cursor } = parseCursorPaginationFromQuery(req.query);
+
     const bookmarks = await prisma.postBookmark.findMany({
-      where: { userId: req.userId },
+      where: {
+        userId: req.userId,
+        ...(cursor
+          ? buildDescDateIdCursor(cursor, {
+              idField: 'postId',
+              createdAtField: 'createdAt',
+            })
+          : {}),
+      },
       orderBy: [{ createdAt: 'desc' }, { postId: 'desc' }],
+      take: limit + 1,
       include: {
         post: {
           include: postAuthorInclude,
@@ -104,10 +165,24 @@ meRouter.get(
       },
     });
 
-    const posts = bookmarks.map((bookmark) => bookmark.post);
-    const { likedPostIds, sharedPostIds } = await getPostViewerContext(
-      posts.map((post) => post.id),
-      req.userId,
+    const pagedBookmarks = getCursorPage(bookmarks, limit, (bookmark) => ({
+      id: bookmark.postId,
+      createdAt: bookmark.createdAt,
+    }));
+
+    const posts = pagedBookmarks.items.map((bookmark) => bookmark.post);
+
+    const [{ likedPostIds, sharedPostIds, bookmarkedPostIds }, friendAuthorIds] = await Promise.all(
+      [
+        getPostViewerContext(
+          posts.map((post) => post.id),
+          req.userId,
+        ),
+        getAcceptedFriendUserIds(
+          req.userId,
+          posts.map((post) => post.authorId),
+        ),
+      ],
     );
 
     return res.json({
@@ -115,12 +190,98 @@ meRouter.get(
         serializePost(post, {
           likedByMe: likedPostIds.has(post.id),
           sharedByMe: sharedPostIds.has(post.id),
-          bookmarkedByMe: true,
+          bookmarkedByMe: bookmarkedPostIds.has(post.id),
+          authorIsFriend: friendAuthorIds.has(post.authorId),
         }),
       ),
       meta: {
-        total: posts.length,
+        count: posts.length,
+        limit,
+        hasMore: pagedBookmarks.hasMore,
+        nextCursor: pagedBookmarks.nextCursor,
         order: 'bookmarkedAt_desc',
+      },
+    });
+  }),
+);
+
+meRouter.get(
+  '/me/friends',
+  requireAuth,
+  asyncHandler(async (req: AuthedRequest, res) => {
+    if (!req.userId) {
+      throw AuthErrors.invalidToken();
+    }
+
+    const viewerId = req.userId;
+    const friendships = await prisma.friendship.findMany({
+      where: {
+        status: 'ACCEPTED',
+        OR: [{ userOneId: viewerId }, { userTwoId: viewerId }],
+      },
+      orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }],
+      select: friendshipUserSelect,
+    });
+
+    const friendUsers = friendships.map((friendship) => getOtherFriendUser(friendship, viewerId));
+
+    return res.json({
+      items: friendUsers.map((friendUser) =>
+        serializeFriendUser(friendUser, {
+          isFriend: true,
+          friendStatus: 'friend',
+        }),
+      ),
+      meta: {
+        total: friendUsers.length,
+        order: 'updatedAt_desc',
+      },
+    });
+  }),
+);
+
+meRouter.get(
+  '/me/friends/requests',
+  requireAuth,
+  asyncHandler(async (req: AuthedRequest, res) => {
+    if (!req.userId) {
+      throw AuthErrors.invalidToken();
+    }
+
+    const viewerId = req.userId;
+    const friendships = await prisma.friendship.findMany({
+      where: {
+        status: 'PENDING',
+        OR: [{ requesterId: viewerId }, { addresseeId: viewerId }],
+      },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      select: {
+        requesterId: true,
+        addresseeId: true,
+        requester: {
+          select: friendUserSelect,
+        },
+        addressee: {
+          select: friendUserSelect,
+        },
+      },
+    });
+
+    return res.json({
+      items: friendships.map((friendship) => {
+        const isIncomingRequest = friendship.addresseeId === viewerId;
+        const requestUser = isIncomingRequest ? friendship.requester : friendship.addressee;
+
+        return serializeFriendUser(requestUser, {
+          isFriend: false,
+          friendStatus: 'requested',
+          friendRequestIncoming: isIncomingRequest,
+          friendRequestSentByMe: !isIncomingRequest,
+        });
+      }),
+      meta: {
+        total: friendships.length,
+        order: 'createdAt_desc',
       },
     });
   }),

@@ -2,7 +2,7 @@ import { createServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 import type { Socket } from 'socket.io';
 
-import { APP_ORIGIN, FRONTEND_ORIGIN, PORT } from './config.js';
+import { APP_ORIGIN, PORT, CORS_ALLOWED_ORIGINS } from './config.js';
 import { createApp } from './app.js';
 import { initFileStorage } from './files/storage.js';
 import { verifyAccessToken } from './auth/jwt.js';
@@ -65,6 +65,8 @@ export function startServer() {
 
   httpServer.listen(PORT, () => {
     console.log(`Backend Svr listening on http://localhost:${PORT}`);
+    console.log(`Proxied app origin: ${APP_ORIGIN}/api`);
+    console.log(`Allowed CORS origin(s): ${CORS_ALLOWED_ORIGINS.join(', ')}`);
   });
   return io;
 }
