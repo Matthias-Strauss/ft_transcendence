@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { apiFetch, logout } from '../utils/api';
 import { PostCard } from '../components/ui/PostCard';
 import { Post } from '../mock_data/mock';
@@ -10,12 +10,22 @@ interface UserResponse {
   avatarUrl?: string | null;
 }
 
+interface UserSearchResult {
+  username: string;
+  displayname?: string;
+  avatarUrl?: string | null;
+}
+
 export default function UserProfile() {
   const { username } = useParams();
   const [user, setUser] = useState<UserResponse | null>(null);
   const [me, setMe] = useState<UserResponse | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<UserSearchResult[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
 
   useEffect(() => {
     if (!username) return;
@@ -59,6 +69,30 @@ export default function UserProfile() {
 
     void loadMe();
   }, []);
+
+  useEffect(() => {
+    if (searchQuery.trim().length < 2) {
+      setSearchResults([]);
+      return;
+    }
+
+    const id = setTimeout(async () => {
+      setSearchLoading(true);
+      try {
+        const res = await apiFetch(`/api/users?q=${encodeURIComponent(searchQuery.trim())}`);
+        if (res.ok) {
+          const payload = await res.json();
+          setSearchResults(payload.items || []);
+        }
+      } catch (e) {
+        console.error('Search failed', e);
+      } finally {
+        setSearchLoading(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(id);
+  }, [searchQuery]);
   const normalize = (s?: string | null) => (s ?? '').toString().replace(/^@/, '').toLowerCase();
   const isMine = normalize(me?.username) === normalize(username as string | undefined);
   if (loading) return <div className="p-8 text-[#8b98a5]">Loading profile...</div>;
@@ -72,6 +106,42 @@ export default function UserProfile() {
           <h1 className="font-bold text-[20px] text-[#f7f9f9]">
             {user.displayname ?? user.username}
           </h1>
+          <div className="ml-4 w-60 relative">
+            <input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search by nickname"
+              className="w-full rounded-md bg-[#071026] border border-[#39444d] py-2 px-3 text-sm text-[#f7f9f9]"
+            />
+            {searchLoading && <div className="text-xs text-[#8b98a5] mt-1">Searching...</div>}
+            {searchResults.length > 0 && (
+              <div className="absolute mt-2 bg-[#071026] border border-[#39444d] w-60 max-h-60 overflow-auto rounded">
+                {searchResults.map((r) => (
+                  <div
+                    key={r.username}
+                    className="p-2 hover:bg-[#0e1b2b] cursor-pointer flex items-center gap-2"
+                    onClick={() => {
+                      setSearchQuery('');
+                      setSearchResults([]);
+                      navigate(`/users/${r.username}`);
+                    }}
+                  >
+                    <div className="w-8 h-8 rounded-full overflow-hidden bg-[#0b1220]">
+                      <img
+                        src={r.avatarUrl ?? '/uploads/avatars/default.png'}
+                        alt={r.displayname ?? r.username}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div>
+                      <div className="text-sm text-[#f7f9f9]">{r.displayname ?? r.username}</div>
+                      <div className="text-xs text-[#8b98a5]">@{r.username}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
