@@ -121,7 +121,7 @@ export default function SocialApp() {
         <main className="min-h-[calc(100vh-2rem)] flex-1 border-x border-[#39444d] bg-[#0f172a]">
           {!viewingUser && <HomeFeed ref={inputRef} isVisible={activeTab === 'home'} />}
           {!viewingUser && activeTab !== 'home' && renderContent()}
-        {viewingUser && <Outlet />}
+          {viewingUser && <Outlet />}
         </main>
 
         <aside className="fixed right-0 top-0 hidden h-[calc(100vh-2rem)] w-[390px] xl:block">

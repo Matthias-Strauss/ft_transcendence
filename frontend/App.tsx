@@ -5,7 +5,6 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import SocialApp from './SocialApp';
 import RegistrationPage from './pages/RegistrationPage';
 import UserProfile from './pages/UserProfile';
-import SocketTestPage from './pages/temp_SocketTestPage';
 import { connectSocketFromStorage, disconnectSocket, socket } from './socket';
 
 export default function App() {
