@@ -32,6 +32,14 @@ services:
       retries: 15
     restart: on-failure:5
 
+  adminer:
+    image: adminer:4.8.1
+    container_name: transcendence-adminer
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: on-failure:5
+
   backend:
     container_name: transcendence-backend
     build:

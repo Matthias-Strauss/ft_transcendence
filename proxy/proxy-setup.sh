@@ -10,6 +10,7 @@ KEY_FILE="$CERT_DIR/${TLS_KEY_FILE}"
 mkdir -p $CERT_DIR
 
 TLS_CERT_HOSTS="${TLS_CERT_HOSTS:-localhost,127.0.0.1}"
+ENABLE_ADMINER="${ENABLE_ADMINER:-true}"
 
 build_san() {
   SAN=""
@@ -40,6 +41,38 @@ build_san() {
   echo "$SAN"
 }
 
+write_adminer_location_block() {
+  case "$(printf '%s' "$ENABLE_ADMINER" | tr '[:upper:]' '[:lower:]')" in
+    true)
+      cat <<'EOF'
+    location = /adminer {
+        return 301 /adminer/;
+    }
+
+    location ^~ /adminer/ {
+        proxy_pass http://adminer:8080/;
+
+        proxy_http_version 1.1;
+        proxy_set_header Host               $host;
+        proxy_set_header X-Real-IP          $remote_addr;
+        proxy_set_header X-Forwarded-For    $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Host   $host;
+        proxy_set_header X-Forwarded-Port   $server_port;
+        proxy_set_header X-Forwarded-Proto  https;
+        proxy_redirect off;
+    }
+EOF
+      ;;
+    *)
+      cat <<'EOF'
+    location ^~ /adminer {
+        return 404;
+    }
+EOF
+      ;;
+  esac
+}
+
 if [ ! -f "$CERT_FILE" ] || [ ! -f "$KEY_FILE" ]; then
   echo "Proxy-Setup: generating new self-signed certificate..."
   SAN_VALUE="$(build_san)"
@@ -60,7 +93,12 @@ fi
 echo "Proxy-Setup: generating nginx config from template..."
 TEMPLATE="/etc/nginx/templates/default.conf.template"
 TARGET="/etc/nginx/conf.d/default.conf"
-envsubst '${PROXY_HTTP_PORT} ${PROXY_HTTPS_PORT} ${TLS_CERT_FILE} ${TLS_KEY_FILE} ${FRONTEND_PORT} ${BACKEND_PORT}' \
+
+ADMINER_LOCATION_BLOCK="$(write_adminer_location_block)"
+export ADMINER_LOCATION_BLOCK
+echo "Proxy-Setup: adminer is $( [ "$(printf '%s' "$ENABLE_ADMINER" | tr '[:upper:]' '[:lower:]')" = "true" ] && echo enabled || echo disabled )"
+
+envsubst '${PROXY_HTTP_PORT} ${PROXY_HTTPS_PORT} ${TLS_CERT_FILE} ${TLS_KEY_FILE} ${FRONTEND_PORT} ${BACKEND_PORT} ${ADMINER_LOCATION_BLOCK}' \
   < "$TEMPLATE" > "$TARGET"
 
 echo "Proxy-Setup: complete. Start nginx..."
