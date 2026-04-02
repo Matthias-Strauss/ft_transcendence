@@ -16,6 +16,7 @@ interface UserSearchResult {
   avatarUrl?: string | null;
 }
 
+
 export default function UserProfile() {
   const { username } = useParams();
   const [user, setUser] = useState<UserResponse | null>(null);
