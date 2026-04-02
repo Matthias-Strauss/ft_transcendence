@@ -38,6 +38,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    environment:
+      ADMINER_DEFAULT_SERVER: db
     restart: on-failure:5
 
   backend:
