@@ -100,3 +100,6 @@ export const POST_IMAGE_MAX_FILE_SIZE_BYTES = getEnvNumber(
   5242880,
 );
 export const DEFAULT_AVATAR_FILENAME = getEnvString('DEFAULT_AVATAR_FILENAME', 'default.svg');
+
+export const PAGINATION_DEFAULT_LIMIT = getEnvNumber('PAGINATION_DEFAULT_LIMIT', 20);
+export const PAGINATION_MAX_LIMIT = getEnvNumber('PAGINATION_MAX_LIMIT', 100);

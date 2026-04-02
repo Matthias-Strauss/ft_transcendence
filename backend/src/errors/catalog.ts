@@ -102,6 +102,27 @@ export const ERROR_CATALOG = {
     message: 'You can only delete your own comments or comments on your posts',
     errCode: 'COMMENT_DELETE_FORBIDDEN',
   },
+
+  FRIENDSHIP_ALREADY_EXISTS: {
+    statusCode: 409,
+    message: 'Users are already friends',
+    errCode: 'FRIENDSHIP_ALREADY_EXISTS',
+  },
+  FRIEND_REQUEST_ALREADY_INCOMING: {
+    statusCode: 409,
+    message: 'This user has already sent you a friend request',
+    errCode: 'FRIEND_REQUEST_ALREADY_INCOMING',
+  },
+  FRIEND_REQUEST_NOT_FOUND: {
+    statusCode: 404,
+    message: 'Friend request not found',
+    errCode: 'FRIEND_REQUEST_NOT_FOUND',
+  },
+  FRIEND_REQUEST_TO_SELF_FORBIDDEN: {
+    statusCode: 400,
+    message: 'You cannot send a friend request to yourself',
+    errCode: 'FRIEND_REQUEST_TO_SELF_FORBIDDEN',
+  },
 } as const;
 
 export type ErrorKey = keyof typeof ERROR_CATALOG;
@@ -155,4 +176,11 @@ export const PostErrors = {
 export const CommentErrors = {
   notFound: () => appError('COMMENT_NOT_FOUND'),
   deleteForbidden: () => appError('COMMENT_DELETE_FORBIDDEN'),
+};
+
+export const FriendErrors = {
+  alreadyFriends: () => appError('FRIENDSHIP_ALREADY_EXISTS'),
+  requestAlreadyIncoming: () => appError('FRIEND_REQUEST_ALREADY_INCOMING'),
+  requestNotFound: () => appError('FRIEND_REQUEST_NOT_FOUND'),
+  requestToSelfForbidden: () => appError('FRIEND_REQUEST_TO_SELF_FORBIDDEN'),
 };
