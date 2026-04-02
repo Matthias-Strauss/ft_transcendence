@@ -4,6 +4,7 @@ import { prisma } from '../db.js';
 import { getAvatarUrlFromPath } from '../files/avatars.js';
 import { getPostImageUrlFromPath } from '../files/postings.js';
 import { PostErrors, CommentErrors } from '../errors/catalog.js';
+import { getAllAcceptedFriendUserIds, getFriendRelation } from './friendUtils.js';
 
 export const postAuthorInclude = {
   author: {
@@ -24,6 +25,7 @@ type PostViewerContext = {
   likedByMe?: boolean;
   sharedByMe?: boolean;
   bookmarkedByMe?: boolean;
+  authorIsFriend?: boolean;
 };
 
 export function serializePost(post: PostWithAuthor, viewerContext: PostViewerContext = {}) {
@@ -39,6 +41,7 @@ export function serializePost(post: PostWithAuthor, viewerContext: PostViewerCon
     author: {
       ...safeAuthor,
       avatarUrl: getAvatarUrlFromPath(avatarPath),
+      isFriend: viewerContext.authorIsFriend ?? false,
     },
   };
 }
@@ -93,6 +96,39 @@ export async function checkPostExists(postId: string) {
   }
 }
 
+export async function checkPostVisibility(postId: string, viewerId: string) {
+  const post = await prisma.post.findUnique({
+    where: { id: postId },
+    select: {
+      id: true,
+      authorId: true,
+    },
+  });
+
+  if (!post) {
+    throw PostErrors.notFound();
+  }
+
+  if (post.authorId === viewerId) {
+    return post;
+  }
+
+  const relation = getFriendRelation(viewerId, post.authorId);
+
+  if (!(await relation).isFriend) {
+    throw PostErrors.notFound();
+  }
+
+  return post;
+}
+
+export async function getVisiblePostAuthorIds(viewerId: string) {
+  const acceptedFriendIds = await getAllAcceptedFriendUserIds(viewerId);
+  acceptedFriendIds.add(viewerId);
+
+  return acceptedFriendIds;
+}
+
 // COMMENTS
 export const commentContextIncluded = {
   author: {
@@ -117,6 +153,7 @@ type CommentWithContext = Prisma.CommentGetPayload<{
 
 type CommentViewerContext = {
   likedByMe?: boolean;
+  authorIsFriend?: boolean;
 };
 
 export function serializeComment(
@@ -129,10 +166,11 @@ export function serializeComment(
 
   return {
     ...safeComment,
-    likedByMe: viewerContext.likedByMe,
+    likedByMe: viewerContext.likedByMe ?? false,
     author: {
       ...safeAuthor,
       avatarUrl: getAvatarUrlFromPath(avatarPath),
+      isFriend: viewerContext.authorIsFriend ?? false,
     },
     canDelete: comment.authorId === viewerId || post.authorId === viewerId,
   };

@@ -13,9 +13,10 @@ import {
   postAuthorInclude,
   serializeComment,
   getCommentViewerContext,
-  checkPostExists,
   commentContextIncluded,
   checkCommentBelongsToPost,
+  checkPostVisibility,
+  getVisiblePostAuthorIds,
 } from '../utils/postUtils.js';
 import {
   postImageUploadHandler,
@@ -23,6 +24,12 @@ import {
   cleanupUploadedPostImage,
 } from '../files/postings.js';
 import { resolveInFilesDir } from '../files/storage.js';
+import { getAcceptedFriendUserIds } from '../utils/friendUtils.js';
+import {
+  parseCursorPaginationFromQuery,
+  buildDescDateIdCursor,
+  getCursorPage,
+} from '../utils/paginationUtils.js';
 
 export const postsRouter = Router();
 
@@ -34,27 +41,56 @@ postsRouter.get(
       throw AuthErrors.invalidToken();
     }
 
+    const { limit, cursor } = parseCursorPaginationFromQuery(req.query);
+
+    const visibleAuthorIds = await getVisiblePostAuthorIds(req.userId);
+
     const posts = await prisma.post.findMany({
+      where: {
+        authorId: {
+          in: [...visibleAuthorIds],
+        },
+        ...(cursor ? buildDescDateIdCursor(cursor) : {}),
+      },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: limit + 1,
       include: postAuthorInclude,
     });
 
-    const { likedPostIds, sharedPostIds, bookmarkedPostIds } = await getPostViewerContext(
-      posts.map((post) => post.id),
-      req.userId,
+    const pagedPosts = getCursorPage(posts, limit, (post) => ({
+      id: post.id,
+      createdAt: post.createdAt,
+    }));
+
+    const [{ likedPostIds, sharedPostIds, bookmarkedPostIds }, friendAuthorIds] = await Promise.all(
+      [
+        getPostViewerContext(
+          pagedPosts.items.map((post) => post.id),
+          req.userId,
+        ),
+        getAcceptedFriendUserIds(
+          req.userId,
+          pagedPosts.items.map((post) => post.authorId),
+        ),
+      ],
     );
 
     return res.json({
-      items: posts.map((post) =>
+      items: pagedPosts.items.map((post) =>
         serializePost(post, {
           likedByMe: likedPostIds.has(post.id),
           sharedByMe: sharedPostIds.has(post.id),
-          bookmarkedByMe: bookmarkedPostIds?.has(post.id),
+          bookmarkedByMe: bookmarkedPostIds.has(post.id),
+          authorIsFriend: friendAuthorIds.has(post.authorId),
         }),
       ),
       meta: {
-        total: posts.length,
+        count: pagedPosts.items.length,
+        limit,
+        hasMore: pagedPosts.hasMore,
+        nextCursor: pagedPosts.nextCursor,
         order: 'createdAt_desc',
+        scope: 'personal_feed',
       },
     });
   }),
@@ -120,6 +156,7 @@ postsRouter.post(
         likedByMe: false,
         sharedByMe: false,
         bookmarkedByMe: false,
+        authorIsFriend: false,
       }),
     );
   }),
@@ -133,6 +170,8 @@ postsRouter.get(
       throw AuthErrors.invalidToken();
     }
 
+    await checkPostVisibility(req.params.id, req.userId);
+
     const post = await prisma.post.findUnique({
       where: { id: req.params.id },
       include: postAuthorInclude,
@@ -142,9 +181,11 @@ postsRouter.get(
       throw PostErrors.notFound();
     }
 
-    const { likedPostIds, sharedPostIds, bookmarkedPostIds } = await getPostViewerContext(
-      [post.id],
-      req.userId,
+    const [{ likedPostIds, sharedPostIds, bookmarkedPostIds }, friendAuthorIds] = await Promise.all(
+      [
+        getPostViewerContext([post.id], req.userId),
+        getAcceptedFriendUserIds(req.userId, [post.authorId]),
+      ],
     );
 
     return res.json(
@@ -152,6 +193,7 @@ postsRouter.get(
         likedByMe: likedPostIds.has(post.id),
         sharedByMe: sharedPostIds.has(post.id),
         bookmarkedByMe: bookmarkedPostIds?.has(post.id),
+        authorIsFriend: friendAuthorIds.has(post.authorId),
       }),
     );
   }),
@@ -207,7 +249,7 @@ postsRouter.get(
       throw AuthErrors.invalidToken();
     }
 
-    await checkPostExists(req.params.id);
+    await checkPostVisibility(req.params.id, req.userId);
 
     const comments = await prisma.comment.findMany({
       where: { postId: req.params.id },
@@ -216,15 +258,22 @@ postsRouter.get(
     });
 
     const viewerId = req.userId;
-    const { likedCommentIds } = await getCommentViewerContext(
-      comments.map((comment) => comment.id),
-      viewerId,
-    );
+    const [{ likedCommentIds }, friendAuthorIds] = await Promise.all([
+      getCommentViewerContext(
+        comments.map((comment) => comment.id),
+        viewerId,
+      ),
+      getAcceptedFriendUserIds(
+        viewerId,
+        comments.map((comment) => comment.authorId),
+      ),
+    ]);
 
     return res.json({
       items: comments.map((comment) =>
         serializeComment(comment, viewerId, {
           likedByMe: likedCommentIds.has(comment.id),
+          authorIsFriend: friendAuthorIds.has(comment.authorId),
         }),
       ),
       meta: {
@@ -255,6 +304,8 @@ postsRouter.post(
     }
 
     const viewerId = req.userId;
+    await checkPostVisibility(req.params.id, viewerId);
+
     const comment = await prisma.$transaction(async (tx) => {
       const post = await tx.post.findUnique({
         where: { id: req.params.id },
@@ -284,7 +335,12 @@ postsRouter.post(
       return createdComment;
     });
 
-    return res.status(201).json(serializeComment(comment, viewerId, { likedByMe: false }));
+    return res.status(201).json(
+      serializeComment(comment, viewerId, {
+        likedByMe: false,
+        authorIsFriend: false,
+      }),
+    );
   }),
 );
 
@@ -298,6 +354,8 @@ postsRouter.delete(
 
     const { postId, commentId } = req.params;
     const viewerId = req.userId;
+
+    await checkPostVisibility(postId, viewerId);
 
     const comment = await prisma.comment.findUnique({
       where: { id: commentId },
@@ -349,7 +407,7 @@ postsRouter.post(
     const viewerId = req.userId;
     const postId = req.params.id;
 
-    await checkPostExists(postId);
+    await checkPostVisibility(postId, viewerId);
 
     await prisma.postBookmark.createMany({
       data: {
@@ -377,7 +435,7 @@ postsRouter.delete(
     const viewerId = req.userId;
     const postId = req.params.id;
 
-    await checkPostExists(postId);
+    await checkPostVisibility(postId, viewerId);
 
     await prisma.postBookmark.deleteMany({
       where: {
@@ -405,7 +463,7 @@ postsRouter.post(
     const viewerId = req.userId;
     const postId = req.params.id;
 
-    await checkPostExists(postId);
+    await checkPostVisibility(postId, viewerId);
 
     const result = await prisma.$transaction(async (tx) => {
       const created = await tx.postLike.createMany({
@@ -469,7 +527,7 @@ postsRouter.delete(
     const viewerId = req.userId;
     const postId = req.params.id;
 
-    await checkPostExists(postId);
+    await checkPostVisibility(postId, viewerId);
 
     const result = await prisma.$transaction(async (tx) => {
       const deleted = await tx.postLike.deleteMany({
@@ -529,6 +587,8 @@ postsRouter.post(
       throw AuthErrors.invalidToken();
     }
     const viewerId = req.userId;
+
+    await checkPostVisibility(req.params.id, viewerId);
 
     const result = await prisma.$transaction(async (tx) => {
       const post = await tx.post.findUnique({
@@ -603,7 +663,7 @@ postsRouter.post(
     const { postId, commentId } = req.params;
     const viewerId = req.userId;
 
-    await checkPostExists(postId);
+    await checkPostVisibility(postId, viewerId);
     await checkCommentBelongsToPost(commentId, postId);
 
     const result = await prisma.$transaction(async (tx) => {
@@ -665,7 +725,7 @@ postsRouter.delete(
     const { postId, commentId } = req.params;
     const viewerId = req.userId;
 
-    await checkPostExists(postId);
+    await checkPostVisibility(postId, viewerId);
     await checkCommentBelongsToPost(commentId, postId);
 
     const result = await prisma.$transaction(async (tx) => {

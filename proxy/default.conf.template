@@ -3,15 +3,20 @@ map $http_upgrade $connection_upgrade {
   ''      close;
 }
 
-server {
-    listen ${PROXY_HTTP_PORT};
-    server_name _;
-
-    return 301 https://$host:${PROXY_HTTPS_PORT}$request_uri;
+map "${PROXY_HTTPS_PORT}" $https_port_suffix {
+  443     "";
+  default ":${PROXY_HTTPS_PORT}";
 }
 
 server {
-    listen ${PROXY_HTTPS_PORT} ssl http2;
+    listen 80;
+    server_name _;
+
+    return 301 https://$host$https_port_suffix$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
     server_name _;
 
     ssl_certificate     /etc/nginx/certs/${TLS_CERT_FILE};
