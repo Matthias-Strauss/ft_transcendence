@@ -1,80 +1,153 @@
 import React, { useState } from 'react';
-import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
+import { apiFetch } from '../utils/api';
+import '../styles/auth.css';
 
 const Registration: React.FC = () => {
   const [username, setUsername] = useState('');
+  const [displayname, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [displayname, setDisplayName] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
 
   const specialCharacters = '!@#$%^&*()_+=-{}[]:;"|/.,<>?`~';
   const numberChars = '0123456789';
+
+  function validate() {
+    if (!username.trim()) return 'Choose a username';
+    if (!email.trim()) return 'Enter a valid email';
+    if (password.length < 8) return 'Password must be at least 8 characters';
+    if (password.toLowerCase().includes(username.toLowerCase()))
+      return 'Password cannot contain username';
+    if (!specialCharacters.split('').some((char) => password.includes(char)))
+      return 'Password must include a special character';
+    if (!numberChars.split('').some((char) => password.includes(char)))
+      return 'Password must include a number';
+    return null;
+  }
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (password.length < 8) {
-      alert('Password must be at least 8 characters');
+    setError(null);
+    const v = validate();
+    if (v) {
+      setError(v);
       return;
     }
-    if (password.toLowerCase().includes(username.toLowerCase())) {
-      alert('Password cannot contain username');
-      return;
-    }
-    if (!specialCharacters.split('').some((char) => password.includes(char))) {
-      alert(`Password must include at least one special character from: ${specialCharacters}`);
-      return;
-    }
-    if (!numberChars.split('').some((char) => password.includes(char))) {
-      alert('Password must include at least one number from 0-9');
-      return;
-    }
+
+    setSubmitting(true);
     try {
-      const response = await axios.post('https://localhost/api/auth/register', {
-        username,
-        email,
-        password,
-        displayname,
+      const res = await apiFetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, email, password, displayname }),
       });
-      console.log('Registration success:', response.data);
-      navigate('/login');
-    } catch (error) {
-      console.log('Registration failed:', error);
-      alert('Registration failed. Please try again');
+
+      if (res.ok) {
+        navigate('/login');
+        return;
+      }
+
+      const payload = await res.json().catch(() => null);
+      setError(payload?.message || 'Registration failed');
+    } catch (err) {
+      console.error('Registration failed', err);
+      setError('Network error — try again');
+    } finally {
+      setSubmitting(false);
     }
   };
 
+  const demoBoard = ['X', 'O', 'X', 'O', 'X', '', '', 'O', ''];
+
   return (
-    <form onSubmit={handleSubmit}>
-      <input
-        type="text"
-        placeholder="Username"
-        value={username}
-        onChange={(e) => setUsername(e.target.value)}
-      />
+    <div className="auth-page">
+      <div className="auth-card">
+        <div className="auth-left">
+          <div className="title">Transcendence</div>
+          <div className="subtitle">Tic‑Tac‑Toe duels — play with friends, climb the ranks.</div>
 
-      <input
-        type="email"
-        placeholder="Email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-      />
+          <div className="demo-board" aria-hidden>
+            {demoBoard.map((cell, i) => (
+              <div
+                key={i}
+                className={`cell ${cell === 'X' ? 'x' : cell === 'O' ? 'o' : ''}`}
+                style={{ animationDelay: `${i * 90}ms` } as React.CSSProperties}
+              >
+                {cell === 'X' ? (
+                  <span className="mark">✕</span>
+                ) : cell === 'O' ? (
+                  <span className="mark">◯</span>
+                ) : null}
+              </div>
+            ))}
+          </div>
 
-      <input
-        type="password"
-        placeholder="Password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-      />
+          <div className="desc">Fast matches • Casual ranking • Friendly rivalry</div>
+        </div>
 
-      <input
-        type="text"
-        placeholder="Display Name"
-        value={displayname}
-        onChange={(e) => setDisplayName(e.target.value)}
-      />
-      <button type="submit">Register</button>
-    </form>
+        <div className="auth-right">
+          <h3 className="heading">Create account</h3>
+          <p className="sub">Set up your profile to start playing</p>
+
+          <form onSubmit={handleSubmit} className="auth-form">
+            <div className={`input-group ${username ? 'filled' : ''}`}>
+              <input id="username" value={username} onChange={(e) => setUsername(e.target.value)} />
+              <label htmlFor="username">Username</label>
+            </div>
+
+            <div className={`input-group ${displayname ? 'filled' : ''}`}>
+              <input
+                id="displayname"
+                value={displayname}
+                onChange={(e) => setDisplayName(e.target.value)}
+              />
+              <label htmlFor="displayname">Display name</label>
+            </div>
+
+            <div className={`input-group ${email ? 'filled' : ''}`}>
+              <input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+              <label htmlFor="email">Email</label>
+            </div>
+
+            <div className={`input-group ${password ? 'filled' : ''}`}>
+              <input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              <label htmlFor="password">Password</label>
+            </div>
+
+            {error && <div className="error">{error}</div>}
+
+            <button
+              type="submit"
+              className="btn-submit"
+              disabled={submitting}
+              aria-busy={submitting}
+            >
+              {submitting ? <span className="spinner" /> : 'Create account'}
+            </button>
+          </form>
+
+          <div className="alt">
+            Already have an account?{' '}
+            <Link to="/login" className="link">
+              Sign in
+            </Link>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };
 

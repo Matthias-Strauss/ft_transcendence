@@ -4,6 +4,7 @@ import { User } from './User';
 import { DropdownItem } from '../../mock_data/mock';
 import { Bookmark, Repeat2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { apiFetch } from '../../utils/api';
 import Dropdown from './Dropdown';
 import CommentSection from './CommentSection';
 
@@ -64,11 +65,8 @@ export function PostCard({ post }: PostCardProps) {
     setLikeCount((prev) => Math.max(0, prev + (nextLiked ? 1 : -1)));
 
     try {
-      const response = await fetch(`/api/posts/${post.id}/like`, {
+      const response = await apiFetch(`/api/posts/${post.id}/like`, {
         method: nextLiked ? 'POST' : 'DELETE',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
       });
 
       if (!response.ok) {
