@@ -11,7 +11,6 @@ import {
 } from '../utils/api';
 import { runFriendAction } from '../utils/friendActions';
 import { PostCard } from '../components/ui/PostCard';
-// import { Post } from '../mock_data/mock';
 import type { Post } from '../types/posts';
 import '../styles/UserProfile.css';
 
