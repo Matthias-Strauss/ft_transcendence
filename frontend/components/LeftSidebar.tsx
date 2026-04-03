@@ -79,39 +79,42 @@ export function LeftSidebar({ activeTab, onTabChange, onNewPost }: LeftSidebarPr
           icon={<Home className="size-6" />}
           label="Home"
           active={activeTab === 'home'}
-          onClick={() => {
-            onTabChange('home');
-            navigate('/');
-          }}
+          to="/"
+          onClick={() => onTabChange('home')}
         />
         <SidebarItem
           icon={<Trophy className="size-6" />}
           label="Leaderboard"
           active={activeTab === 'leaderboard'}
+          to="/"
           onClick={() => onTabChange('leaderboard')}
         />
         <SidebarItem
           icon={<Bell className="size-6" />}
           label="Notifications"
           active={activeTab === 'notifications'}
+          to="/"
           onClick={() => onTabChange('notifications')}
         />
         <SidebarItem
           icon={<MessageSquare className="size-6" />}
           label="Messages"
           active={activeTab === 'messages'}
+          to="/"
           onClick={() => onTabChange('messages')}
         />
         <SidebarItem
           icon={<Users className="size-6" />}
           label="Friends"
           active={activeTab === 'friends'}
+          to="/"
           onClick={() => onTabChange('friends')}
         />
         <SidebarItem
           icon={<Bookmark className="size-6" />}
           label="Saved"
           active={activeTab === 'saved'}
+          to="/"
           onClick={() => onTabChange('saved')}
         />
         <SidebarItem
@@ -124,6 +127,7 @@ export function LeftSidebar({ activeTab, onTabChange, onNewPost }: LeftSidebarPr
           icon={<MoreHorizontal className="size-6" />}
           label="More"
           active={activeTab === 'more'}
+          to="/"
           onClick={() => onTabChange('more')}
         />
       </div>
