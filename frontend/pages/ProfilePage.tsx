@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { apiFetch, logout } from '../utils/api';
 import { PostCard } from '../components/ui/PostCard';
-import { Post } from '../mock_data/mock';
+import type { Post } from '../types/posts';
 
 interface MeResponse {
   id?: string;

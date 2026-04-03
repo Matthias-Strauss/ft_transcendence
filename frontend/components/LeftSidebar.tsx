@@ -144,8 +144,8 @@ export function LeftSidebar({ activeTab, onTabChange, onNewPost }: LeftSidebarPr
           {me?.avatarUrl ? (
             <div className="size-10 rounded-full overflow-hidden shrink-0">
               <img
-                src={me.avatarUrl}
-                alt={me.displayname ?? me.username}
+                src={me.avatarUrl ?? '/uploads/avatars/default.png'}
+                alt={me.displayname ?? me.username ?? ''}
                 className="w-full h-full object-cover"
               />
             </div>

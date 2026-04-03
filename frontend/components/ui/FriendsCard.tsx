@@ -1,12 +1,16 @@
-import { Friends, Player } from '@/mock_data/mock';
+import type { FriendUser } from '../../types/users';
 import { User } from './User';
+import { Link } from 'react-router-dom';
 
 interface FriendsCardProps {
-  friends: Friends;
+  friends: {
+    online: FriendUser[];
+    offline: FriendUser[];
+  };
 }
 
 export function FriendsCard({ friends }: FriendsCardProps) {
-  const renderFriend = (friend: Player, status: 'online' | 'offline') => {
+  const renderFriend = (friend: FriendUser, status: 'online' | 'offline') => {
     const isOnline = status === 'online';
 
     return (
@@ -25,21 +29,22 @@ export function FriendsCard({ friends }: FriendsCardProps) {
           </div>
           <div className="mt-2">
             <User
-              avatar={friend.avatar}
-              name={friend.name}
+              avatar={friend.avatarUrl ?? '/uploads/avatars/default.png'}
+              name={friend.displayname ?? friend.username}
               username={friend.username}
-              verified={friend.verified}
             />
           </div>
           <div className="flex flex-wrap items-center gap-3 text-[13px] text-[#8b98a5]">
-            <span>Level {friend.level}</span>
-            <span>•</span>
-            <span>{friend.wins} Wins</span>
+            {friend.friendStatus === 'friend' && <span>Friend</span>}
+            {friend.friendStatus === 'requested' && <span>Requested</span>}
           </div>
         </div>
-        <button className="h-9 shrink-0 rounded-full border border-[#39444d] px-4 text-[13px] font-medium text-[#f7f9f9] transition-colors hover:bg-[#1e293b]">
-          {friend.following ? 'Following' : 'Follow'}
-        </button>
+        <Link
+          to={`/users/${friend.username}`}
+          className="h-9 shrink-0 rounded-full border border-[#39444d] px-4 text-[13px] font-medium text-[#f7f9f9] transition-colors hover:bg-[#1e293b] flex items-center justify-center"
+        >
+          View
+        </Link>
       </div>
     );
   };

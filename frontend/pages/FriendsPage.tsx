@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { FriendsCard } from '../components/ui/FriendsCard';
+import type { FriendUser } from '../types/users';
 import { Sparkles } from 'lucide-react';
 import { apiFetch } from '../utils/api';
 
@@ -31,7 +32,7 @@ export function FriendsPage() {
 }
 
 function FriendsList() {
-  const [friends, setFriends] = useState<Array<any>>([]);
+  const [friends, setFriends] = useState<FriendUser[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -60,17 +61,6 @@ function FriendsList() {
     };
   }, []);
 
-  const mapped = friends.map((f) => ({
-    id: f.id,
-    name: f.displayname ?? f.username,
-    username: f.username?.startsWith('@') ? f.username : `@${f.username}`,
-    avatar: f.avatarUrl ?? '/uploads/avatars/default.png',
-    verified: false,
-    level: 1,
-    wins: 0,
-    following: false,
-  }));
-
   return (
     <div className="p-4 space-y-6">
       <section className="rounded-2xl border border-[#39444d] bg-[#0f172a]/40 p-4">
@@ -79,26 +69,24 @@ function FriendsList() {
             <span className={`size-2 rounded-full bg-[#8b98a5]`} />
             <h2 className="text-[15px] font-semibold text-[#f7f9f9]">Your Friends</h2>
           </div>
-          <span className="text-[13px] text-[#8b98a5]">{mapped.length}</span>
+          <span className="text-[13px] text-[#8b98a5]">{friends.length}</span>
         </div>
 
         <div className="space-y-3">
           {loading ? (
             <div className="p-4 text-[#8b98a5]">Loading friends...</div>
-          ) : mapped.length === 0 ? (
+          ) : friends.length === 0 ? (
             <div className="rounded-xl border border-dashed border-[#39444d] px-4 py-6 text-center text-[13px] text-[#8b98a5]">
               No friends yet.
             </div>
           ) : (
-            mapped.map((friend) => (
-              <FriendsCard
-                key={friend.id}
-                friends={{
-                  online: [friend],
-                  offline: [],
-                }}
-              />
-            ))
+            <FriendsCard
+              key="friends-list"
+              friends={{
+                online: [],
+                offline: friends,
+              }}
+            />
           )}
         </div>
       </section>

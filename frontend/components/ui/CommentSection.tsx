@@ -1,9 +1,7 @@
-import { Post } from '../../mock_data/mock';
+import type { Post, Comment, CommentsResponse } from '../../types/posts';
 import { Heart, Send } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { apiFetch } from '../../utils/api';
-import { Comment } from '../../mock_data/mock';
-import { CommentsResponse } from '../../mock_data/mock';
 
 interface PostProp {
   post: Post;
@@ -137,8 +135,8 @@ export default function CommentSection({ post, onCommentCreated }: PostProp) {
             <div className="flex gap-3">
               <div className="size-10 rounded-full overflow-hidden shrink-0">
                 <img
-                  src={comment.author?.avatarUrl}
-                  alt={comment.author?.displayname}
+                  src={comment.author?.avatarUrl ?? '/uploads/avatars/default.png'}
+                  alt={comment.author?.displayname ?? comment.author?.username ?? ''}
                   className="w-full h-full object-cover"
                 />
               </div>
