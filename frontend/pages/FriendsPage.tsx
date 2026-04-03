@@ -1,6 +1,7 @@
-import { FriendsCard } from '@/components/ui/FriendsCard';
-import { FRIENDS } from '@/mock_data/mock';
+import { useEffect, useState } from 'react';
+import { FriendsCard } from '../components/ui/FriendsCard';
 import { Sparkles } from 'lucide-react';
+import { apiFetch } from '../utils/api';
 
 export function FriendsPage() {
   return (
@@ -24,54 +25,83 @@ export function FriendsPage() {
           </button>
         </div>
       </div>
-      <div className="p-4 space-y-6">
-        {[
-          {
-            title: 'Online',
-            status: 'online' as const,
-            items: FRIENDS.online,
-          },
-          {
-            title: 'Offline',
-            status: 'offline' as const,
-            items: FRIENDS.offline,
-          },
-        ].map((section) => (
-          <section
-            key={section.title}
-            className="rounded-2xl border border-[#39444d] bg-[#0f172a]/40 p-4"
-          >
-            <div className="mb-4 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span
-                  className={`size-2 rounded-full ${
-                    section.status === 'online' ? 'bg-emerald-400' : 'bg-[#8b98a5]'
-                  }`}
-                />
-                <h2 className="text-[15px] font-semibold text-[#f7f9f9]">{section.title}</h2>
-              </div>
-              <span className="text-[13px] text-[#8b98a5]">{section.items.length}</span>
+      <FriendsList />
+    </div>
+  );
+}
+
+function FriendsList() {
+  const [friends, setFriends] = useState<Array<any>>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+    async function load() {
+      setLoading(true);
+      try {
+        const res = await apiFetch('/api/me/friends');
+        if (res.ok) {
+          const data = await res.json();
+          if (mounted) setFriends(data.items || []);
+        } else {
+          if (mounted) setFriends([]);
+        }
+      } catch (e) {
+        console.error('Failed to load friends', e);
+        if (mounted) setFriends([]);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    }
+
+    void load();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const mapped = friends.map((f) => ({
+    id: f.id,
+    name: f.displayname ?? f.username,
+    username: f.username?.startsWith('@') ? f.username : `@${f.username}`,
+    avatar: f.avatarUrl ?? '/uploads/avatars/default.png',
+    verified: false,
+    level: 1,
+    wins: 0,
+    following: false,
+  }));
+
+  return (
+    <div className="p-4 space-y-6">
+      <section className="rounded-2xl border border-[#39444d] bg-[#0f172a]/40 p-4">
+        <div className="mb-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className={`size-2 rounded-full bg-[#8b98a5]`} />
+            <h2 className="text-[15px] font-semibold text-[#f7f9f9]">Your Friends</h2>
+          </div>
+          <span className="text-[13px] text-[#8b98a5]">{mapped.length}</span>
+        </div>
+
+        <div className="space-y-3">
+          {loading ? (
+            <div className="p-4 text-[#8b98a5]">Loading friends...</div>
+          ) : mapped.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-[#39444d] px-4 py-6 text-center text-[13px] text-[#8b98a5]">
+              No friends yet.
             </div>
-            <div className="space-y-3">
-              {section.items.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-[#39444d] px-4 py-6 text-center text-[13px] text-[#8b98a5]">
-                  No {section.title.toLowerCase()} friends right now.
-                </div>
-              ) : (
-                section.items.map((friend) => (
-                  <FriendsCard
-                    key={friend.id}
-                    friends={{
-                      online: section.status === 'online' ? [friend] : [],
-                      offline: section.status === 'offline' ? [friend] : [],
-                    }}
-                  />
-                ))
-              )}
-            </div>
-          </section>
-        ))}
-      </div>
+          ) : (
+            mapped.map((friend) => (
+              <FriendsCard
+                key={friend.id}
+                friends={{
+                  online: [friend],
+                  offline: [],
+                }}
+              />
+            ))
+          )}
+        </div>
+      </section>
     </div>
   );
 }
