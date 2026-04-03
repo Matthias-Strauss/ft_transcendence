@@ -31,6 +31,8 @@ server {
 
     client_max_body_size 10m;
 
+    ${ADMINER_LOCATION_BLOCK}
+
     location /api/ {
         proxy_pass http://backend:${BACKEND_PORT};
 
