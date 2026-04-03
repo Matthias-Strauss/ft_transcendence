@@ -26,6 +26,65 @@ import {
 
 export const usersRouter = Router();
 
+// Search users by username (query param `q`) — returns basic user info
+usersRouter.get(
+  '/users',
+  requireAuth,
+  asyncHandler(async (req: AuthedRequest, res) => {
+    if (!req.userId) {
+      throw AuthErrors.invalidToken();
+    }
+
+    const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
+    if (q.length < 1) {
+      return res.json({ items: [] });
+    }
+
+    const users = await prisma.user.findMany({
+      where: {
+        username: {
+          contains: q,
+          mode: 'insensitive',
+        },
+      },
+      select: {
+        id: true,
+        username: true,
+        displayname: true,
+        avatarPath: true,
+      },
+      orderBy: [{ username: 'asc' }],
+      take: 20,
+    });
+
+    const items = await Promise.all(
+      users.map(async (u) => {
+        const [postsCount, friendsCount] = await Promise.all([
+          prisma.post.count({
+            where: { authorId: u.id },
+          }),
+          prisma.friendship.count({
+            where: {
+              status: 'ACCEPTED',
+              OR: [{ userOneId: u.id }, { userTwoId: u.id }],
+            },
+          }),
+        ]);
+
+        return {
+          username: u.username,
+          displayname: u.displayname,
+          avatarUrl: getAvatarUrlFromPath(u.avatarPath),
+          postsCount,
+          friendsCount,
+        };
+      }),
+    );
+
+    return res.json({ items });
+  }),
+);
+
 usersRouter.get(
   '/users/:username',
   requireAuth,
