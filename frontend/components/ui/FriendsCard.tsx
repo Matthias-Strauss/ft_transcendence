@@ -3,15 +3,12 @@ import { User } from './User';
 import { Link } from 'react-router-dom';
 
 interface FriendsCardProps {
-  friends: {
-    online: FriendUser[];
-    offline: FriendUser[];
-  };
+  friends: FriendUser[];
 }
 
 export function FriendsCard({ friends }: FriendsCardProps) {
-  const renderFriend = (friend: FriendUser, status: 'online' | 'offline') => {
-    const isOnline = status === 'online';
+  const renderFriend = (friend: FriendUser) => {
+    const isOnline = Boolean(friend.isOnline);
 
     return (
       <div
@@ -49,10 +46,5 @@ export function FriendsCard({ friends }: FriendsCardProps) {
     );
   };
 
-  return (
-    <div className="space-y-3">
-      {friends.online.map((friend) => renderFriend(friend, 'online'))}
-      {friends.offline.map((friend) => renderFriend(friend, 'offline'))}
-    </div>
-  );
+  return <div className="space-y-3">{friends.map((friend) => renderFriend(friend))}</div>;
 }

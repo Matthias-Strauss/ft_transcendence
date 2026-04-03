@@ -3,6 +3,7 @@ export interface FriendUser {
   username: string;
   displayname?: string;
   avatarUrl?: string | null;
+  isOnline?: boolean;
   isFriend?: boolean;
   friendStatus?: 'friend' | 'requested' | 'none';
   friendRequestIncoming?: boolean;

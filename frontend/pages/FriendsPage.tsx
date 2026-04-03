@@ -188,13 +188,7 @@ function FriendsList() {
               No friends yet.
             </div>
           ) : (
-            <FriendsCard
-              key="friends-list"
-              friends={{
-                online: [],
-                offline: friends,
-              }}
-            />
+            <FriendsCard key="friends-list" friends={friends} />
           )}
         </div>
       </section>
