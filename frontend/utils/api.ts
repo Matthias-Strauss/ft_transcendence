@@ -135,3 +135,11 @@ export async function logout(): Promise<void> {
   }
   handleLogout();
 }
+
+export async function sendFriendRequest(username: string): Promise<Response> {
+  const encoded = encodeURIComponent(username);
+  return apiFetch(`/api/users/${encoded}/request`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+}

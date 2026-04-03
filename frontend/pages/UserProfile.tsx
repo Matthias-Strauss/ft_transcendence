@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { apiFetch, logout } from '../utils/api';
+import { apiFetch, logout, sendFriendRequest } from '../utils/api';
 import { PostCard } from '../components/ui/PostCard';
 import { Post } from '../mock_data/mock';
 import '../styles/UserProfile.css';
@@ -11,6 +11,10 @@ interface UserResponse {
   avatarUrl?: string | null;
   postsCount?: number;
   friendsCount?: number;
+  isFriend?: boolean;
+  friendStatus?: 'friend' | 'requested' | 'none';
+  friendRequestIncoming?: boolean;
+  friendRequestSentByMe?: boolean;
 }
 
 interface UserSearchResult {
@@ -31,6 +35,7 @@ export default function UserProfile() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<UserSearchResult[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
+  const [sendingRequest, setSendingRequest] = useState(false);
 
   useEffect(() => {
     if (!username) return;
@@ -112,6 +117,26 @@ export default function UserProfile() {
 
   const normalize = (s?: string | null) => (s ?? '').toString().replace(/^@/, '').toLowerCase();
   const isMine = normalize(me?.username) === normalize(username as string | undefined);
+
+  const handleSendFriendRequest = async () => {
+    if (!user?.username) return;
+    setSendingRequest(true);
+    try {
+      const res = await sendFriendRequest(user.username);
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.user) {
+          setUser((prev) => ({ ...(prev ?? {}), ...data.user }));
+        }
+      } else {
+        console.error('Failed to send friend request', await res.text());
+      }
+    } catch (e) {
+      console.error('Failed to send friend request', e);
+    } finally {
+      setSendingRequest(false);
+    }
+  };
 
   if (loading) {
     return <div className="p-8 text-[#8b98a5]">Loading profile...</div>;
@@ -202,7 +227,7 @@ export default function UserProfile() {
             </div>
 
             <div className="ml-auto flex gap-2">
-              {isMine && (
+              {isMine ? (
                 <>
                   <button className="bg-[var(--color-1)] hover:bg-[var(--color-1)]/90 text-[#f7f9f9] rounded-full py-2 px-4 transition-colors">
                     Edit profile
@@ -219,6 +244,41 @@ export default function UserProfile() {
                   >
                     Logout
                   </button>
+                </>
+              ) : (
+                <>
+                  {!user.isFriend && user.friendStatus !== 'requested' && !user.friendRequestIncoming && (
+                    <button
+                      onClick={handleSendFriendRequest}
+                      disabled={sendingRequest}
+                      className="bg-[var(--color-1)] hover:bg-[var(--color-1)]/90 text-[#f7f9f9] rounded-full py-2 px-4 transition-colors"
+                    >
+                      {sendingRequest ? 'Sending...' : 'Add friend'}
+                    </button>
+                  )}
+
+                  {user.friendStatus === 'requested' && user.friendRequestSentByMe && (
+                    <button className="bg-transparent border border-[#39444d] text-[#f7f9f9] rounded-full py-2 px-4 transition-colors" disabled>
+                      Request sent
+                    </button>
+                  )}
+
+                  {user.isFriend && (
+                    <button className="bg-transparent border border-[#39444d] text-[#f7f9f9] rounded-full py-2 px-4 transition-colors">
+                      Friends
+                    </button>
+                  )}
+
+                  {user.friendRequestIncoming && !user.isFriend && (
+                    <>
+                      <button className="bg-[var(--color-1)] hover:bg-[var(--color-1)]/90 text-[#f7f9f9] rounded-full py-2 px-4 transition-colors">
+                        Accept
+                      </button>
+                      <button className="bg-transparent border border-[#39444d] text-[#f7f9f9] rounded-full py-2 px-4 transition-colors">
+                        Decline
+                      </button>
+                    </>
+                  )}
                 </>
               )}
             </div>
