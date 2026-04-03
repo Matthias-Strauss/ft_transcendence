@@ -1,6 +1,14 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { apiFetch, logout, sendFriendRequest } from '../utils/api';
+import {
+  apiFetch,
+  logout,
+  sendFriendRequest,
+  acceptFriendRequest,
+  declineFriendRequest,
+  withdrawFriendRequest,
+  removeFriend,
+} from '../utils/api';
 import { PostCard } from '../components/ui/PostCard';
 import { Post } from '../mock_data/mock';
 import '../styles/UserProfile.css';
@@ -138,6 +146,78 @@ export default function UserProfile() {
     }
   };
 
+  const handleAcceptFriendRequest = async () => {
+    if (!user?.username) return;
+    setSendingRequest(true);
+    try {
+      const res = await acceptFriendRequest(user.username);
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.user) setUser((prev) => ({ ...(prev ?? {}), ...data.user }));
+      } else {
+        console.error('Failed to accept friend request', await res.text());
+      }
+    } catch (e) {
+      console.error('Failed to accept friend request', e);
+    } finally {
+      setSendingRequest(false);
+    }
+  };
+
+  const handleDeclineFriendRequest = async () => {
+    if (!user?.username) return;
+    setSendingRequest(true);
+    try {
+      const res = await declineFriendRequest(user.username);
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.user) setUser((prev) => ({ ...(prev ?? {}), ...data.user }));
+      } else {
+        console.error('Failed to decline friend request', await res.text());
+      }
+    } catch (e) {
+      console.error('Failed to decline friend request', e);
+    } finally {
+      setSendingRequest(false);
+    }
+  };
+
+  const handleWithdrawFriendRequest = async () => {
+    if (!user?.username) return;
+    setSendingRequest(true);
+    try {
+      const res = await withdrawFriendRequest(user.username);
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.user) setUser((prev) => ({ ...(prev ?? {}), ...data.user }));
+      } else {
+        console.error('Failed to withdraw friend request', await res.text());
+      }
+    } catch (e) {
+      console.error('Failed to withdraw friend request', e);
+    } finally {
+      setSendingRequest(false);
+    }
+  };
+
+  const handleRemoveFriend = async () => {
+    if (!user?.username) return;
+    setSendingRequest(true);
+    try {
+      const res = await removeFriend(user.username);
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.user) setUser((prev) => ({ ...(prev ?? {}), ...data.user }));
+      } else {
+        console.error('Failed to remove friend', await res.text());
+      }
+    } catch (e) {
+      console.error('Failed to remove friend', e);
+    } finally {
+      setSendingRequest(false);
+    }
+  };
+
   if (loading) {
     return <div className="p-8 text-[#8b98a5]">Loading profile...</div>;
   }
@@ -247,35 +327,53 @@ export default function UserProfile() {
                 </>
               ) : (
                 <>
-                  {!user.isFriend && user.friendStatus !== 'requested' && !user.friendRequestIncoming && (
-                    <button
-                      onClick={handleSendFriendRequest}
-                      disabled={sendingRequest}
-                      className="bg-[var(--color-1)] hover:bg-[var(--color-1)]/90 text-[#f7f9f9] rounded-full py-2 px-4 transition-colors"
-                    >
-                      {sendingRequest ? 'Sending...' : 'Add friend'}
-                    </button>
-                  )}
+                  {!user.isFriend &&
+                    user.friendStatus !== 'requested' &&
+                    !user.friendRequestIncoming && (
+                      <button
+                        onClick={handleSendFriendRequest}
+                        disabled={sendingRequest}
+                        className="bg-[var(--color-1)] hover:bg-[var(--color-1)]/90 text-[#f7f9f9] rounded-full py-2 px-4 transition-colors"
+                      >
+                        {sendingRequest ? 'Sending...' : 'Add friend'}
+                      </button>
+                    )}
 
                   {user.friendStatus === 'requested' && user.friendRequestSentByMe && (
-                    <button className="bg-transparent border border-[#39444d] text-[#f7f9f9] rounded-full py-2 px-4 transition-colors" disabled>
-                      Request sent
+                    <button
+                      onClick={handleWithdrawFriendRequest}
+                      disabled={sendingRequest}
+                      className="bg-transparent border border-[#39444d] text-[#f7f9f9] rounded-full py-2 px-4 transition-colors"
+                    >
+                      {sendingRequest ? 'Processing...' : 'cancel request'}
                     </button>
                   )}
 
                   {user.isFriend && (
-                    <button className="bg-transparent border border-[#39444d] text-[#f7f9f9] rounded-full py-2 px-4 transition-colors">
-                      Friends
+                    <button
+                      onClick={handleRemoveFriend}
+                      disabled={sendingRequest}
+                      className="bg-transparent border border-[#39444d] text-[#f7f9f9] rounded-full py-2 px-4 transition-colors"
+                    >
+                      {sendingRequest ? 'Processing...' : 'delete from friends'}
                     </button>
                   )}
 
                   {user.friendRequestIncoming && !user.isFriend && (
                     <>
-                      <button className="bg-[var(--color-1)] hover:bg-[var(--color-1)]/90 text-[#f7f9f9] rounded-full py-2 px-4 transition-colors">
-                        Accept
+                      <button
+                        onClick={handleAcceptFriendRequest}
+                        disabled={sendingRequest}
+                        className="bg-[var(--color-1)] hover:bg-[var(--color-1)]/90 text-[#f7f9f9] rounded-full py-2 px-4 transition-colors"
+                      >
+                        {sendingRequest ? 'Processing...' : 'Accept'}
                       </button>
-                      <button className="bg-transparent border border-[#39444d] text-[#f7f9f9] rounded-full py-2 px-4 transition-colors">
-                        Decline
+                      <button
+                        onClick={handleDeclineFriendRequest}
+                        disabled={sendingRequest}
+                        className="bg-transparent border border-[#39444d] text-[#f7f9f9] rounded-full py-2 px-4 transition-colors"
+                      >
+                        {sendingRequest ? 'Processing...' : 'Decline'}
                       </button>
                     </>
                   )}

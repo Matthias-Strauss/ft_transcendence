@@ -143,3 +143,35 @@ export async function sendFriendRequest(username: string): Promise<Response> {
     headers: { 'Content-Type': 'application/json' },
   });
 }
+
+export async function acceptFriendRequest(username: string): Promise<Response> {
+  const encoded = encodeURIComponent(username);
+  return apiFetch(`/api/users/${encoded}/request/accept`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
+export async function declineFriendRequest(username: string): Promise<Response> {
+  const encoded = encodeURIComponent(username);
+  return apiFetch(`/api/users/${encoded}/request/decline`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
+export async function withdrawFriendRequest(username: string): Promise<Response> {
+  const encoded = encodeURIComponent(username);
+  return apiFetch(`/api/users/${encoded}/request`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
+export async function removeFriend(username: string): Promise<Response> {
+  const encoded = encodeURIComponent(username);
+  return apiFetch(`/api/users/${encoded}/friends`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
