@@ -12,9 +12,8 @@ enum FriendshipStatus {
 }
 
 enum PostVisibility {
-	PUBLIC
-	FRIENDS
-	PRIVATE
+  PUBLIC
+  FRIENDS
 }
 
 model User {

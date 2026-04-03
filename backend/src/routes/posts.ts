@@ -16,7 +16,8 @@ import {
   commentContextIncluded,
   checkCommentBelongsToPost,
   checkPostVisibility,
-  getVisiblePostAuthorIds,
+  PostFeedScope,
+  getPostsFeedWthScope,
 } from '../utils/postUtils.js';
 import {
   postImageUploadHandler,
@@ -33,6 +34,8 @@ import {
 
 export const postsRouter = Router();
 
+const PostFeedScopeQuerySchema = z.enum(['personal_feed', 'public_feed']);
+
 postsRouter.get(
   '/posts',
   requireAuth,
@@ -41,15 +44,19 @@ postsRouter.get(
       throw AuthErrors.invalidToken();
     }
 
-    const { limit, cursor } = parseCursorPaginationFromQuery(req.query);
+    const { scope, ...qPagination } = req.query;
+    const { limit, cursor } = parseCursorPaginationFromQuery(qPagination);
 
-    const visibleAuthorIds = await getVisiblePostAuthorIds(req.userId);
+    const parsedScope = PostFeedScopeQuerySchema.safeParse(scope);
+    if (!parsedScope.success && scope !== undefined) {
+      throw RequestErrors.badRequest(parsedScope.error.issues);
+    }
+
+    const feedScope: PostFeedScope = parsedScope.success ? parsedScope.data : 'personal_feed';
 
     const posts = await prisma.post.findMany({
       where: {
-        authorId: {
-          in: [...visibleAuthorIds],
-        },
+        ...(await getPostsFeedWthScope(req.userId, feedScope)),
         ...(cursor ? buildDescDateIdCursor(cursor) : {}),
       },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
@@ -90,7 +97,7 @@ postsRouter.get(
         hasMore: pagedPosts.hasMore,
         nextCursor: pagedPosts.nextCursor,
         order: 'createdAt_desc',
-        scope: 'personal_feed',
+        scope: feedScope,
       },
     });
   }),
@@ -99,16 +106,13 @@ postsRouter.get(
 const CreatePostSchema = z
   .object({
     content: z.string().trim().min(1).max(500),
-    gameTag: z.preprocess(
-      (value) => {
-        if (typeof value === 'string' && value.trim().length === 0) {
-          return null;
-        }
-        return value;
-      },
-      z.union([z.string().trim().min(1).max(40), z.null()]).optional(),
-    ),
-    visibility: z.enum(['PUBLIC', 'FRIENDS', 'PRIVATE']).optional(),
+    gameTag: z.preprocess((value) => {
+      if (typeof value === 'string' && value.trim().length === 0) {
+        return null;
+      }
+      return value;
+    }, z.union([z.string().trim().min(1).max(40), z.null()]).optional()),
+    visibility: z.enum(['PUBLIC', 'FRIENDS']).optional(),
   })
   .strict();
 

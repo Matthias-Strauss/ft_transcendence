@@ -102,6 +102,7 @@ export async function checkPostVisibility(postId: string, viewerId: string) {
     select: {
       id: true,
       authorId: true,
+      visibility: true,
     },
   });
 
@@ -109,7 +110,7 @@ export async function checkPostVisibility(postId: string, viewerId: string) {
     throw PostErrors.notFound();
   }
 
-  if (post.authorId === viewerId) {
+  if (post.authorId === viewerId || post.visibility === 'PUBLIC') {
     return post;
   }
 
@@ -127,6 +128,23 @@ export async function getVisiblePostAuthorIds(viewerId: string) {
   acceptedFriendIds.add(viewerId);
 
   return acceptedFriendIds;
+}
+
+export type PostFeedScope = 'personal_feed' | 'public_feed';
+
+export async function getPostsFeedWthScope(viewerId: string, scope: PostFeedScope) {
+  if (scope === 'public_feed') {
+    return {
+      visibility: 'PUBLIC',
+    } satisfies Prisma.PostWhereInput;
+  }
+
+  const visibleAuthorIds = await getVisiblePostAuthorIds(viewerId);
+  return {
+    authorId: {
+      in: [...visibleAuthorIds],
+    },
+  } satisfies Prisma.PostWhereInput;
 }
 
 // COMMENTS
