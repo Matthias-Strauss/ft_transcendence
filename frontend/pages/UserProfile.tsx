@@ -9,6 +9,7 @@ import {
   withdrawFriendRequest,
   removeFriend,
 } from '../utils/api';
+import { runFriendAction } from '../utils/friendActions';
 import { PostCard } from '../components/ui/PostCard';
 // import { Post } from '../mock_data/mock';
 import type { Post } from '../types/posts';
@@ -129,94 +130,37 @@ export default function UserProfile() {
 
   const handleSendFriendRequest = async () => {
     if (!user?.username) return;
-    setSendingRequest(true);
-    try {
-      const res = await sendFriendRequest(user.username);
-      if (res.ok) {
-        const data = await res.json();
-        if (data?.user) {
-          setUser((prev) => ({ ...(prev ?? {}), ...data.user }));
-        }
-      } else {
-        console.error('Failed to send friend request', await res.text());
-      }
-    } catch (e) {
-      console.error('Failed to send friend request', e);
-    } finally {
-      setSendingRequest(false);
-    }
+    await runFriendAction(user.username, sendFriendRequest, setSendingRequest, (data) => {
+      if (data?.user) setUser((prev) => ({ ...(prev ?? {}), ...data.user }));
+    });
   };
 
   const handleAcceptFriendRequest = async () => {
     if (!user?.username) return;
-    setSendingRequest(true);
-    try {
-      const res = await acceptFriendRequest(user.username);
-      if (res.ok) {
-        const data = await res.json();
-        if (data?.user) setUser((prev) => ({ ...(prev ?? {}), ...data.user }));
-      } else {
-        console.error('Failed to accept friend request', await res.text());
-      }
-    } catch (e) {
-      console.error('Failed to accept friend request', e);
-    } finally {
-      setSendingRequest(false);
-    }
+    await runFriendAction(user.username, acceptFriendRequest, setSendingRequest, (data) => {
+      if (data?.user) setUser((prev) => ({ ...(prev ?? {}), ...data.user }));
+    });
   };
 
   const handleDeclineFriendRequest = async () => {
     if (!user?.username) return;
-    setSendingRequest(true);
-    try {
-      const res = await declineFriendRequest(user.username);
-      if (res.ok) {
-        const data = await res.json();
-        if (data?.user) setUser((prev) => ({ ...(prev ?? {}), ...data.user }));
-      } else {
-        console.error('Failed to decline friend request', await res.text());
-      }
-    } catch (e) {
-      console.error('Failed to decline friend request', e);
-    } finally {
-      setSendingRequest(false);
-    }
+    await runFriendAction(user.username, declineFriendRequest, setSendingRequest, (data) => {
+      if (data?.user) setUser((prev) => ({ ...(prev ?? {}), ...data.user }));
+    });
   };
 
   const handleWithdrawFriendRequest = async () => {
     if (!user?.username) return;
-    setSendingRequest(true);
-    try {
-      const res = await withdrawFriendRequest(user.username);
-      if (res.ok) {
-        const data = await res.json();
-        if (data?.user) setUser((prev) => ({ ...(prev ?? {}), ...data.user }));
-      } else {
-        console.error('Failed to withdraw friend request', await res.text());
-      }
-    } catch (e) {
-      console.error('Failed to withdraw friend request', e);
-    } finally {
-      setSendingRequest(false);
-    }
+    await runFriendAction(user.username, withdrawFriendRequest, setSendingRequest, (data) => {
+      if (data?.user) setUser((prev) => ({ ...(prev ?? {}), ...data.user }));
+    });
   };
 
   const handleRemoveFriend = async () => {
     if (!user?.username) return;
-    setSendingRequest(true);
-    try {
-      const res = await removeFriend(user.username);
-      if (res.ok) {
-        const data = await res.json();
-        if (data?.user) setUser((prev) => ({ ...(prev ?? {}), ...data.user }));
-      } else {
-        console.error('Failed to remove friend', await res.text());
-      }
-    } catch (e) {
-      console.error('Failed to remove friend', e);
-    } finally {
-      setSendingRequest(false);
-    }
+    await runFriendAction(user.username, removeFriend, setSendingRequest, (data) => {
+      if (data?.user) setUser((prev) => ({ ...(prev ?? {}), ...data.user }));
+    });
   };
 
   if (loading) {
