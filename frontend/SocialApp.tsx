@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { useNavigate, Outlet, useMatch } from 'react-router-dom';
+import { useNavigate, Outlet, useLocation } from 'react-router-dom';
 import { RightPanel } from './components/RightPanel';
 import { LeftSidebar } from './components/LeftSidebar';
 import { HomeFeed } from './pages/HomeFeed';
@@ -12,7 +12,8 @@ export default function SocialApp() {
   const shouldFocusComposerRef = useRef(false);
   const [activeTab, setActiveTab] = useState('home');
   const navigate = useNavigate();
-  const viewingUser = Boolean(useMatch('/users/:username'));
+  const location = useLocation();
+  const viewingUser = location.pathname.startsWith('/users/');
 
   const handleNewPost = () => {
     shouldFocusComposerRef.current = true;

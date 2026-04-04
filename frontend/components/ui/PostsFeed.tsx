@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { apiFetch } from '../../utils/api';
 import { PostCard } from './PostCard';
-import { Post } from '../../mock_data/mock';
+import type { Post } from '../../types/posts';
 
 interface ApiResponse {
   items: Post[];
