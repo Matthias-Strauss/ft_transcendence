@@ -5,7 +5,12 @@ import { requireAuth, AuthedRequest } from '../auth/middleware.js';
 import { asyncHandler } from '../errors/asyncHandler.js';
 import { AuthErrors, RequestErrors, UserErrors } from '../errors/catalog.js';
 import { getAvatarUrlFromPath } from '../files/avatars.js';
-import { getPostViewerContext, postAuthorInclude, serializePost } from '../utils/postUtils.js';
+import {
+  getPostViewerContext,
+  postAuthorInclude,
+  serializePost,
+  getUserPostsWVisibility,
+} from '../utils/postUtils.js';
 import { UsernameSchema } from '../utils/userUtils.js';
 import {
   serializeFriendUser,
@@ -168,26 +173,9 @@ usersRouter.get(
       throw UserErrors.userNotFound();
     }
 
-    if (req.userId !== user.id) {
-      const relation = await getFriendRelation(req.userId, user.id);
-
-      if (!relation.isFriend) {
-        return res.json({
-          items: [],
-          meta: {
-            count: 0,
-            limit,
-            hasMore: false,
-            nextCursor: null,
-            order: 'createdAt_desc',
-          },
-        });
-      }
-    }
-
     const posts = await prisma.post.findMany({
       where: {
-        authorId: user.id,
+        ...(await getUserPostsWVisibility(req.userId, user.id)),
         ...(cursor ? buildDescDateIdCursor(cursor) : {}),
       },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],

@@ -147,6 +147,27 @@ export async function getPostsFeedWthScope(viewerId: string, scope: PostFeedScop
   } satisfies Prisma.PostWhereInput;
 }
 
+export async function getUserPostsWVisibility(viewerId: string, authorId: string) {
+  if (viewerId === authorId) {
+    return {
+      authorId,
+    } satisfies Prisma.PostWhereInput;
+  }
+
+  const relation = await getFriendRelation(viewerId, authorId);
+
+  if (relation.isFriend) {
+    return {
+      authorId,
+    } satisfies Prisma.PostWhereInput;
+  }
+
+  return {
+    authorId,
+    visibility: 'PUBLIC',
+  } satisfies Prisma.PostWhereInput;
+}
+
 // COMMENTS
 export const commentContextIncluded = {
   author: {
