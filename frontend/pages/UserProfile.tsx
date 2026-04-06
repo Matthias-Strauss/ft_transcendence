@@ -12,6 +12,11 @@ import {
 import { runFriendAction } from '../utils/friendActions';
 import { PostCard } from '../components/ui/PostCard';
 import type { Post } from '../types/posts';
+import {
+  clearChatTargetUsername,
+  setChatPanelOpen,
+  setChatTargetUsername,
+} from '../utils/chatState';
 import '../styles/UserProfile.css';
 
 interface UserResponse {
@@ -271,6 +276,21 @@ export default function UserProfile() {
                 </>
               ) : (
                 <>
+                  {user.username && (
+                    <button
+                      onClick={() => {
+                        const targetUsername = user.username;
+                        if (!targetUsername) return;
+                        clearChatTargetUsername();
+                        setChatTargetUsername(targetUsername);
+                        setChatPanelOpen(true);
+                      }}
+                      className="bg-[var(--color-2)] hover:bg-[var(--color-2)]/90 text-[#f7f9f9] rounded-full py-2 px-4 transition-colors"
+                    >
+                      Message
+                    </button>
+                  )}
+
                   {!user.isFriend &&
                     user.friendStatus !== 'requested' &&
                     !user.friendRequestIncoming && (

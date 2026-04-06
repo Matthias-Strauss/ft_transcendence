@@ -7,11 +7,19 @@ import { HomeFeed } from './pages/HomeFeed';
 import { FriendsPage } from './pages/FriendsPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { setLogoutHandler, setAccessTokenListener } from './utils/api';
+import {
+  isChatPanelOpen,
+  setChatPanelOpen,
+  subscribeToChatState,
+  getChatTargetUsername,
+  setChatTargetUsername,
+} from './utils/chatState';
 
 export default function SocialApp() {
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const shouldFocusComposerRef = useRef(false);
   const [activeTab, setActiveTab] = useState('home');
+  const [chatPanelOpen, setChatPanelOpenState] = useState(() => isChatPanelOpen());
   const navigate = useNavigate();
   const location = useLocation();
   const viewingUser = location.pathname.startsWith('/users/');
@@ -75,6 +83,12 @@ export default function SocialApp() {
     setAccessTokenListener((t) => scheduleForToken(t));
   }, [navigate]);
 
+  useEffect(() => {
+    return subscribeToChatState(() => {
+      setChatPanelOpenState(isChatPanelOpen());
+    });
+  }, []);
+
   const renderContent = () => {
     switch (activeTab) {
       case 'home':
@@ -125,9 +139,24 @@ export default function SocialApp() {
           {viewingUser && <Outlet />}
         </main>
 
-        <aside className="fixed right-0 top-0 hidden h-[calc(100vh-2rem)] w-[390px] xl:block">
-          <ChatPanel />
-        </aside>
+        {chatPanelOpen ? (
+          <aside className="fixed right-0 top-0 hidden h-[calc(100vh-2rem)] w-[390px] xl:block">
+            <ChatPanel onClose={() => setChatPanelOpen(false)} />
+          </aside>
+        ) : (
+          <button
+            type="button"
+            className="fixed bottom-4 right-4 hidden rounded-full bg-[var(--color-1)] px-5 py-3 font-semibold text-[#f7f9f9] shadow-lg transition hover:bg-[var(--color-1)]/90 xl:block"
+            onClick={() => {
+              const targetUsername = getChatTargetUsername();
+              if (!targetUsername) return;
+              setChatTargetUsername(targetUsername);
+              setChatPanelOpen(true);
+            }}
+          >
+            Open chat
+          </button>
+        )}
       </div>
     </div>
   );

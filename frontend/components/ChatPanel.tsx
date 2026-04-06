@@ -4,6 +4,11 @@ import { socket } from '../socket';
 import '../styles/chat.css';
 import { uploadFile } from '../utils/send_file';
 import { FileUp } from 'lucide-react';
+import {
+  clearChatTargetUsername,
+  getChatTargetUsername,
+  subscribeToChatState,
+} from '../utils/chatState';
 
 interface Message {
   id: string;
@@ -43,10 +48,17 @@ const MOCK_MESSAGES: Message[] = [
   },
 ];
 
-export function ChatPanel() {
+interface ChatPanelProps {
+  onClose?: () => void;
+}
+
+export function ChatPanel({ onClose }: ChatPanelProps) {
   const [messages, setMessages] = useState<Message[]>(MOCK_MESSAGES);
   const [inputValue, setInputValue] = useState('');
   const [connected, setConnected] = useState(socket.connected);
+  const [targetUsername, setTargetUsername] = useState<string | null>(() =>
+    getChatTargetUsername(),
+  );
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [progress, setProgress] = useState(0);
@@ -63,6 +75,12 @@ export function ChatPanel() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  useEffect(() => {
+    return subscribeToChatState(() => {
+      setTargetUsername(getChatTargetUsername());
+    });
+  }, []);
 
   useEffect(() => {
     const onConnect = () => setConnected(true);
@@ -125,7 +143,7 @@ export function ChatPanel() {
   const handleSend = () => {
     const text = inputValue.trim();
     if (!text || !connected) return;
-    socket.emit('chat:message', { text, to: socket.id });
+    socket.emit('chat:message', { text, to: targetUsername ?? undefined });
     setInputValue('');
   };
 
@@ -135,12 +153,21 @@ export function ChatPanel() {
         <div className="chat-header">
           <div>
             <p className="chat-title">Live Chat</p>
-            <p className="chat-subtitle">Talk with online players</p>
+            <p className="chat-subtitle">
+              {targetUsername ? `Chat with @${targetUsername}` : 'Talk with online players'}
+            </p>
           </div>
 
-          <div className="chat-status-pill">
-            <span className={`chat-status-dot ${connected ? 'online' : 'offline'}`} />
-            {connected ? 'Connected' : 'Offline'}
+          <div className="chat-header-actions">
+            <div className="chat-status-pill">
+              <span className={`chat-status-dot ${connected ? 'online' : 'offline'}`} />
+              {connected ? 'Connected' : 'Offline'}
+            </div>
+            {onClose && (
+              <button type="button" className="chat-close-btn" onClick={onClose}>
+                Close
+              </button>
+            )}
           </div>
         </div>
 
