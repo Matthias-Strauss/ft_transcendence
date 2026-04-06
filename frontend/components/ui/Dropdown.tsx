@@ -1,4 +1,4 @@
-import { DropdownItem } from '../../mock_data/mock';
+import type { DropdownItem } from '../../types/posts';
 import { apiFetch } from '../../utils/api';
 
 interface DropdownProps {

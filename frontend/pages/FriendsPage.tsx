@@ -1,8 +1,61 @@
-import { FriendsCard } from '@/components/ui/FriendsCard';
-import { FRIENDS } from '@/mock_data/mock';
+import { useEffect, useState } from 'react';
+import { FriendsCard } from '../components/ui/FriendsCard';
+import { User } from '../components/ui/User';
+import type { FriendUser } from '../types/users';
 import { Sparkles } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import {
+  apiFetch,
+  acceptFriendRequest,
+  declineFriendRequest,
+  withdrawFriendRequest,
+} from '../utils/api';
+import { runFriendAction } from '../utils/friendActions';
 
 export function FriendsPage() {
+  const [activeTab, setActiveTab] = useState<'friends' | 'requests'>('friends');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<
+    {
+      username: string;
+      displayname?: string;
+      avatarUrl?: string | null;
+      postsCount?: number;
+      friendsCount?: number;
+    }[]
+  >([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const q = (searchQuery ?? '').trim();
+    if (q.length < 2) {
+      setSearchResults([]);
+      setSearchLoading(false);
+      return;
+    }
+
+    const id = setTimeout(async () => {
+      setSearchLoading(true);
+      try {
+        const res = await apiFetch(`/api/users?q=${encodeURIComponent(q)}`);
+        if (res.ok) {
+          const payload = await res.json();
+          setSearchResults(payload.items || []);
+        } else {
+          setSearchResults([]);
+        }
+      } catch (e) {
+        console.error('Search failed', e);
+        setSearchResults([]);
+      } finally {
+        setSearchLoading(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(id);
+  }, [searchQuery]);
+
   return (
     <div className="border-b border-[#39444d]">
       <div className="sticky top-0 backdrop-blur-xl bg-[#0f172a]/80 border-b border-[#39444d] z-10">
@@ -14,64 +67,317 @@ export function FriendsPage() {
         </div>
         <div className="flex border-b border-[#39444d]">
           <button
-            className="flex-1 py-4 font-medium text-[15px] text-[#f7f9f9] border-b-4 transition-colors hover:bg-[#1e293b]"
-            style={{ borderColor: 'var(--color-1)' }}
+            onClick={() => setActiveTab('friends')}
+            className={`flex-1 py-4 font-medium text-[15px] transition-colors hover:bg-[#1e293b] ${
+              activeTab === 'friends' ? 'text-[#f7f9f9] border-b-4' : 'text-[#8b98a5]'
+            }`}
+            style={activeTab === 'friends' ? { borderColor: 'var(--color-1)' } : {}}
           >
             Your Friends
           </button>
-          <button className="flex-1 py-4 font-medium text-[15px] text-[#8b98a5] hover:bg-[#1e293b] transition-colors">
+          <button
+            onClick={() => setActiveTab('requests')}
+            className={`flex-1 py-4 font-medium text-[15px] transition-colors hover:bg-[#1e293b] ${
+              activeTab === 'requests' ? 'text-[#f7f9f9] border-b-4' : 'text-[#8b98a5]'
+            }`}
+            style={activeTab === 'requests' ? { borderColor: 'var(--color-1)' } : {}}
+          >
             Following Requests
           </button>
         </div>
-      </div>
-      <div className="p-4 space-y-6">
-        {[
-          {
-            title: 'Online',
-            status: 'online' as const,
-            items: FRIENDS.online,
-          },
-          {
-            title: 'Offline',
-            status: 'offline' as const,
-            items: FRIENDS.offline,
-          },
-        ].map((section) => (
-          <section
-            key={section.title}
-            className="rounded-2xl border border-[#39444d] bg-[#0f172a]/40 p-4"
-          >
-            <div className="mb-4 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span
-                  className={`size-2 rounded-full ${
-                    section.status === 'online' ? 'bg-emerald-400' : 'bg-[#8b98a5]'
-                  }`}
-                />
-                <h2 className="text-[15px] font-semibold text-[#f7f9f9]">{section.title}</h2>
+        <div className="p-3 border-b border-[#39444d] bg-[#0f172a]/80">
+          <div className="user-search-wrap">
+            <input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search by nickname"
+              className="w-full rounded-md border border-[#39444d] bg-[#071026] px-3 py-2 text-sm text-[#f7f9f9] outline-none"
+            />
+
+            {searchLoading && (searchQuery ?? '').trim().length >= 2 && (
+              <div className="user-search-status">Searching...</div>
+            )}
+
+            {(searchQuery ?? '').trim().length >= 2 && !searchLoading && (
+              <div className="user-search-dropdown">
+                {searchResults.length === 0 ? (
+                  <div className="p-3 text-[#8b98a5]">No users found</div>
+                ) : (
+                  searchResults.map((r) => (
+                    <button
+                      key={r.username}
+                      className="user-search-item"
+                      onClick={() => {
+                        setSearchQuery('');
+                        setSearchResults([]);
+                        navigate(`/users/${r.username}`);
+                      }}
+                    >
+                      <div className="user-search-avatar">
+                        <img
+                          src={r.avatarUrl ?? '/uploads/avatars/default.png'}
+                          alt={r.displayname ?? r.username}
+                        />
+                      </div>
+
+                      <div className="user-search-main">
+                        <div className="user-search-name">{r.displayname ?? r.username}</div>
+                        <div className="user-search-username">@{r.username}</div>
+                      </div>
+
+                      <div className="user-search-meta">{r.postsCount ?? 0} posts</div>
+                      <div className="user-search-meta">{r.friendsCount ?? 0} friends</div>
+                    </button>
+                  ))
+                )}
               </div>
-              <span className="text-[13px] text-[#8b98a5]">{section.items.length}</span>
-            </div>
-            <div className="space-y-3">
-              {section.items.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-[#39444d] px-4 py-6 text-center text-[13px] text-[#8b98a5]">
-                  No {section.title.toLowerCase()} friends right now.
-                </div>
-              ) : (
-                section.items.map((friend) => (
-                  <FriendsCard
-                    key={friend.id}
-                    friends={{
-                      online: section.status === 'online' ? [friend] : [],
-                      offline: section.status === 'offline' ? [friend] : [],
-                    }}
-                  />
-                ))
-              )}
-            </div>
-          </section>
-        ))}
+            )}
+          </div>
+        </div>
       </div>
+      {activeTab === 'friends' ? <FriendsList /> : <RequestsList />}
+    </div>
+  );
+}
+
+function FriendsList() {
+  const [friends, setFriends] = useState<FriendUser[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+    async function load() {
+      setLoading(true);
+      try {
+        const res = await apiFetch('/api/me/friends');
+        if (res.ok) {
+          const data = await res.json();
+          if (mounted) setFriends(data.items || []);
+        } else {
+          if (mounted) setFriends([]);
+        }
+      } catch (e) {
+        console.error('Failed to load friends', e);
+        if (mounted) setFriends([]);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    }
+
+    void load();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  return (
+    <div className="p-4 space-y-6">
+      <section className="rounded-2xl border border-[#39444d] bg-[#0f172a]/40 p-4">
+        <div className="mb-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className={`size-2 rounded-full bg-[#8b98a5]`} />
+            <h2 className="text-[15px] font-semibold text-[#f7f9f9]">Your Friends</h2>
+          </div>
+          <span className="text-[13px] text-[#8b98a5]">{friends.length}</span>
+        </div>
+        <div className="space-y-3">
+          {loading ? (
+            <div className="p-4 text-[#8b98a5]">Loading friends...</div>
+          ) : friends.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-[#39444d] px-4 py-6 text-center text-[13px] text-[#8b98a5]">
+              No friends yet.
+            </div>
+          ) : (
+            <FriendsCard key="friends-list" friends={friends} />
+          )}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function RequestsList() {
+  const [requests, setRequests] = useState<FriendUser[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [processing, setProcessing] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function load() {
+      setLoading(true);
+      try {
+        const res = await apiFetch('/api/me/friends/requests');
+        if (res.ok) {
+          const data = await res.json();
+          if (mounted) setRequests(data.items || []);
+        } else {
+          if (mounted) setRequests([]);
+        }
+      } catch (e) {
+        console.error('Failed to load requests', e);
+        if (mounted) setRequests([]);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    }
+
+    void load();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const setProcessingFlag = (username: string, value: boolean) =>
+    setProcessing((prev) => ({ ...prev, [username]: value }));
+
+  const handleAccept = async (username: string) => {
+    await runFriendAction(
+      username,
+      acceptFriendRequest,
+      (v) => setProcessingFlag(username, v),
+      () => setRequests((prev) => prev.filter((r) => r.username !== username)),
+    );
+  };
+
+  const handleDecline = async (username: string) => {
+    await runFriendAction(
+      username,
+      declineFriendRequest,
+      (v) => setProcessingFlag(username, v),
+      () => setRequests((prev) => prev.filter((r) => r.username !== username)),
+    );
+  };
+
+  const handleWithdraw = async (username: string) => {
+    await runFriendAction(
+      username,
+      withdrawFriendRequest,
+      (v) => setProcessingFlag(username, v),
+      () => setRequests((prev) => prev.filter((r) => r.username !== username)),
+    );
+  };
+
+  const incoming = requests.filter((r) => Boolean(r.friendRequestIncoming));
+  const outgoing = requests.filter((r) => Boolean(r.friendRequestSentByMe));
+
+  const incomingFiltered = incoming;
+  const outgoingFiltered = outgoing;
+
+  return (
+    <div className="p-4 space-y-6">
+      <section className="rounded-2xl border border-[#39444d] bg-[#0f172a]/40 p-4">
+        <div className="mb-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className={`size-2 rounded-full bg-[#8b98a5]`} />
+            <h2 className="text-[15px] font-semibold text-[#f7f9f9]">Incoming Requests</h2>
+          </div>
+          <span className="text-[13px] text-[#8b98a5]">{incoming.length}</span>
+        </div>
+
+        <div className="space-y-3">
+          {loading ? (
+            <div className="p-4 text-[#8b98a5]">Loading requests...</div>
+          ) : incoming.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-[#39444d] px-4 py-6 text-center text-[13px] text-[#8b98a5]">
+              No incoming requests.
+            </div>
+          ) : (
+            incoming.map((req) => (
+              <div
+                key={req.id}
+                className="flex items-start justify-between gap-3 rounded-xl border border-[#39444d] bg-[#0f172a]/40 px-4 py-3"
+              >
+                <div className="flex-1 min-w-0">
+                  <User
+                    avatar={req.avatarUrl ?? '/uploads/avatars/default.png'}
+                    name={req.displayname ?? req.username}
+                    username={req.username}
+                  />
+                </div>
+
+                <div className="flex flex-col items-end gap-2">
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => void handleAccept(req.username)}
+                      disabled={Boolean(processing[req.username])}
+                      className="bg-[var(--color-1)] hover:bg-[var(--color-1)]/90 text-[#f7f9f9] rounded-full py-2 px-4 transition-colors"
+                    >
+                      {processing[req.username] ? 'Processing...' : 'Accept'}
+                    </button>
+                    <button
+                      onClick={() => void handleDecline(req.username)}
+                      disabled={Boolean(processing[req.username])}
+                      className="bg-transparent border border-[#39444d] text-[#f7f9f9] rounded-full py-2 px-4 transition-colors"
+                    >
+                      {processing[req.username] ? 'Processing...' : 'Decline'}
+                    </button>
+                  </div>
+                  <Link
+                    to={`/users/${req.username}`}
+                    className="text-[13px] text-[#8b98a5] hover:underline"
+                  >
+                    View
+                  </Link>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-[#39444d] bg-[#0f172a]/40 p-4">
+        <div className="mb-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className={`size-2 rounded-full bg-[#8b98a5]`} />
+            <h2 className="text-[15px] font-semibold text-[#f7f9f9]">Outgoing Requests</h2>
+          </div>
+          <span className="text-[13px] text-[#8b98a5]">{outgoing.length}</span>
+        </div>
+
+        <div className="space-y-3">
+          {loading ? (
+            <div className="p-4 text-[#8b98a5]">Loading requests...</div>
+          ) : outgoing.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-[#39444d] px-4 py-6 text-center text-[13px] text-[#8b98a5]">
+              No outgoing requests.
+            </div>
+          ) : (
+            outgoing.map((req) => (
+              <div
+                key={req.id}
+                className="flex items-start justify-between gap-3 rounded-xl border border-[#39444d] bg-[#0f172a]/40 px-4 py-3"
+              >
+                <div className="flex-1 min-w-0">
+                  <User
+                    avatar={req.avatarUrl ?? '/uploads/avatars/default.png'}
+                    name={req.displayname ?? req.username}
+                    username={req.username}
+                  />
+                </div>
+
+                <div className="flex flex-col items-end gap-2">
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => void handleWithdraw(req.username)}
+                      disabled={Boolean(processing[req.username])}
+                      className="bg-transparent border border-[#39444d] text-[#f7f9f9] rounded-full py-2 px-4 transition-colors"
+                    >
+                      {processing[req.username] ? 'Processing...' : 'Cancel request'}
+                    </button>
+                  </div>
+                  <Link
+                    to={`/users/${req.username}`}
+                    className="text-[13px] text-[#8b98a5] hover:underline"
+                  >
+                    View
+                  </Link>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </section>
     </div>
   );
 }

@@ -1,7 +1,6 @@
 import { Heart, MessageCircle, Share2, MoreHorizontal } from 'lucide-react';
-import { Post } from '../../mock_data/mock';
+import type { Post, DropdownItem } from '../../types/posts';
 import { User } from './User';
-import { DropdownItem } from '../../mock_data/mock';
 import { Bookmark, Repeat2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { apiFetch } from '../../utils/api';
@@ -96,10 +95,9 @@ export function PostCard({ post }: PostCardProps) {
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between mb-1">
             <User
-              avatar={post.author.avatarUrl}
-              name={post.author.name}
+              avatar={post.author.avatarUrl ?? '/uploads/avatars/default.png'}
+              name={post.author.displayname ?? post.author.username}
               username={post.author.username}
-              verified={post.author.verified}
             />
             <div className="relative">
               <button

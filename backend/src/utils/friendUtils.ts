@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client';
 
 import { getAvatarUrlFromPath } from '../files/avatars.js';
+import { isOnline as presenceIsOnline } from './presence.js';
 import { prisma } from '../db.js';
 import { UserErrors } from '../errors/catalog.js';
 
@@ -50,6 +51,7 @@ export function serializeFriendUser(
   return {
     ...safeUser,
     avatarUrl: getAvatarUrlFromPath(avatarPath),
+    isOnline: presenceIsOnline(user.id),
     isFriend: relation.isFriend ?? false,
     friendStatus: relation.friendStatus ?? 'none',
     friendRequestIncoming: relation.friendRequestIncoming ?? false,

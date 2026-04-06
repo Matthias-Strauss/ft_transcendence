@@ -1,8 +1,17 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { apiFetch, logout } from '../utils/api';
+import {
+  apiFetch,
+  logout,
+  sendFriendRequest,
+  acceptFriendRequest,
+  declineFriendRequest,
+  withdrawFriendRequest,
+  removeFriend,
+} from '../utils/api';
+import { runFriendAction } from '../utils/friendActions';
 import { PostCard } from '../components/ui/PostCard';
-import { Post } from '../mock_data/mock';
+import type { Post } from '../types/posts';
 import '../styles/UserProfile.css';
 
 interface UserResponse {
@@ -11,6 +20,10 @@ interface UserResponse {
   avatarUrl?: string | null;
   postsCount?: number;
   friendsCount?: number;
+  isFriend?: boolean;
+  friendStatus?: 'friend' | 'requested' | 'none';
+  friendRequestIncoming?: boolean;
+  friendRequestSentByMe?: boolean;
 }
 
 interface UserSearchResult {
@@ -31,6 +44,7 @@ export default function UserProfile() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<UserSearchResult[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
+  const [sendingRequest, setSendingRequest] = useState(false);
 
   useEffect(() => {
     if (!username) return;
@@ -112,6 +126,41 @@ export default function UserProfile() {
 
   const normalize = (s?: string | null) => (s ?? '').toString().replace(/^@/, '').toLowerCase();
   const isMine = normalize(me?.username) === normalize(username as string | undefined);
+
+  const handleSendFriendRequest = async () => {
+    if (!user?.username) return;
+    await runFriendAction(user.username, sendFriendRequest, setSendingRequest, (data) => {
+      if (data?.user) setUser((prev) => ({ ...(prev ?? {}), ...data.user }));
+    });
+  };
+
+  const handleAcceptFriendRequest = async () => {
+    if (!user?.username) return;
+    await runFriendAction(user.username, acceptFriendRequest, setSendingRequest, (data) => {
+      if (data?.user) setUser((prev) => ({ ...(prev ?? {}), ...data.user }));
+    });
+  };
+
+  const handleDeclineFriendRequest = async () => {
+    if (!user?.username) return;
+    await runFriendAction(user.username, declineFriendRequest, setSendingRequest, (data) => {
+      if (data?.user) setUser((prev) => ({ ...(prev ?? {}), ...data.user }));
+    });
+  };
+
+  const handleWithdrawFriendRequest = async () => {
+    if (!user?.username) return;
+    await runFriendAction(user.username, withdrawFriendRequest, setSendingRequest, (data) => {
+      if (data?.user) setUser((prev) => ({ ...(prev ?? {}), ...data.user }));
+    });
+  };
+
+  const handleRemoveFriend = async () => {
+    if (!user?.username) return;
+    await runFriendAction(user.username, removeFriend, setSendingRequest, (data) => {
+      if (data?.user) setUser((prev) => ({ ...(prev ?? {}), ...data.user }));
+    });
+  };
 
   if (loading) {
     return <div className="p-8 text-[#8b98a5]">Loading profile...</div>;
@@ -202,7 +251,7 @@ export default function UserProfile() {
             </div>
 
             <div className="ml-auto flex gap-2">
-              {isMine && (
+              {isMine ? (
                 <>
                   <button className="bg-[var(--color-1)] hover:bg-[var(--color-1)]/90 text-[#f7f9f9] rounded-full py-2 px-4 transition-colors">
                     Edit profile
@@ -219,6 +268,59 @@ export default function UserProfile() {
                   >
                     Logout
                   </button>
+                </>
+              ) : (
+                <>
+                  {!user.isFriend &&
+                    user.friendStatus !== 'requested' &&
+                    !user.friendRequestIncoming && (
+                      <button
+                        onClick={handleSendFriendRequest}
+                        disabled={sendingRequest}
+                        className="bg-[var(--color-1)] hover:bg-[var(--color-1)]/90 text-[#f7f9f9] rounded-full py-2 px-4 transition-colors"
+                      >
+                        {sendingRequest ? 'Sending...' : 'Add friend'}
+                      </button>
+                    )}
+
+                  {user.friendStatus === 'requested' && user.friendRequestSentByMe && (
+                    <button
+                      onClick={handleWithdrawFriendRequest}
+                      disabled={sendingRequest}
+                      className="bg-transparent border border-[#39444d] text-[#f7f9f9] rounded-full py-2 px-4 transition-colors"
+                    >
+                      {sendingRequest ? 'Processing...' : 'cancel request'}
+                    </button>
+                  )}
+
+                  {user.isFriend && (
+                    <button
+                      onClick={handleRemoveFriend}
+                      disabled={sendingRequest}
+                      className="bg-transparent border border-[#39444d] text-[#f7f9f9] rounded-full py-2 px-4 transition-colors"
+                    >
+                      {sendingRequest ? 'Processing...' : 'delete from friends'}
+                    </button>
+                  )}
+
+                  {user.friendRequestIncoming && !user.isFriend && (
+                    <>
+                      <button
+                        onClick={handleAcceptFriendRequest}
+                        disabled={sendingRequest}
+                        className="bg-[var(--color-1)] hover:bg-[var(--color-1)]/90 text-[#f7f9f9] rounded-full py-2 px-4 transition-colors"
+                      >
+                        {sendingRequest ? 'Processing...' : 'Accept'}
+                      </button>
+                      <button
+                        onClick={handleDeclineFriendRequest}
+                        disabled={sendingRequest}
+                        className="bg-transparent border border-[#39444d] text-[#f7f9f9] rounded-full py-2 px-4 transition-colors"
+                      >
+                        {sendingRequest ? 'Processing...' : 'Decline'}
+                      </button>
+                    </>
+                  )}
                 </>
               )}
             </div>

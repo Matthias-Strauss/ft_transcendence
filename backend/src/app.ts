@@ -12,6 +12,7 @@ import { getFilesDir } from './files/storage.js';
 import { uploadsRouter } from './routes/upload.js';
 import { postsRouter } from './routes/posts.js';
 import { meRouter } from './routes/me.js';
+import { presenceRouter } from './routes/presence.js';
 
 function createAPI() {
   const api = express.Router();
@@ -20,6 +21,7 @@ function createAPI() {
   api.use(authRouter);
   api.use(testRouter);
   api.use(usersRouter);
+  api.use(presenceRouter);
   api.use(uploadsRouter);
   api.use(postsRouter);
   api.use(meRouter);
