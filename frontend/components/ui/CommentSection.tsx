@@ -2,6 +2,7 @@ import type { Post, Comment, CommentsResponse } from '../../types/posts';
 import { Heart, Send } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { apiFetch } from '../../utils/api';
+import { AuthedImage } from './AuthedImage';
 
 interface PostProp {
   post: Post;
@@ -134,7 +135,7 @@ export default function CommentSection({ post, onCommentCreated }: PostProp) {
           <div key={comment.id} className="p-4 hover:bg-[#1e293b]/30 transition-colors">
             <div className="flex gap-3">
               <div className="size-10 rounded-full overflow-hidden shrink-0">
-                <img
+                <AuthedImage
                   src={comment.author?.avatarUrl ?? '/uploads/avatars/default.png'}
                   alt={comment.author?.displayname ?? comment.author?.username ?? ''}
                   className="w-full h-full object-cover"
