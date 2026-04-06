@@ -209,3 +209,28 @@ export async function checkCommentBelongsToPost(commentId: string, postId: strin
     throw CommentErrors.notFound();
   }
 }
+
+export async function checkPostMediaAccess(imagePath: string, viewerId: string) {
+  const post = await prisma.post.findFirst({
+    where: { imagePath },
+    select: {
+      id: true,
+      authorId: true,
+    },
+  });
+
+  if (!post) {
+    throw PostErrors.notFound();
+  }
+
+  if (post.authorId === viewerId) {
+    return;
+  }
+
+  const relation = getFriendRelation(viewerId, post.authorId);
+
+  if (!(await relation).isFriend) {
+    throw PostErrors.notFound();
+  }
+  return post;
+}
