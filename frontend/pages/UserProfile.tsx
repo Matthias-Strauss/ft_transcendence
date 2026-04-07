@@ -9,6 +9,7 @@ import {
   withdrawFriendRequest,
   removeFriend,
 } from '../utils/api';
+import EditProfileModal from '../components/ui/EditProfileModal';
 import { runFriendAction } from '../utils/friendActions';
 import { PostCard } from '../components/ui/PostCard';
 import type { Post } from '../types/posts';
@@ -45,6 +46,7 @@ export default function UserProfile() {
   const [searchResults, setSearchResults] = useState<UserSearchResult[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [sendingRequest, setSendingRequest] = useState(false);
+  const [editing, setEditing] = useState(false);
 
   useEffect(() => {
     if (!username) return;
@@ -172,6 +174,9 @@ export default function UserProfile() {
 
   return (
     <div>
+		 {editing && (
+      <EditProfileModal />
+    )}
       <div className="user-profile-header">
         <div className="flex items-center justify-between p-4">
           <h1 className="text-[20px] font-bold text-[#f7f9f9]">
@@ -253,7 +258,11 @@ export default function UserProfile() {
             <div className="ml-auto flex gap-2">
               {isMine ? (
                 <>
-                  <button className="bg-[var(--color-1)] hover:bg-[var(--color-1)]/90 text-[#f7f9f9] rounded-full py-2 px-4 transition-colors">
+                  <button
+                    onClick={() => setEditing(true)
+					}
+                    className="bg-[var(--color-1)] hover:bg-[var(--color-1)]/90 text-[#f7f9f9] rounded-full py-2 px-4 transition-colors"
+                  >
                     Edit profile
                   </button>
                   <button
