@@ -4,10 +4,12 @@ import crypto from 'crypto';
 import fs from 'fs/promises';
 import { fileTypeFromFile } from 'file-type';
 
-import { resolveInFilesDir } from './storage.js';
-import { FileErrors, RequestErrors } from '../errors/catalog.js';
+import { normalizeRequestedFilePath, resolveInFilesDir } from './storage.js';
+import { AuthErrors, FileErrors, RequestErrors } from '../errors/catalog.js';
 import { POST_IMAGE_MAX_FILE_SIZE_BYTES } from '../config.js';
 import { AuthedRequest } from '../auth/middleware.js';
+import { asyncHandler } from '../errors/asyncHandler.js';
+import { checkPostMediaAccess } from '../utils/postUtils.js';
 
 const POST_IMAGE_MIME_MAP = {
   'image/jpeg': '.jpg',
@@ -174,3 +176,21 @@ export async function cleanupUploadedPostImage(req: AuthedRequest) {
     await fs.unlink(uploadedPostImage.path).catch(() => undefined);
   }
 }
+
+export const requirePostMediaAccess = asyncHandler(
+  async (req: AuthedRequest, _res: Response, next: NextFunction) => {
+    if (!req.userId) {
+      throw AuthErrors.invalidToken();
+    }
+
+    const requestedFilePath = normalizeRequestedFilePath(req.path);
+
+    if (!requestedFilePath.startsWith('posts/')) {
+      return next();
+    }
+
+    await checkPostMediaAccess(requestedFilePath, req.userId);
+
+    return next();
+  },
+);

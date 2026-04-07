@@ -175,3 +175,15 @@ export async function removeFriend(username: string): Promise<Response> {
     headers: { 'Content-Type': 'application/json' },
   });
 }
+
+export async function fetchAuthedImageURL(src: string): Promise<string> {
+  const apiRes = await apiFetch(src);
+
+  if (!apiRes.ok) {
+    console.error(`[fetchImage] Failed to fetch image: ${apiRes.status} ${apiRes.statusText}`);
+    throw new Error(`Failed to fetch image: ${apiRes.status} ${apiRes.statusText}`);
+  }
+
+  const blob = await apiRes.blob();
+  return URL.createObjectURL(blob);
+}

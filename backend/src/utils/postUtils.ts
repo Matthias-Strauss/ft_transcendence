@@ -3,7 +3,7 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '../db.js';
 import { getAvatarUrlFromPath } from '../files/avatars.js';
 import { getPostImageUrlFromPath } from '../files/postings.js';
-import { PostErrors, CommentErrors } from '../errors/catalog.js';
+import { PostErrors, CommentErrors, FileErrors } from '../errors/catalog.js';
 import { getAllAcceptedFriendUserIds, getFriendRelation } from './friendUtils.js';
 
 export const postAuthorInclude = {
@@ -247,4 +247,29 @@ export async function checkCommentBelongsToPost(commentId: string, postId: strin
   if (!comment || comment.postId !== postId) {
     throw CommentErrors.notFound();
   }
+}
+
+export async function checkPostMediaAccess(imagePath: string, viewerId: string) {
+  const post = await prisma.post.findFirst({
+    where: { imagePath },
+    select: {
+      id: true,
+      authorId: true,
+    },
+  });
+
+  if (!post) {
+    throw FileErrors.fileNotFound();
+  }
+
+  if (post.authorId === viewerId) {
+    return;
+  }
+
+  const relation = getFriendRelation(viewerId, post.authorId);
+
+  if (!(await relation).isFriend) {
+    throw FileErrors.fileNotFound();
+  }
+  return post;
 }
