@@ -4,11 +4,7 @@ import { socket } from '../socket';
 import '../styles/chat.css';
 import { uploadFile } from '../utils/send_file';
 import { FileUp } from 'lucide-react';
-import {
-  clearChatTargetUsername,
-  getChatTargetUsername,
-  subscribeToChatState,
-} from '../utils/chatState';
+import useChatStore from '../utils/chatState';
 
 interface Message {
   id: string;
@@ -56,9 +52,6 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
   const [messages, setMessages] = useState<Message[]>(MOCK_MESSAGES);
   const [inputValue, setInputValue] = useState('');
   const [connected, setConnected] = useState(socket.connected);
-  const [targetUsername, setTargetUsername] = useState<string | null>(() =>
-    getChatTargetUsername(),
-  );
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [progress, setProgress] = useState(0);
@@ -76,11 +69,7 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  useEffect(() => {
-    return subscribeToChatState(() => {
-      setTargetUsername(getChatTargetUsername());
-    });
-  }, []);
+    const targetUsername = useChatStore((state) => state.targetUsername);
 
   useEffect(() => {
     const onConnect = () => setConnected(true);

@@ -1,53 +1,25 @@
-const CHAT_TARGET_KEY = 'chat.targetUsername';
-const CHAT_PANEL_OPEN_KEY = 'chat.panelOpen';
-const CHAT_STATE_EVENT = 'chat-state-updated';
+import {create} from 'zustand';
 
-function notifyChatStateUpdated() {
-  window.dispatchEvent(new Event(CHAT_STATE_EVENT));
+interface ChatState {
+  targetUsername: string | null;
+  panelOpen: boolean;
+  setTargetUsername: (username: string) => void;
+  clearTargetUsername: () => void;
+  setPanelOpen: (isOpen: boolean) => void;
 }
 
-export function getChatTargetUsername(): string | null {
-  const value = localStorage.getItem(CHAT_TARGET_KEY);
-  if (!value) return null;
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : null;
-}
+const useChatStore = create<ChatState>()((set) => ({
+  targetUsername: null,
+  panelOpen: false,
+  setTargetUsername: (username) => set({ targetUsername: username }),
+  clearTargetUsername: () => set({ targetUsername: null }),
+  setPanelOpen: (isOpen) => set({ panelOpen: isOpen }),
+}));
 
-export function setChatTargetUsername(username: string) {
-  const normalized = username.trim().replace(/^@/, '');
-  if (!normalized) return;
-  localStorage.setItem(CHAT_TARGET_KEY, normalized);
-  notifyChatStateUpdated();
-}
+export default useChatStore;
 
-export function clearChatTargetUsername() {
-  localStorage.removeItem(CHAT_TARGET_KEY);
-  notifyChatStateUpdated();
-}
 
-export function isChatPanelOpen(): boolean {
-  const raw = localStorage.getItem(CHAT_PANEL_OPEN_KEY);
-  return raw !== '0';
-}
-
-export function setChatPanelOpen(isOpen: boolean) {
-  localStorage.setItem(CHAT_PANEL_OPEN_KEY, isOpen ? '1' : '0');
-  notifyChatStateUpdated();
-}
-
-export function subscribeToChatState(onChange: () => void) {
-  const handleStorage = (event: StorageEvent) => {
-    if (!event.key) return;
-    if (event.key === CHAT_TARGET_KEY || event.key === CHAT_PANEL_OPEN_KEY) {
-      onChange();
-    }
-  };
-
-  window.addEventListener('storage', handleStorage);
-  window.addEventListener(CHAT_STATE_EVENT, onChange);
-
-  return () => {
-    window.removeEventListener('storage', handleStorage);
-    window.removeEventListener(CHAT_STATE_EVENT, onChange);
-  };
-}
+export const useBearStore = create((set) => ({
+  bears: 0,
+  increase: () => set((state) => ({ bears: state.bears + 1 })),
+}));
