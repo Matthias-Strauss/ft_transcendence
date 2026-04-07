@@ -255,6 +255,7 @@ export async function checkPostMediaAccess(imagePath: string, viewerId: string) 
     select: {
       id: true,
       authorId: true,
+      visibility: true,
     },
   });
 
@@ -262,7 +263,7 @@ export async function checkPostMediaAccess(imagePath: string, viewerId: string) 
     throw FileErrors.fileNotFound();
   }
 
-  if (post.authorId === viewerId) {
+  if (post.authorId === viewerId || post.visibility === 'PUBLIC') {
     return;
   }
 
