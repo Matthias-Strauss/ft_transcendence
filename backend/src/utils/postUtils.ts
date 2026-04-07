@@ -3,7 +3,7 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '../db.js';
 import { getAvatarUrlFromPath } from '../files/avatars.js';
 import { getPostImageUrlFromPath } from '../files/postings.js';
-import { PostErrors, CommentErrors } from '../errors/catalog.js';
+import { PostErrors, CommentErrors, FileErrors } from '../errors/catalog.js';
 import { getAllAcceptedFriendUserIds, getFriendRelation } from './friendUtils.js';
 
 export const postAuthorInclude = {
@@ -220,7 +220,7 @@ export async function checkPostMediaAccess(imagePath: string, viewerId: string) 
   });
 
   if (!post) {
-    throw PostErrors.notFound();
+    throw FileErrors.fileNotFound();
   }
 
   if (post.authorId === viewerId) {
@@ -230,7 +230,7 @@ export async function checkPostMediaAccess(imagePath: string, viewerId: string) 
   const relation = getFriendRelation(viewerId, post.authorId);
 
   if (!(await relation).isFriend) {
-    throw PostErrors.notFound();
+    throw FileErrors.fileNotFound();
   }
   return post;
 }
