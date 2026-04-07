@@ -69,7 +69,7 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-    const targetUsername = useChatStore((state) => state.targetUsername);
+  const targetUsername = useChatStore((state) => state.targetUsername);
 
   useEffect(() => {
     const onConnect = () => setConnected(true);
