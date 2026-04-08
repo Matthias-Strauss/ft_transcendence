@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate, Outlet, useLocation } from 'react-router-dom';
-// import { RightPanel } from './components/RightPanel';
+import { MessageCircle } from 'lucide-react';
+import './styles/chat.css';
 import { ChatPanel } from './components/ChatPanel';
 import { LeftSidebar } from './components/LeftSidebar';
 import { HomeFeed } from './pages/HomeFeed';
@@ -68,7 +69,7 @@ export default function SocialApp() {
           localStorage.removeItem('accessToken');
           navigate('/login', { replace: true });
         }, msLeft + 500);
-      } catch (e) {}
+      } catch {}
     }
 
     scheduleForToken(localStorage.getItem('accessToken'));
@@ -135,12 +136,13 @@ export default function SocialApp() {
         ) : (
           <button
             type="button"
-            className="fixed bottom-4 right-4 hidden rounded-full bg-[var(--color-1)] px-5 py-3 font-semibold text-[#f7f9f9] shadow-lg transition hover:bg-[var(--color-1)]/90 xl:block"
+            className="chat-toggle-btn"
+            aria-label="Open chat"
             onClick={() => {
               useChatStore.setState({ panelOpen: true });
             }}
           >
-            Open chat
+            <MessageCircle className="chat-toggle-icon" />
           </button>
         )}
       </div>
