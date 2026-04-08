@@ -80,6 +80,11 @@ export const ERROR_CATALOG = {
     message: 'File too large',
     errCode: 'FILE_TOO_LARGE',
   },
+  FILE_NOT_FOUND: {
+    statusCode: 404,
+    message: 'File not found',
+    errCode: 'FILE_NOT_FOUND',
+  },
 
   POST_NOT_FOUND: {
     statusCode: 404,
@@ -166,6 +171,7 @@ export const FileErrors = {
     appError('FILE_INVALID_TYPE', details ? { details } : undefined),
   fileTooLarge: (details?: unknown) =>
     appError('FILE_TOO_LARGE', details ? { details } : undefined),
+  fileNotFound: () => appError('FILE_NOT_FOUND'),
 };
 
 export const PostErrors = {

@@ -61,3 +61,7 @@ export function resolveInFilesDir(relPath: string) {
 
   return fullPath;
 }
+
+export function normalizeRequestedFilePath(requestPath: string) {
+  return path.posix.normalize(`/${requestPath}`).replace(/^\/+/, '');
+}

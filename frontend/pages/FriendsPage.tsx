@@ -11,6 +11,7 @@ import {
   withdrawFriendRequest,
 } from '../utils/api';
 import { runFriendAction } from '../utils/friendActions';
+import { AuthedImage } from '../components/ui/AuthedImage';
 
 export function FriendsPage() {
   const [activeTab, setActiveTab] = useState<'friends' | 'requests'>('friends');
@@ -114,7 +115,7 @@ export function FriendsPage() {
                       }}
                     >
                       <div className="user-search-avatar">
-                        <img
+                        <AuthedImage
                           src={r.avatarUrl ?? '/uploads/avatars/default.png'}
                           alt={r.displayname ?? r.username}
                         />

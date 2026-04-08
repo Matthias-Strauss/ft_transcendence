@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { apiFetch, logout } from '../utils/api';
 import { PostCard } from '../components/ui/PostCard';
 import type { Post } from '../types/posts';
+import { AuthedImage } from '../components/ui/AuthedImage';
 
 interface MeResponse {
   id?: string;
@@ -67,7 +68,7 @@ export function ProfilePage() {
 
       <div className="p-6 border-b border-[#39444d] flex gap-6 items-center">
         <div className="size-20 rounded-full overflow-hidden bg-[#0b1220]">
-          <img
+          <AuthedImage
             src={me?.avatarUrl ?? '/uploads/avatars/default.png'}
             alt={me?.displayname || me?.username}
             className="w-full h-full object-cover"
