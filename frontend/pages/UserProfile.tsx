@@ -14,6 +14,7 @@ import { PostCard } from '../components/ui/PostCard';
 import type { Post } from '../types/posts';
 import ChatState from '../utils/chatState';
 import '../styles/UserProfile.css';
+import { AuthedImage } from '../components/ui/AuthedImage';
 
 interface UserResponse {
   username?: string;
@@ -205,7 +206,7 @@ export default function UserProfile() {
                     }}
                   >
                     <div className="user-search-avatar">
-                      <img
+                      <AuthedImage
                         src={r.avatarUrl ?? '/uploads/avatars/default.png'}
                         alt={r.displayname ?? r.username}
                       />
@@ -233,7 +234,7 @@ export default function UserProfile() {
 
       <div className="p-6 border-b border-[#39444d] flex gap-6 items-center">
         <div className="size-20 rounded-full overflow-hidden bg-[#0b1220]">
-          <img
+          <AuthedImage
             src={user.avatarUrl ?? '/uploads/avatars/default.png'}
             alt={user.displayname ?? user.username}
             className="w-full h-full object-cover"

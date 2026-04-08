@@ -47,6 +47,26 @@ function normalizeError(err: unknown): { statusCode: number; body: ErrorResponse
     };
   }
 
+  if (typeof err === 'object' && err) {
+    const statusCode =
+      'statusCode' in err && typeof err.statusCode === 'number'
+        ? err.statusCode
+        : 'status' in err && typeof err.status === 'number'
+        ? err.status
+        : undefined;
+
+    if (statusCode === 404) {
+      return {
+        statusCode: 404,
+        body: {
+          success: false,
+          message: 'File not found',
+          errCode: 'FILE_NOT_FOUND',
+        },
+      };
+    }
+  }
+
   return {
     statusCode: 500,
     body: {

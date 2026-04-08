@@ -13,6 +13,8 @@ import { uploadsRouter } from './routes/upload.js';
 import { postsRouter } from './routes/posts.js';
 import { meRouter } from './routes/me.js';
 import { presenceRouter } from './routes/presence.js';
+import { requireAuth } from './auth/middleware.js';
+import { requirePostMediaAccess } from './files/postings.js';
 
 function createAPI() {
   const api = express.Router();
@@ -58,10 +60,14 @@ export function createApp() {
 
   app.use(
     '/files',
+    requireAuth,
+    requirePostMediaAccess,
     express.static(getFilesDir(), {
       index: false,
       dotfiles: 'deny',
       maxAge: '1d',
+      fallthrough: false,
+      redirect: false,
     }),
   );
 

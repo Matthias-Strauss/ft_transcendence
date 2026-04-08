@@ -34,7 +34,9 @@ export async function requireAuth(req: AuthedRequest, res: Response, next: NextF
 
     try {
       touchPresence(payload.sub);
-    } catch (e) {}
+    } catch {
+      return next();
+    }
 
     return next();
   } catch {
