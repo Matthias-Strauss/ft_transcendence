@@ -5,6 +5,7 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import SocialApp from './SocialApp';
 import RegistrationPage from './pages/RegistrationPage';
 import UserProfile from './pages/UserProfile';
+import PongGame from './pages/PongGame';
 import { connectSocketFromStorage, disconnectSocket, socket } from './socket';
 
 export default function App() {
@@ -29,6 +30,14 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegistrationPage />} />
+      <Route
+        path="/game"
+        element={
+          <ProtectedRoute>
+            <PongGame />
+          </ProtectedRoute>
+        }
+      />
 
       <Route
         path="/"
