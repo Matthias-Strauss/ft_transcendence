@@ -29,6 +29,12 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
     setEmail(storeUser?.email ?? user?.email ?? '');
   }, [storeUser?.email, user?.email]);
 
+  const isValidEmail = (v: string) => {
+    if (!v) return false;
+    const re = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+    return re.test(v);
+  };
+
   useEffect(() => {
     if (!selectedFile) {
       setPreviewUrl(null);
@@ -124,6 +130,19 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
     }
   }
 
+  const normalizedEmail = (email ?? '').trim();
+  const payloadEmailNormalized = normalizedEmail === '' ? null : normalizedEmail;
+  const emailUnchanged = payloadEmailNormalized === (storeUser?.email ?? null);
+  const emailInvalid = payloadEmailNormalized !== null && !isValidEmail(payloadEmailNormalized);
+  const saveEmailDisabled = loading || emailUnchanged || emailInvalid;
+  const saveEmailDisableReason = loading
+    ? 'Saving...'
+    : emailUnchanged
+    ? 'No changes to save'
+    : emailInvalid
+    ? 'Invalid email address'
+    : '';
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
       <div className="bg-[#071026] rounded-lg w-[640px] p-6 modal-card">
@@ -190,14 +209,19 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
                   placeholder="you@example.com"
                   className="flex-1 bg-transparent border border-[#39444d] px-3 py-2 rounded-md text-[#f7f9f9] placeholder:text-[#8b98a5] focus:outline-none"
                 />
-                <button
-                  type="button"
-                  onClick={handleSaveEmail}
-                  disabled={loading || email.trim() === (storeUser?.email ?? '')}
-                  className="bg-[var(--color-1)] hover:bg-[var(--color-1)]/90 text-[#f7f9f9] rounded-full py-2 px-4 transition-colors disabled:opacity-40"
+                <span
+                  className="inline-block"
+                  title={saveEmailDisabled && saveEmailDisableReason ? saveEmailDisableReason : ''}
                 >
-                  {loading ? 'Saving...' : 'Save'}
-                </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveEmail}
+                    disabled={saveEmailDisabled}
+                    className="bg-[var(--color-1)] hover:bg-[var(--color-1)]/90 text-[#f7f9f9] rounded-full py-2 px-4 transition-colors disabled:opacity-40"
+                  >
+                    {loading ? 'Saving...' : 'Save'}
+                  </button>
+                </span>
               </div>
             </div>
           </div>
