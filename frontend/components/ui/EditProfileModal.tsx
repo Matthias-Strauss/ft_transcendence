@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import '../../styles/edit-profile-modal.css';
 import { AuthedImage } from './AuthedImage';
 import { uploadAvatar, deleteAvatar } from '../../utils/api';
 
@@ -78,22 +79,18 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div className="bg-[#071026] rounded-lg w-[640px] p-6">
+      <div className="bg-[#071026] rounded-lg w-[640px] p-6 modal-card">
         <div className="flex items-start justify-between">
           <h3 className="font-bold text-[18px] text-[#f7f9f9]">Edit profile</h3>
           <div>
-            <button
-              type="button"
-              onClick={onClose}
-              className="text-[#8b98a5] hover:text-[#f7f9f9]"
-            >
+            <button type="button" onClick={onClose} className="text-[#8b98a5] hover:text-[#f7f9f9]">
               Close
             </button>
           </div>
         </div>
 
         <div className="mt-4 flex items-center gap-6">
-          <div className="size-24 rounded-full overflow-hidden bg-[#0b1220]">
+          <div className="size-24 rounded-full overflow-hidden bg-[#0b1220] avatar-frame">
             <AuthedImage
               src={previewUrl ?? user?.avatarUrl ?? '/uploads/avatars/default.png'}
               alt={user?.displayname ?? user?.username ?? 'avatar'}
@@ -122,12 +119,19 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
               >
                 {loading ? 'Uploading...' : 'Upload'}
               </button>
-              <button type="button" onClick={handleDelete} className="btn btn-ghost" disabled={loading}>
+              <button
+                type="button"
+                onClick={handleDelete}
+                className="btn btn-ghost"
+                disabled={loading}
+              >
                 Reset
               </button>
             </div>
 
-            <p className="text-[13px] text-[#8b98a5]">Supported: JPEG, PNG. Max size per server config.</p>
+            <p className="text-[13px] text-[#8b98a5]">
+              Supported: JPEG, PNG. Max size per server config.
+            </p>
           </div>
         </div>
       </div>
