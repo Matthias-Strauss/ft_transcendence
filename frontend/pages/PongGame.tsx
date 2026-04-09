@@ -32,11 +32,12 @@ export default function PongGame() {
     // Floor
     const floor = MeshBuilder.CreateGround('floor', { width: 40, height: 80 }, scene);
     const floorMat = new StandardMaterial('floorMat', scene);
-    floorMat.diffuseColor = new Color3(0.15, 0.15, 0.2);
+    floorMat.diffuseColor = Color3.FromHexString('#0f172a');
     floor.material = floorMat;
 
     // Wall color
-    const wallColor = new Color4(0.66, 0.31, 0.02);
+    // #6a00ff = primary purple
+    const wallColor = Color4.FromHexString('#6a00ffff');
     const wallColors = [wallColor, wallColor, wallColor, wallColor, wallColor, wallColor];
 
     // Left wall
@@ -58,7 +59,8 @@ export default function PongGame() {
     rightWall.position.y = 0.5;
 
     // Center line
-    const lineColor = new Color4(0, 0, 0);
+    // #334155 = muted gray
+    const lineColor = Color4.FromHexString('#334155ff');
     const lineColors = [lineColor, lineColor, lineColor, lineColor, lineColor, lineColor];
     const centerLine = MeshBuilder.CreateBox(
       'centerLine',
