@@ -1,11 +1,14 @@
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate, Outlet, useLocation } from 'react-router-dom';
-import { RightPanel } from './components/RightPanel';
+import { MessageCircle } from 'lucide-react';
+import './styles/chat.css';
+import { ChatPanel } from './components/ChatPanel';
 import { LeftSidebar } from './components/LeftSidebar';
 import { HomeFeed } from './pages/HomeFeed';
 import { FriendsPage } from './pages/FriendsPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { setLogoutHandler, setAccessTokenListener } from './utils/api';
+import useChatStore from './utils/chatState';
 
 export default function SocialApp() {
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
@@ -66,13 +69,15 @@ export default function SocialApp() {
           localStorage.removeItem('accessToken');
           navigate('/login', { replace: true });
         }, msLeft + 500);
-      } catch (e) {}
+      } catch {}
     }
 
     scheduleForToken(localStorage.getItem('accessToken'));
 
     setAccessTokenListener((t) => scheduleForToken(t));
   }, [navigate]);
+
+  const chatPanelOpen = useChatStore((state) => state.panelOpen);
 
   const renderContent = () => {
     switch (activeTab) {
@@ -116,12 +121,31 @@ export default function SocialApp() {
   return (
     <div className="min-h-screen bg-[#0f172a]">
       <LeftSidebar activeTab={activeTab} onTabChange={setActiveTab} onNewPost={handleNewPost} />
-      <main className="ml-[220px] mr-[520px] min-h-screen border-x border-[#39444d]">
-        {!viewingUser && <HomeFeed ref={inputRef} isVisible={activeTab === 'home'} />}
-        {!viewingUser && activeTab !== 'home' && renderContent()}
-        {viewingUser && <Outlet />}
-      </main>
-      <RightPanel />
+
+      <div className="ml-[220px] gap-6 px-4 py-4 flex">
+        <main className="min-h-[calc(100vh-2rem)] flex-1 border-x border-[#39444d] bg-[#0f172a]">
+          {!viewingUser && <HomeFeed ref={inputRef} isVisible={activeTab === 'home'} />}
+          {!viewingUser && activeTab !== 'home' && renderContent()}
+          {viewingUser && <Outlet />}
+        </main>
+
+        {chatPanelOpen ? (
+          <aside className="fixed right-0 top-0 hidden h-[calc(100vh-2rem)] w-[390px] xl:block">
+            <ChatPanel onClose={() => useChatStore.setState({ panelOpen: false })} />
+          </aside>
+        ) : (
+          <button
+            type="button"
+            className="chat-toggle-btn"
+            aria-label="Open chat"
+            onClick={() => {
+              useChatStore.setState({ panelOpen: true });
+            }}
+          >
+            <MessageCircle className="chat-toggle-icon" />
+          </button>
+        )}
+      </div>
     </div>
   );
 }

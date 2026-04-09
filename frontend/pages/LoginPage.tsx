@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import '../styles/auth.css';
+import { connectSocketWithToken } from '../socket';
 
 interface LoginResponse {
   accessToken: string;
@@ -39,6 +40,7 @@ export default function LoginPage() {
 
       const data: LoginResponse = await res.json();
       localStorage.setItem('accessToken', data.accessToken);
+      connectSocketWithToken(data.accessToken);
       navigate('/');
     } catch (err) {
       setError('Network error. Please try again.');
