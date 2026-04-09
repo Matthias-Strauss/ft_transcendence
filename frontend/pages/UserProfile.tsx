@@ -16,6 +16,8 @@ import type { Post } from '../types/posts';
 import ChatState from '../utils/chatState';
 import '../styles/UserProfile.css';
 import { AuthedImage } from '../components/ui/AuthedImage';
+import { useUserStore } from '../utils/userStore';
+import type { UserStore } from '../utils/userStore';
 
 interface UserResponse {
   username?: string;
@@ -43,6 +45,7 @@ export default function UserProfile() {
   const [user, setUser] = useState<UserResponse | null>(null);
   const [me, setMe] = useState<UserResponse | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
+  const storeUser = useUserStore((s: UserStore) => s.user);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<UserSearchResult[]>([]);
@@ -90,6 +93,7 @@ export default function UserProfile() {
         if (res.ok) {
           const data = await res.json();
           setMe(data);
+          useUserStore.getState().setUser(data);
         }
       } catch (e) {
         console.error('Failed to load current user', e);
@@ -98,6 +102,10 @@ export default function UserProfile() {
 
     void loadMe();
   }, []);
+
+  useEffect(() => {
+    if (storeUser) setMe(storeUser as UserResponse);
+  }, [storeUser]);
 
   useEffect(() => {
     if (searchQuery.trim().length < 2) {

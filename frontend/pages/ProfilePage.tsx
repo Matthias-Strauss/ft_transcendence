@@ -3,6 +3,8 @@ import { apiFetch, logout } from '../utils/api';
 import { PostCard } from '../components/ui/PostCard';
 import type { Post } from '../types/posts';
 import { AuthedImage } from '../components/ui/AuthedImage';
+import { useUserStore } from '../utils/userStore';
+import type { UserStore } from '../utils/userStore';
 
 interface MeResponse {
   id?: string;
@@ -15,6 +17,8 @@ export function ProfilePage() {
   const [me, setMe] = useState<MeResponse | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
+  const setUser = useUserStore((s: UserStore) => s.setUser);
+  const storeUser = useUserStore((s: UserStore) => s.user);
 
   useEffect(() => {
     if (!me?.username || !me?.avatarUrl) return;
@@ -39,6 +43,7 @@ export function ProfilePage() {
         if (meRes.ok) {
           const data = await meRes.json();
           setMe(data);
+          setUser(data);
         }
 
         const postRes = await apiFetch('/api/me/posts');
@@ -48,6 +53,10 @@ export function ProfilePage() {
         }
       } catch (err) {
       } finally {
+
+      useEffect(() => {
+        if (storeUser) setMe(storeUser as MeResponse);
+      }, [storeUser]);
         setLoading(false);
       }
     }

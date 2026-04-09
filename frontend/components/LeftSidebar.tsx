@@ -15,6 +15,8 @@ import {
 
 import { SidebarItem } from './ui/SidebarItem';
 import { AuthedImage } from './ui/AuthedImage';
+import { useUserStore } from '../utils/userStore';
+import type { UserStore } from '../utils/userStore';
 
 function Logo() {
   return (
@@ -40,6 +42,13 @@ export function LeftSidebar({ activeTab, onTabChange, onNewPost }: LeftSidebarPr
 
   const [me, setMe] = useState<MeResponse | null>(null);
   const navigate = useNavigate();
+  const setUser = useUserStore((s: UserStore) => s.setUser);
+  const storeUser = useUserStore((s: UserStore) => s.user);
+
+  // keep local `me` in sync with global store
+  useEffect(() => {
+    if (storeUser) setMe(storeUser as MeResponse);
+  }, [storeUser]);
 
   const handleProfileNavigate = async () => {
     onTabChange('profile');
@@ -53,6 +62,7 @@ export function LeftSidebar({ activeTab, onTabChange, onNewPost }: LeftSidebarPr
       if (res.ok) {
         const data = await res.json();
         if (data?.username) navigate(`/users/${data.username}`);
+        setUser(data);
       }
     } catch (e) {}
   };
@@ -64,6 +74,7 @@ export function LeftSidebar({ activeTab, onTabChange, onNewPost }: LeftSidebarPr
         if (res.ok) {
           const data = await res.json();
           setMe(data);
+          setUser(data);
         }
       } catch (err) {}
     }

@@ -3,6 +3,8 @@ import { Send } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { apiFetch } from '../../utils/api';
 import { AuthedImage } from './AuthedImage';
+import { useUserStore } from '../../utils/userStore';
+import type { UserStore } from '../../utils/userStore';
 
 interface PostProp {
   post: Post;
@@ -29,6 +31,7 @@ async function getComment({ postId }: { postId: string }): Promise<CommentsRespo
 export default function CommentSection({ post, onCommentCreated }: PostProp) {
   const [commentInput, setCommentInput] = useState('');
   const [comments, setComments] = useState<CommentsResponse | null>(null);
+  const currentUser = useUserStore((s: UserStore) => s.user);
 
   const handleCommentSubmit = async () => {
     const content = commentInput.trim();
@@ -136,7 +139,11 @@ export default function CommentSection({ post, onCommentCreated }: PostProp) {
             <div className="flex gap-3">
               <div className="size-10 rounded-full overflow-hidden shrink-0">
                 <AuthedImage
-                  src={comment.author?.avatarUrl ?? '/uploads/avatars/default.png'}
+                  src={
+                    comment.author?.username && currentUser?.username === comment.author.username
+                      ? currentUser.avatarUrl ?? comment.author?.avatarUrl ?? '/uploads/avatars/default.png'
+                      : comment.author?.avatarUrl ?? '/uploads/avatars/default.png'
+                  }
                   alt={comment.author?.displayname ?? comment.author?.username ?? ''}
                   className="w-full h-full object-cover"
                 />

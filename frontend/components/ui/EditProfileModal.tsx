@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import '../../styles/edit-profile-modal.css';
 import { AuthedImage } from './AuthedImage';
 import { uploadAvatar, deleteAvatar } from '../../utils/api';
+import { useUserStore } from '../../utils/userStore';
+import type { UserStore } from '../../utils/userStore';
 
 interface Props {
   user?: { avatarUrl?: string | null; displayname?: string | null; username?: string };
@@ -14,6 +16,7 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
+  const updateUser = useUserStore((s: UserStore) => s.update);
 
   useEffect(() => {
     if (!selectedFile) {
@@ -44,7 +47,10 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
       const res = await uploadAvatar(selectedFile);
       if (res.ok && res.avatarUrl) {
         const sep = res.avatarUrl.includes('?') ? '&' : '?';
-        onUpdated?.({ avatarUrl: `${res.avatarUrl}${sep}t=${Date.now()}` });
+        const newUrl = `${res.avatarUrl}${sep}t=${Date.now()}`;
+        onUpdated?.({ avatarUrl: newUrl });
+        updateUser({ avatarUrl: newUrl });
+        // userStore update is sufficient; removed event-bus fallback
         setSelectedFile(null);
       } else {
         alert('Failed to upload avatar.');
@@ -63,7 +69,10 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
       const res = await deleteAvatar();
       if (res.ok && res.avatarUrl) {
         const sep = res.avatarUrl.includes('?') ? '&' : '?';
-        onUpdated?.({ avatarUrl: `${res.avatarUrl}${sep}t=${Date.now()}` });
+        const newUrl = `${res.avatarUrl}${sep}t=${Date.now()}`;
+        onUpdated?.({ avatarUrl: newUrl });
+        updateUser({ avatarUrl: newUrl });
+        // userStore update is sufficient; removed event-bus fallback
       } else {
         alert('Failed to delete avatar.');
       }
