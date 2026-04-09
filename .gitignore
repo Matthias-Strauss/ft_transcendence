@@ -213,3 +213,7 @@ dist
 
 # SvelteKit build / generate output
 .svelte-kit
+
+package-lock.json
+uploads/
+dbdata/

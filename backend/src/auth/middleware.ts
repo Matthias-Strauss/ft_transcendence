@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
 
 import { verifyAccessToken } from './jwt.js';
+import { touch as touchPresence } from '../utils/presence.js';
 import { AuthErrors } from '../errors/catalog.js';
 
 export type AuthedRequest = Request & {
@@ -30,6 +31,13 @@ export async function requireAuth(req: AuthedRequest, res: Response, next: NextF
 
     req.userId = payload.sub;
     req.username = payload.username;
+
+    try {
+      touchPresence(payload.sub);
+    } catch {
+      return next();
+    }
+
     return next();
   } catch {
     return next(AuthErrors.invalidToken());
