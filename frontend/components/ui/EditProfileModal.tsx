@@ -1,14 +1,19 @@
 import React, { useEffect, useRef, useState } from 'react';
 import '../../styles/edit-profile-modal.css';
 import { AuthedImage } from './AuthedImage';
-import { uploadAvatar, deleteAvatar } from '../../utils/api';
+import { uploadAvatar, deleteAvatar, apiFetch } from '../../utils/api';
 import { useUserStore } from '../../utils/userStore';
 import type { UserStore } from '../../utils/userStore';
 
 interface Props {
-  user?: { avatarUrl?: string | null; displayname?: string | null; username?: string };
+  user?: {
+    avatarUrl?: string | null;
+    displayname?: string | null;
+    username?: string;
+    email?: string | null;
+  };
   onClose?: () => void;
-  onUpdated?: (data: { avatarUrl?: string | null }) => void;
+  onUpdated?: (data: { avatarUrl?: string | null; email?: string | null }) => void;
 }
 
 export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
@@ -17,6 +22,12 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
   const [loading, setLoading] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
   const updateUser = useUserStore((s: UserStore) => s.update);
+  const storeUser = useUserStore((s: UserStore) => s.user);
+  const [email, setEmail] = useState<string>(storeUser?.email ?? user?.email ?? '');
+
+  useEffect(() => {
+    setEmail(storeUser?.email ?? user?.email ?? '');
+  }, [storeUser?.email, user?.email]);
 
   useEffect(() => {
     if (!selectedFile) {
@@ -50,13 +61,44 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
         const newUrl = `${res.avatarUrl}${sep}t=${Date.now()}`;
         onUpdated?.({ avatarUrl: newUrl });
         updateUser({ avatarUrl: newUrl });
-        // userStore update is sufficient; removed event-bus fallback
         setSelectedFile(null);
       } else {
         alert('Failed to upload avatar.');
       }
     } catch (e) {
       alert('Error uploading avatar.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleSaveEmail() {
+    const normalized = (email ?? '').trim();
+    const payloadEmail = normalized === '' ? null : normalized;
+    if (payloadEmail === (storeUser?.email ?? null)) return;
+
+    setLoading(true);
+    try {
+      const res = await apiFetch('/api/me', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: payloadEmail }),
+      });
+
+      if (!res.ok) {
+        const txt = await res.text();
+        alert(`Failed to save email: ${res.status} ${txt}`);
+        return;
+      }
+
+      const data = await res.json();
+      const newEmail = data?.email ?? null;
+      const newAvatar = data?.avatarUrl ?? null;
+      updateUser({ email: newEmail, ...(newAvatar ? { avatarUrl: newAvatar } : {}) });
+      onUpdated?.({ email: newEmail, avatarUrl: newAvatar });
+    } catch (e) {
+      console.error('Failed to update email', e);
+      alert('Error saving email.');
     } finally {
       setLoading(false);
     }
@@ -72,7 +114,6 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
         const newUrl = `${res.avatarUrl}${sep}t=${Date.now()}`;
         onUpdated?.({ avatarUrl: newUrl });
         updateUser({ avatarUrl: newUrl });
-        // userStore update is sufficient; removed event-bus fallback
       } else {
         alert('Failed to delete avatar.');
       }
@@ -138,6 +179,27 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
             <p className="text-[13px] text-[#8b98a5]">
               Supported: JPEG, PNG. Max size per server config.
             </p>
+
+            <div className="mt-3">
+              <label className="text-[13px] text-[#8b98a5] block mb-1">Email</label>
+              <div className="flex gap-2">
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  className="flex-1 bg-transparent border border-[#39444d] px-3 py-2 rounded-md text-[#f7f9f9] placeholder:text-[#8b98a5] focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={handleSaveEmail}
+                  disabled={loading || email.trim() === (storeUser?.email ?? '')}
+                  className="bg-[var(--color-1)] hover:bg-[var(--color-1)]/90 text-[#f7f9f9] rounded-full py-2 px-4 transition-colors disabled:opacity-40"
+                >
+                  {loading ? 'Saving...' : 'Save'}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
