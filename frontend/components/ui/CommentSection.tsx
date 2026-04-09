@@ -141,7 +141,9 @@ export default function CommentSection({ post, onCommentCreated }: PostProp) {
                 <AuthedImage
                   src={
                     comment.author?.username && currentUser?.username === comment.author.username
-                      ? currentUser.avatarUrl ?? comment.author?.avatarUrl ?? '/uploads/avatars/default.png'
+                      ? currentUser.avatarUrl ??
+                        comment.author?.avatarUrl ??
+                        '/uploads/avatars/default.png'
                       : comment.author?.avatarUrl ?? '/uploads/avatars/default.png'
                   }
                   alt={comment.author?.displayname ?? comment.author?.username ?? ''}

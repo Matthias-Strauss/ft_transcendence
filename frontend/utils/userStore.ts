@@ -19,7 +19,9 @@ export const useUserStore = create<UserStore>((set) => ({
   user: null,
   setUser: (u) => set({ user: u }),
   update: (patch) =>
-    set((state) => ({ user: state.user ? { ...(state.user as User), ...patch } : ({ ...(patch as User) } as User) })),
+    set((state) => ({
+      user: state.user ? { ...(state.user as User), ...patch } : ({ ...(patch as User) } as User),
+    })),
   clear: () => set({ user: null }),
 }));
 

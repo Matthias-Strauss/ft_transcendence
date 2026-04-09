@@ -188,8 +188,7 @@ export async function fetchAuthedImageURL(src: string): Promise<string> {
   return URL.createObjectURL(blob);
 }
 
-export async function uploadAvatar(file: File): Promise<{ ok: boolean; avatarUrl?: string }>
-{
+export async function uploadAvatar(file: File): Promise<{ ok: boolean; avatarUrl?: string }> {
   const fd = new FormData();
   fd.append('avatar', file);
 

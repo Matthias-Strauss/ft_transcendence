@@ -143,7 +143,9 @@ export default function UserProfile() {
     if (!user?.username || !user?.avatarUrl) return;
     setPosts((prev) =>
       prev.map((p) =>
-        p.author?.username === user.username ? { ...p, author: { ...p.author, avatarUrl: user.avatarUrl } } : p,
+        p.author?.username === user.username
+          ? { ...p, author: { ...p.author, avatarUrl: user.avatarUrl } }
+          : p,
       ),
     );
   }, [user?.avatarUrl, user?.username]);
@@ -197,19 +199,19 @@ export default function UserProfile() {
         <EditProfileModal
           user={user}
           onClose={() => setEditing(false)}
-            onUpdated={(data) => {
-              setUser((prev) => ({ ...(prev ?? {}), ...data }));
-              setMe((prev) => ({ ...(prev ?? {}), ...data }));
-              if (data?.avatarUrl) {
-                setPosts((prev) =>
-                  prev.map((p) =>
-                    p.author?.username === user?.username
-                      ? { ...p, author: { ...p.author, avatarUrl: data.avatarUrl } }
-                      : p,
-                  ),
-                );
-              }
-            }}
+          onUpdated={(data) => {
+            setUser((prev) => ({ ...(prev ?? {}), ...data }));
+            setMe((prev) => ({ ...(prev ?? {}), ...data }));
+            if (data?.avatarUrl) {
+              setPosts((prev) =>
+                prev.map((p) =>
+                  p.author?.username === user?.username
+                    ? { ...p, author: { ...p.author, avatarUrl: data.avatarUrl } }
+                    : p,
+                ),
+              );
+            }
+          }}
         />
       )}
       <div className="user-profile-header">
@@ -294,8 +296,7 @@ export default function UserProfile() {
               {isMine ? (
                 <>
                   <button
-                    onClick={() => setEditing(true)
-					}
+                    onClick={() => setEditing(true)}
                     className="bg-[var(--color-1)] hover:bg-[var(--color-1)]/90 text-[#f7f9f9] rounded-full py-2 px-4 transition-colors"
                   >
                     Edit profile

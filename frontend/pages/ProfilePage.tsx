@@ -24,7 +24,9 @@ export function ProfilePage() {
     if (!me?.username || !me?.avatarUrl) return;
     setPosts((prev) =>
       prev.map((p) =>
-        p.author?.username === me.username ? { ...p, author: { ...p.author, avatarUrl: me.avatarUrl } } : p,
+        p.author?.username === me.username
+          ? { ...p, author: { ...p.author, avatarUrl: me.avatarUrl } }
+          : p,
       ),
     );
   }, [me?.avatarUrl, me?.username]);
@@ -53,10 +55,9 @@ export function ProfilePage() {
         }
       } catch (err) {
       } finally {
-
-      useEffect(() => {
-        if (storeUser) setMe(storeUser as MeResponse);
-      }, [storeUser]);
+        useEffect(() => {
+          if (storeUser) setMe(storeUser as MeResponse);
+        }, [storeUser]);
         setLoading(false);
       }
     }
