@@ -262,9 +262,6 @@ function RequestsList() {
   const incoming = requests.filter((r) => Boolean(r.friendRequestIncoming));
   const outgoing = requests.filter((r) => Boolean(r.friendRequestSentByMe));
 
-  const incomingFiltered = incoming;
-  const outgoingFiltered = outgoing;
-
   return (
     <div className="p-4 space-y-6">
       <section className="rounded-2xl border border-[#39444d] bg-[#0f172a]/40 p-4">

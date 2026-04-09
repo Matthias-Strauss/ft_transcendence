@@ -176,9 +176,16 @@ export default function UserProfile() {
 
   return (
     <div>
-		 {editing && (
-      <EditProfileModal />
-    )}
+      {editing && (
+        <EditProfileModal
+          user={user}
+          onClose={() => setEditing(false)}
+          onUpdated={(data) => {
+            setUser((prev) => ({ ...(prev ?? {}), ...data }));
+            setMe((prev) => ({ ...(prev ?? {}), ...data }));
+          }}
+        />
+      )}
       <div className="user-profile-header">
         <div className="flex items-center justify-between p-4">
           <h1 className="text-[20px] font-bold text-[#f7f9f9]">

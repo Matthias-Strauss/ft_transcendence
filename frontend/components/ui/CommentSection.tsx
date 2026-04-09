@@ -1,5 +1,5 @@
 import type { Post, Comment, CommentsResponse } from '../../types/posts';
-import { Heart, Send } from 'lucide-react';
+import { Send } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { apiFetch } from '../../utils/api';
 import { AuthedImage } from './AuthedImage';
