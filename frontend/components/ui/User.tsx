@@ -1,5 +1,6 @@
 import { BadgeCheck } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { AuthedImage } from './AuthedImage';
 
 interface UserProps {
   avatar?: string | null;
@@ -14,7 +15,7 @@ export function User({ avatar, name, verified, username }: UserProps) {
   return (
     <div className="flex items-center gap-3 mb-1">
       <div className="size-12 rounded-full overflow-hidden shrink-0">
-        <img
+        <AuthedImage
           src={avatar ?? '/uploads/avatars/default.png'}
           alt={name}
           className="w-full h-full object-cover"

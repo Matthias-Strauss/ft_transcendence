@@ -16,4 +16,6 @@ RUN npm run build
 
 EXPOSE 8080
 
-CMD sh -c "npm run prisma:migrate && npm run prisma:seed && node dist/index.js"
+# CMD ["sh", "-c", "while true; do sleep 3600; done"] - Use this for keepin up the container to debug
+CMD ["sh", "-c", "npm run prisma:migrate && npm run prisma:seed && node dist/index.js"]
+

@@ -1,5 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { Send } from 'lucide-react';
+import { socket } from '../socket';
+import '../styles/chat.css';
+import { uploadFile } from '../utils/send_file';
+import { FileUp } from 'lucide-react';
+import useChatStore from '../utils/chatState';
 
 interface Message {
   id: string;
@@ -9,10 +14,16 @@ interface Message {
   isOwn?: boolean;
 }
 
+interface ChatPayload {
+  text: string;
+  from?: string;
+  username?: string;
+}
+
 const MOCK_MESSAGES: Message[] = [
   {
     id: '1',
-    user: 'Nova Star',
+    user: 'seagull',
     message: 'Ready to play?',
     time: '2:30 PM',
     isOwn: false,
@@ -26,78 +37,197 @@ const MOCK_MESSAGES: Message[] = [
   },
   {
     id: '3',
-    user: 'Cyber Ninja',
-    message: "I'm in too!",
+    user: 'seagull',
+    message: 'You still here?',
     time: '2:31 PM',
     isOwn: false,
   },
 ];
 
-export function ChatPanel() {
-  const [messages, setMessages] = useState(MOCK_MESSAGES);
-  const [inputValue, setInputValue] = useState('');
+interface ChatPanelProps {
+  onClose?: () => void;
+}
 
-  const handleSend = () => {
-    if (inputValue.trim()) {
-      const newMessage: Message = {
-        id: Date.now().toString(),
-        user: 'You',
-        message: inputValue,
-        time: new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
-        isOwn: true,
-      };
-      setMessages([...messages, newMessage]);
-      setInputValue('');
+export function ChatPanel({ onClose }: ChatPanelProps) {
+  const [messages, setMessages] = useState<Message[]>(MOCK_MESSAGES);
+  const [inputValue, setInputValue] = useState('');
+  const [connected, setConnected] = useState(socket.connected);
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const [file, setFile] = useState<File | null>(null);
+  const [progress, setProgress] = useState(0);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const shortenFileName = (name: string, maxLength = 20) => {
+    if (name.length <= maxLength) {
+      return name;
     }
+
+    return `${name.slice(0, maxLength - 3)}...`;
+  };
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  const targetUsername = useChatStore((state) => state.targetUsername);
+
+  useEffect(() => {
+    const onConnect = () => setConnected(true);
+    const onDisconnect = () => setConnected(false);
+    const onWelcome = (message: string) => {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `${Date.now()}-welcome`,
+          user: 'System',
+          message,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          isOwn: false,
+        },
+      ]);
+    };
+
+    const onChatMessage = (payload: ChatPayload) => {
+      const isOwn = payload.from === socket.id;
+      const userName = isOwn ? 'You' : payload.username ?? 'Player';
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `${Date.now()}-${Math.random()}`,
+          user: userName,
+          message: payload.text,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          isOwn,
+        },
+      ]);
+    };
+
+    socket.on('connect', onConnect);
+    socket.on('disconnect', onDisconnect);
+    socket.on('welcome', onWelcome);
+    socket.on('chat:message', onChatMessage);
+    return () => {
+      socket.off('connect', onConnect);
+      socket.off('disconnect', onDisconnect);
+      socket.off('welcome', onWelcome);
+      socket.off('chat:message', onChatMessage);
+    };
+  }, []);
+
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setFile(file);
+      setProgress(0);
+      setIsUploading(true);
+
+      uploadFile(file, {
+        onProgress: (percent) => setProgress(percent),
+        onComplete: () => setIsUploading(false),
+      });
+    }
+    e.target.value = '';
+  };
+  const handleSend = () => {
+    const text = inputValue.trim();
+    if (!text || !connected) return;
+    socket.emit('chat:message', { text, to: targetUsername ?? undefined });
+    setInputValue('');
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#1e293b] rounded-2xl border border-[#39444d] overflow-hidden">
-      {/* Chat Header */}
-      <div className="p-4 border-b border-[#39444d]">
-        <h3 className="font-bold text-[17px] text-[#f7f9f9]">Game Chat</h3>
-        <p className="text-[13px] text-[#8b98a5]">3 players online</p>
-      </div>
-
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
-        {messages.map((msg) => (
-          <div key={msg.id} className={`flex flex-col ${msg.isOwn ? 'items-end' : 'items-start'}`}>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-[13px] font-medium text-[#f7f9f9]">{msg.user}</span>
-              <span className="text-[11px] text-[#8b98a5]">{msg.time}</span>
-            </div>
-            <div
-              className={`px-3 py-2 rounded-lg max-w-[80%] ${
-                msg.isOwn ? 'bg-[var(--color-1)] text-[#f7f9f9]' : 'bg-[#334155] text-[#f7f9f9]'
-              }`}
-            >
-              <p className="text-[14px]">{msg.message}</p>
-            </div>
+    <div className="chat-panel">
+      <div className="chat-panel-inner">
+        <div className="chat-header">
+          <div>
+            <p className="chat-title">Live Chat</p>
+            <p className="chat-subtitle">
+              {targetUsername ? `Chat with @${targetUsername}` : 'Talk with online players'}
+            </p>
           </div>
-        ))}
-      </div>
 
-      {/* Input */}
-      <div className="p-4 border-t border-[#39444d]">
-        <div className="flex gap-2">
-          <input
-            type="text"
-            placeholder="Type a message..."
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-            className="flex-1 bg-[#334155] border border-[#39444d] rounded-full py-2 px-4 text-[14px] text-[#f7f9f9] placeholder:text-[#8b98a5] focus:outline-none focus:border-[var(--color-1)]"
-          />
-          <button
-            onClick={handleSend}
-            className="p-2 rounded-full transition-colors"
-            style={{
-              background: 'var(--color-1)',
-            }}
-          >
-            <Send className="size-5 text-[#f7f9f9]" />
-          </button>
+          <div className="chat-header-actions">
+            <div className="chat-status-pill">
+              <span className={`chat-status-dot ${connected ? 'online' : 'offline'}`} />
+              {connected ? 'Connected' : 'Offline'}
+            </div>
+            {onClose && (
+              <button type="button" className="chat-close-btn" onClick={onClose}>
+                Close
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="chat-messages-wrap">
+          <div className="chat-messages">
+            {messages.map((msg) => (
+              <div key={msg.id} className={`chat-message-row ${msg.isOwn ? 'own' : 'other'}`}>
+                <div className="chat-message-meta">
+                  <span className="chat-message-user">{msg.user}</span>
+                  <span className="chat-message-time">{msg.time}</span>
+                </div>
+                <div
+                  className={`chat-bubble ${msg.isOwn ? 'chat-bubble-own' : 'chat-bubble-other'}`}
+                >
+                  {msg.message}
+                </div>
+              </div>
+            ))}
+            <div ref={messagesEndRef} />
+          </div>
+        </div>
+
+        <div className="chat-input-wrap">
+          <div className="chat-input-row">
+            <input
+              type="text"
+              placeholder="Type a message..."
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+              className="chat-input"
+            />
+            <label className="cursor-pointer text-xl hover:opacity-80 transition">
+              <FileUp className="size-6 text-[#8b98a5]" />
+
+              <input
+                type="file"
+                accept=".doc,.docx,.pdf,video/*"
+                onChange={handleFileChange}
+                style={{ display: 'none' }}
+              />
+            </label>
+            <button
+              onClick={handleSend}
+              disabled={!connected}
+              className="chat-send-btn"
+              aria-label="Send message"
+            >
+              <Send className="chat-send-icon" />
+            </button>
+          </div>
+
+          {file && (
+            <div className="chat-upload-meta">
+              <span className="chat-upload-name" title={file.name}>
+                {shortenFileName(file.name)}
+              </span>
+              <span className="chat-upload-percent">{progress}%</span>
+            </div>
+          )}
+
+          {(isUploading || progress === 100) && (
+            <progress
+              id="uploadProgress"
+              value={progress}
+              max="100"
+              className="chat-upload-progress"
+            >
+              {progress}%
+            </progress>
+          )}
         </div>
       </div>
     </div>

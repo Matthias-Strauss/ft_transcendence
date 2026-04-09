@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { apiFetch } from '../../utils/api';
 import Dropdown from './Dropdown';
 import CommentSection from './CommentSection';
+import { AuthedImage } from './AuthedImage';
 
 interface PostCardProps {
   post: Post;
@@ -132,7 +133,7 @@ export function PostCard({ post }: PostCardProps) {
           </p>
           {post.imageUrl && (
             <div className="mb-3 rounded-2xl overflow-hidden border border-[#39444d]">
-              <img src={post.imageUrl} alt="Post image" className="w-full h-auto" />
+              <AuthedImage src={post.imageUrl} alt="Post image" className="w-full h-auto" />
             </div>
           )}
 

@@ -1,12 +1,30 @@
 import { Routes, Route } from 'react-router-dom';
+import { useEffect } from 'react';
 import LoginPage from './pages/LoginPage';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import SocialApp from './SocialApp';
 import RegistrationPage from './pages/RegistrationPage';
 import UserProfile from './pages/UserProfile';
-// import { Navigate } from 'react-router-dom';
+import { connectSocketFromStorage, disconnectSocket, socket } from './socket';
 
 export default function App() {
+  useEffect(() => {
+    const onConnectError = (err: Error) => {
+      if (err.message === 'Unauthorized' || err.message === 'No token provided') {
+        localStorage.removeItem('accessToken');
+        disconnectSocket();
+      }
+    };
+
+    socket.on('connect_error', onConnectError);
+    connectSocketFromStorage();
+
+    return () => {
+      socket.off('connect_error', onConnectError);
+      disconnectSocket();
+    };
+  }, []);
+
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />

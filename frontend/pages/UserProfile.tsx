@@ -13,7 +13,9 @@ import EditProfileModal from '../components/ui/EditProfileModal';
 import { runFriendAction } from '../utils/friendActions';
 import { PostCard } from '../components/ui/PostCard';
 import type { Post } from '../types/posts';
+import ChatState from '../utils/chatState';
 import '../styles/UserProfile.css';
+import { AuthedImage } from '../components/ui/AuthedImage';
 
 interface UserResponse {
   username?: string;
@@ -209,7 +211,7 @@ export default function UserProfile() {
                     }}
                   >
                     <div className="user-search-avatar">
-                      <img
+                      <AuthedImage
                         src={r.avatarUrl ?? '/uploads/avatars/default.png'}
                         alt={r.displayname ?? r.username}
                       />
@@ -237,7 +239,7 @@ export default function UserProfile() {
 
       <div className="p-6 border-b border-[#39444d] flex gap-6 items-center">
         <div className="size-20 rounded-full overflow-hidden bg-[#0b1220]">
-          <img
+          <AuthedImage
             src={user.avatarUrl ?? '/uploads/avatars/default.png'}
             alt={user.displayname ?? user.username}
             className="w-full h-full object-cover"
@@ -280,6 +282,20 @@ export default function UserProfile() {
                 </>
               ) : (
                 <>
+                  {user.username && (
+                    <button
+                      onClick={() => {
+                        const targetUsername = user.username;
+                        if (!targetUsername) return;
+                        ChatState.setState({ targetUsername });
+                        ChatState.setState({ panelOpen: true });
+                      }}
+                      className="bg-[var(--color-2)] hover:bg-[var(--color-2)]/90 text-[#f7f9f9] rounded-full py-2 px-4 transition-colors"
+                    >
+                      Message
+                    </button>
+                  )}
+
                   {!user.isFriend &&
                     user.friendStatus !== 'requested' &&
                     !user.friendRequestIncoming && (
