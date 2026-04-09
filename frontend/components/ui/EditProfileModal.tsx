@@ -43,35 +43,32 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
     try {
       const res = await uploadAvatar(selectedFile);
       if (res.ok && res.avatarUrl) {
-        onUpdated?.({ avatarUrl: res.avatarUrl });
+        const sep = res.avatarUrl.includes('?') ? '&' : '?';
+        onUpdated?.({ avatarUrl: `${res.avatarUrl}${sep}t=${Date.now()}` });
         setSelectedFile(null);
       } else {
-        // eslint-disable-next-line no-alert
-        alert('Не удалось загрузить аватарку.');
+        alert('Failed to upload avatar.');
       }
     } catch (e) {
-      // eslint-disable-next-line no-alert
-      alert('Ошибка при загрузке аватарки.');
+      alert('Error uploading avatar.');
     } finally {
       setLoading(false);
     }
   }
 
   async function handleDelete() {
-    // eslint-disable-next-line no-alert
-    if (!confirm('Сбросить аватарку на умолчание?')) return;
+    if (!confirm('Reset avatar to default?')) return;
     setLoading(true);
     try {
       const res = await deleteAvatar();
       if (res.ok && res.avatarUrl) {
-        onUpdated?.({ avatarUrl: res.avatarUrl });
+        const sep = res.avatarUrl.includes('?') ? '&' : '?';
+        onUpdated?.({ avatarUrl: `${res.avatarUrl}${sep}t=${Date.now()}` });
       } else {
-        // eslint-disable-next-line no-alert
-        alert('Не удалось удалить аватарку.');
+        alert('Failed to delete avatar.');
       }
     } catch (e) {
-      // eslint-disable-next-line no-alert
-      alert('Ошибка при удалении аватарки.');
+      alert('Error deleting avatar.');
     } finally {
       setLoading(false);
     }

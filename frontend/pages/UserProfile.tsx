@@ -131,6 +131,15 @@ export default function UserProfile() {
   const normalize = (s?: string | null) => (s ?? '').toString().replace(/^@/, '').toLowerCase();
   const isMine = normalize(me?.username) === normalize(username as string | undefined);
 
+  useEffect(() => {
+    if (!user?.username || !user?.avatarUrl) return;
+    setPosts((prev) =>
+      prev.map((p) =>
+        p.author?.username === user.username ? { ...p, author: { ...p.author, avatarUrl: user.avatarUrl } } : p,
+      ),
+    );
+  }, [user?.avatarUrl, user?.username]);
+
   const handleSendFriendRequest = async () => {
     if (!user?.username) return;
     await runFriendAction(user.username, sendFriendRequest, setSendingRequest, (data) => {
@@ -180,10 +189,19 @@ export default function UserProfile() {
         <EditProfileModal
           user={user}
           onClose={() => setEditing(false)}
-          onUpdated={(data) => {
-            setUser((prev) => ({ ...(prev ?? {}), ...data }));
-            setMe((prev) => ({ ...(prev ?? {}), ...data }));
-          }}
+            onUpdated={(data) => {
+              setUser((prev) => ({ ...(prev ?? {}), ...data }));
+              setMe((prev) => ({ ...(prev ?? {}), ...data }));
+              if (data?.avatarUrl) {
+                setPosts((prev) =>
+                  prev.map((p) =>
+                    p.author?.username === user?.username
+                      ? { ...p, author: { ...p.author, avatarUrl: data.avatarUrl } }
+                      : p,
+                  ),
+                );
+              }
+            }}
         />
       )}
       <div className="user-profile-header">

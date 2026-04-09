@@ -17,6 +17,15 @@ export function ProfilePage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!me?.username || !me?.avatarUrl) return;
+    setPosts((prev) =>
+      prev.map((p) =>
+        p.author?.username === me.username ? { ...p, author: { ...p.author, avatarUrl: me.avatarUrl } } : p,
+      ),
+    );
+  }, [me?.avatarUrl, me?.username]);
+
+  useEffect(() => {
     const token = localStorage.getItem('accessToken');
 
     async function load() {
