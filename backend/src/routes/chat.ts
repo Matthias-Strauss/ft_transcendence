@@ -1,70 +1,21 @@
-import { Prisma } from '@prisma/client';
 import { Router } from 'express';
-import { z } from 'zod';
 import { AuthedRequest, requireAuth } from '../auth/middleware.js';
 import { prisma } from '../db.js';
 import { asyncHandler } from '../errors/asyncHandler.js';
-import { AuthErrors, ChatErrors, RequestErrors, UserErrors } from '../errors/catalog.js';
-import { getAvatarUrlFromPath } from '../files/avatars.js';
+import { AuthErrors, ChatErrors, RequestErrors } from '../errors/catalog.js';
+import {
+  ChatMessagesQuerySchema,
+  directMessageInclude,
+  findChatTargetByUsername,
+  getUserBlockRelation,
+  markConversationAsRead,
+  serializeChatUser,
+  serializeDirectMessage,
+  type DirectMessageWithUsers,
+} from '../utils/chatUtils.js';
+import { UsernameSchema } from '../utils/userUtils.js';
 
 export const chatRouter = Router();
-
-const UsernameSchema = z.object({
-  username: z
-    .string()
-    .trim()
-    .toLowerCase()
-    .min(3)
-    .max(30)
-    .regex(/^[a-z0-9._-]+$/),
-});
-
-const chatUserSelect = {
-  id: true,
-  username: true,
-  displayname: true,
-  avatarPath: true,
-} satisfies Prisma.UserSelect;
-
-const directMessageInclude = {
-  sender: {
-    select: chatUserSelect,
-  },
-  recipient: {
-    select: chatUserSelect,
-  },
-} satisfies Prisma.DirectMessageInclude;
-
-type DirectMessageWithUsers = Prisma.DirectMessageGetPayload<{
-  include: typeof directMessageInclude;
-}>;
-
-type ChatPartnerUser = Prisma.UserGetPayload<{
-  select: typeof chatUserSelect;
-}>;
-
-function serializeChatUser(user: ChatPartnerUser) {
-  return {
-    id: user.id,
-    username: user.username,
-    displayname: user.displayname,
-    avatarUrl: getAvatarUrlFromPath(user.avatarPath),
-  };
-}
-
-function serializeDirectMessage(message: DirectMessageWithUsers, viewerId: string) {
-  return {
-    id: message.id,
-    text: message.text,
-    type: message.type,
-    metadata: message.metadata,
-    createdAt: message.createdAt,
-    readAt: message.readAt,
-    isOwn: message.senderId === viewerId,
-    sender: serializeChatUser(message.sender),
-    recipient: serializeChatUser(message.recipient),
-  };
-}
 
 // get recent conversations with last message and unread count
 chatRouter.get(
@@ -175,58 +126,6 @@ chatRouter.get(
   }),
 );
 
-const ChatMessagesQuerySchema = z.object({
-  limit: z.coerce.number().int().min(1).max(200).optional(),
-});
-
-async function findChatTargetByUsername(username: string) {
-  const user = await prisma.user.findUnique({
-    where: {
-      username,
-    },
-    select: chatUserSelect,
-  });
-
-  if (!user) {
-    throw UserErrors.userNotFound();
-  }
-
-  return user;
-}
-
-async function getUserBlockRelation(viewerId: string, otherUserId: string) {
-  const [blockedByMe, blockedMe] = await Promise.all([
-    prisma.userBlock.findUnique({
-      where: {
-        blockerUserId_blockedUserId: {
-          blockerUserId: viewerId,
-          blockedUserId: otherUserId,
-        },
-      },
-      select: {
-        blockerUserId: true,
-      },
-    }),
-    prisma.userBlock.findUnique({
-      where: {
-        blockerUserId_blockedUserId: {
-          blockerUserId: otherUserId,
-          blockedUserId: viewerId,
-        },
-      },
-      select: {
-        blockerUserId: true,
-      },
-    }),
-  ]);
-
-  return {
-    blockedByMe: Boolean(blockedByMe),
-    blockedMe: Boolean(blockedMe),
-    canMessage: !blockedByMe && !blockedMe,
-  };
-}
-
 // get chat history with specified user
 chatRouter.get(
   '/chat/conversations/:username/messages',
@@ -277,27 +176,6 @@ chatRouter.get(
     });
   }),
 );
-
-async function markConversationAsRead(viewerId: string, otherUserId: string) {
-  const readAt = new Date();
-
-  const updateResult = await prisma.directMessage.updateMany({
-    where: {
-      senderId: otherUserId,
-      recipientId: viewerId,
-      readAt: null,
-    },
-    data: {
-      readAt,
-    },
-  });
-
-  return {
-    ok: updateResult.count > 0,
-    count: updateResult.count,
-    readAt,
-  };
-}
 
 // set read status of messages in conversation with specified user to read
 chatRouter.post(
