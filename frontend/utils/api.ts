@@ -187,3 +187,31 @@ export async function fetchAuthedImageURL(src: string): Promise<string> {
   const blob = await apiRes.blob();
   return URL.createObjectURL(blob);
 }
+
+export async function uploadAvatar(file: File): Promise<{ ok: boolean; avatarUrl?: string }>
+{
+  const fd = new FormData();
+  fd.append('avatar', file);
+
+  const res = await apiFetch('/api/uploads/avatar', {
+    method: 'POST',
+    body: fd,
+  });
+
+  if (!res.ok) return { ok: false };
+
+  const data = await res.json();
+  return { ok: true, avatarUrl: data?.avatarUrl };
+}
+
+export async function deleteAvatar(): Promise<{ ok: boolean; avatarUrl?: string }> {
+  const res = await apiFetch('/api/uploads/avatar', {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+  });
+
+  if (!res.ok) return { ok: false };
+
+  const data = await res.json();
+  return { ok: true, avatarUrl: data?.avatarUrl };
+}
