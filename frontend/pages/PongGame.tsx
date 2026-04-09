@@ -36,7 +36,7 @@ export default function PongGame() {
     floor.material = floorMat;
 
     // Wall color
-    // #6a00ff = primary purple
+
     const wallColor = Color4.FromHexString('#6a00ffff');
     const wallColors = [wallColor, wallColor, wallColor, wallColor, wallColor, wallColor];
 
@@ -59,7 +59,6 @@ export default function PongGame() {
     rightWall.position.y = 0.5;
 
     // Center line
-    // #334155 = muted gray
     const lineColor = Color4.FromHexString('#334155ff');
     const lineColors = [lineColor, lineColor, lineColor, lineColor, lineColor, lineColor];
     const centerLine = MeshBuilder.CreateBox(
@@ -69,6 +68,62 @@ export default function PongGame() {
     );
     centerLine.position.y = 0.1;
 
+    // -- Paddles --
+
+    // Paddle 1
+    const p1Color = Color4.FromHexString('#ff0095ff');
+    const p1Colors = [p1Color, p1Color, p1Color, p1Color, p1Color, p1Color];
+    const paddle1 = MeshBuilder.CreateBox(
+      'paddle1',
+      { width: 6, height: 0.5, depth: 0.5, faceColors: p1Colors },
+      scene,
+    );
+    paddle1.position.z = 36;
+    paddle1.position.y = 0.25;
+
+    // Paddle 2
+    const p2Color = Color4.FromHexString('#95ff00ff');
+    const p2Colors = [p2Color, p2Color, p2Color, p2Color, p2Color, p2Color];
+    const paddle2 = MeshBuilder.CreateBox(
+      'paddle2',
+      { width: 6, height: 0.5, depth: 0.5, faceColors: p2Colors },
+      scene,
+    );
+    paddle2.position.z = -36;
+    paddle2.position.y = 0.25;
+
+    // --- Keyboard input ---
+    const keys: Record<string, boolean> = {};
+    const onKeyDown = (e: KeyboardEvent) => {
+      keys[e.key.toLowerCase()] = true;
+    };
+    const onKeyUp = (e: KeyboardEvent) => {
+      keys[e.key.toLowerCase()] = false;
+    };
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', onKeyUp);
+
+    const paddleSpeed = 0.6;
+    const paddleLimit = 16;
+
+    scene.registerBeforeRender(() => {
+      // P1: Arrow keys
+      if (keys['arrowleft'] && paddle1.position.x > -paddleLimit) {
+        paddle1.position.x -= paddleSpeed;
+      }
+      if (keys['arrowright'] && paddle1.position.x < paddleLimit) {
+        paddle1.position.x += paddleSpeed;
+      }
+
+      // P2: A/D keys
+      if (keys['a'] && paddle2.position.x > -paddleLimit) {
+        paddle2.position.x -= paddleSpeed;
+      }
+      if (keys['d'] && paddle2.position.x < paddleLimit) {
+        paddle2.position.x += paddleSpeed;
+      }
+    });
+
     engine.runRenderLoop(() => {
       scene.render();
     });
@@ -77,6 +132,8 @@ export default function PongGame() {
     window.addEventListener('resize', handleResize);
 
     return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
       window.removeEventListener('resize', handleResize);
       engine.dispose();
     };
