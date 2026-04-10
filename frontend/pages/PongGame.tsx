@@ -116,19 +116,19 @@ export default function PongGame() {
 
     scene.registerBeforeRender(() => {
       // P1: Arrow keys
-      if (keys['arrowleft'] && paddle1.position.x > -paddleLimit) {
-        paddle1.position.x -= paddleSpeed;
-      }
-      if (keys['arrowright'] && paddle1.position.x < paddleLimit) {
+      if (keys['arrowleft'] && paddle1.position.x < paddleLimit) {
         paddle1.position.x += paddleSpeed;
+      }
+      if (keys['arrowright'] && paddle1.position.x > -paddleLimit) {
+        paddle1.position.x -= paddleSpeed;
       }
 
       // P2: A/D keys
-      if (keys['a'] && paddle2.position.x > -paddleLimit) {
-        paddle2.position.x -= paddleSpeed;
-      }
-      if (keys['d'] && paddle2.position.x < paddleLimit) {
+      if (keys['a'] && paddle2.position.x < paddleLimit) {
         paddle2.position.x += paddleSpeed;
+      }
+      if (keys['d'] && paddle2.position.x > -paddleLimit) {
+        paddle2.position.x -= paddleSpeed;
       }
 
       // Ball movement
