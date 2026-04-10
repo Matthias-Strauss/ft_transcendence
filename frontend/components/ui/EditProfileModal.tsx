@@ -38,6 +38,7 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
   const [notification, setNotification] = useState<{
     type: 'error' | 'success' | 'info';
     text: string;
+    duration?: number;
   } | null>(null);
   const notifTimeoutRef = useRef<number | null>(null);
 
@@ -46,7 +47,7 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
     type: 'error' | 'success' | 'info' = 'error',
     duration = 5000,
   ) => {
-    setNotification({ type, text });
+    setNotification({ type, text, duration });
     if (notifTimeoutRef.current) window.clearTimeout(notifTimeoutRef.current);
     notifTimeoutRef.current = window.setTimeout(() => setNotification(null), duration);
   };
@@ -291,6 +292,46 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+      {notification && (
+        <div className="notification-centered" role="status" aria-live="polite">
+          <div
+            className={`notification-box ${
+              notification.type === 'error'
+                ? 'error'
+                : notification.type === 'success'
+                ? 'success'
+                : 'info'
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <div className="text-sm">{notification.text}</div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (notifTimeoutRef.current) window.clearTimeout(notifTimeoutRef.current);
+                  setNotification(null);
+                }}
+                className="ml-3 text-white/90"
+                aria-label="Dismiss notification"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="notification-progress mt-2 h-1 w-full bg-white/10 rounded overflow-hidden">
+              <div
+                className="notification-bar h-full"
+                style={{ animationDuration: `${notification.duration ?? 5000}ms` }}
+                onAnimationEnd={() => {
+                  if (notifTimeoutRef.current) window.clearTimeout(notifTimeoutRef.current);
+                  setNotification(null);
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="bg-[#071026] rounded-lg w-[640px] p-6 modal-card" style={{ marginTop: 30 }}>
         <div className="flex items-start justify-between">
           <h3 className="font-bold text-[18px] text-[#f7f9f9]">Edit profile</h3>
@@ -301,29 +342,7 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
           </div>
         </div>
 
-        {notification && (
-          <div
-            className={`mt-3 p-3 rounded ${
-              notification.type === 'error'
-                ? 'bg-red-600 text-white'
-                : notification.type === 'success'
-                ? 'bg-green-600 text-white'
-                : 'bg-blue-600 text-white'
-            }`}
-          >
-            <div className="flex items-center justify-between">
-              <div className="text-sm">{notification.text}</div>
-              <button
-                type="button"
-                onClick={() => setNotification(null)}
-                className="ml-3 text-white/90"
-                aria-label="Dismiss notification"
-              >
-                ×
-              </button>
-            </div>
-          </div>
-        )}
+        {/* notification moved to centered overlay */}
 
         <div className="mt-4 flex items-start gap-6">
           <div className="size-24 rounded-full overflow-hidden bg-[#0b1220] avatar-frame">
