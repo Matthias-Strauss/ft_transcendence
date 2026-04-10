@@ -143,3 +143,29 @@
   max-width: 92%;
   pointer-events: auto;
 }
+
+/* Confirmation dialog styles */
+.confirm-overlay {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 100001;
+  width: min(480px, 92%);
+  pointer-events: auto;
+}
+.confirm-box {
+  background-color: #071026;
+  padding: 18px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.04);
+  box-shadow: 0 12px 40px rgba(2,6,23,0.6);
+}
+.confirm-box .text-sm {
+  color: #f7f9f9;
+}
+.confirm-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}

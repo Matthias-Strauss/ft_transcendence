@@ -40,7 +40,9 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
     text: string;
     duration?: number;
   } | null>(null);
+  
   const notifTimeoutRef = useRef<number | null>(null);
+  const [confirmingReset, setConfirmingReset] = useState<boolean>(false);
 
   const showNotification = (
     text: string,
@@ -133,8 +135,11 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
     }
   }
 
-  async function handleDelete() {
-    if (!confirm('Reset avatar to default?')) return;
+  function handleDelete() {
+    setConfirmingReset(true);
+  }
+  async function performDelete() {
+    setConfirmingReset(false);
     setLoading(true);
     try {
       const res = await deleteAvatar();
@@ -143,6 +148,7 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
         const newUrl = `${res.avatarUrl}${sep}t=${Date.now()}`;
         onUpdated?.({ avatarUrl: newUrl });
         updateUser({ avatarUrl: newUrl });
+        showNotification('Avatar reset to default.', 'success');
       } else {
         showNotification('Failed to delete avatar. Please try again.');
       }
@@ -342,7 +348,30 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
           </div>
         </div>
 
-        {/* notification moved to centered overlay */}
+    
+        {confirmingReset && (
+          <div className="confirm-overlay" role="dialog" aria-modal="true">
+            <div className="confirm-box">
+              <div className="text-sm">Reset avatar to default?</div>
+              <div className="confirm-actions mt-4 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setConfirmingReset(false)}
+                  className="btn btn-ghost"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={performDelete}
+                  className="bg-[var(--color-1)] hover:bg-[var(--color-1)]/90 text-[#f7f9f9] rounded-full py-2 px-4"
+                >
+                  Confirm
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="mt-4 flex items-start gap-6">
           <div className="size-24 rounded-full overflow-hidden bg-[#0b1220] avatar-frame">
