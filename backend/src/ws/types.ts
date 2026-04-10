@@ -11,3 +11,12 @@ export type ChatMessagePayload = {
   type?: ChatMessageType;
   metadata?: Prisma.JsonObject | Prisma.JsonArray | null;
 };
+
+export type ChatTypingPayload = {
+  to: string;
+  isTyping: boolean;
+};
+
+export type ChatReadPayload = {
+  with: string;
+};

@@ -1,14 +1,19 @@
 import type { Prisma } from '@prisma/client';
 import type { Socket, Server as SocketIOServer } from 'socket.io';
-
 import {
   findChatTargetByUsername,
   getUserBlockRelation,
+  markConversationAsRead,
   serializeDirectMessage,
 } from '../utils/chatUtils.js';
 import { createDirectMessage } from './chatHelper.js';
 import type { UserSocketRegistry } from './registry.js';
-import type { ChatMessagePayload, SocketUser } from './types.js';
+import type {
+  ChatMessagePayload,
+  ChatReadPayload,
+  ChatTypingPayload,
+  SocketUser,
+} from './types.js';
 import { normalizeUsername } from './username.js';
 
 function normalizeMetadata(
@@ -93,6 +98,70 @@ export function bindChatMessageHandler(
     } catch (error) {
       console.error('chat:message failed', error);
       emitChatError(socket, 'Unable to send message right now', 'CHAT_MESSAGE_FAILED');
+    }
+  });
+
+  socket.on('chat:typing', async (payload: ChatTypingPayload) => {
+    try {
+      const rawTarget = typeof payload?.to === 'string' ? payload.to : '';
+      const targetKey = rawTarget ? normalizeUsername(rawTarget) : '';
+
+      if (!targetKey) {
+        return;
+      }
+
+      const recipient = await findChatTargetByUsername(targetKey);
+      const relation = await getUserBlockRelation(user.id, recipient.id);
+
+      if (!relation.canMessage) {
+        return;
+      }
+
+      const recipientSockets = registry.getSocketsByUsername(recipient.username);
+      if (!recipientSockets || recipientSockets.size === 0) {
+        return;
+      }
+
+      for (const recipientSocketId of recipientSockets) {
+        io.to(recipientSocketId).emit('chat:typing', {
+          username: user.username,
+          isTyping: Boolean(payload?.isTyping),
+        });
+      }
+    } catch (error) {
+      console.error('chat:typing failed', error);
+    }
+  });
+
+  socket.on('chat:read', async (payload: ChatReadPayload) => {
+    try {
+      const rawTarget = typeof payload?.with === 'string' ? payload.with : '';
+      const targetKey = rawTarget ? normalizeUsername(rawTarget) : '';
+
+      if (!targetKey) {
+        return;
+      }
+
+      const targetUser = await findChatTargetByUsername(targetKey);
+      const result = await markConversationAsRead(user.id, targetUser.id);
+
+      if (result.count === 0) {
+        return;
+      }
+
+      const targetSockets = registry.getSocketsByUsername(targetUser.username);
+      if (!targetSockets || targetSockets.size === 0) {
+        return;
+      }
+
+      for (const targetSocketId of targetSockets) {
+        io.to(targetSocketId).emit('chat:read', {
+          username: user.username,
+          readAt: result.readAt,
+        });
+      }
+    } catch (error) {
+      console.error('chat:read failed', error);
     }
   });
 }
