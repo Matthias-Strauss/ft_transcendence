@@ -71,7 +71,7 @@ export default function PongGame() {
     // -- Paddles --
 
     // Paddle 1
-    const p1Color = Color4.FromHexString('#ff0095ff');
+    const p1Color = Color4.FromHexString('#95ff00ff');
     const p1Colors = [p1Color, p1Color, p1Color, p1Color, p1Color, p1Color];
     const paddle1 = MeshBuilder.CreateBox(
       'paddle1',
@@ -82,7 +82,7 @@ export default function PongGame() {
     paddle1.position.y = 0.25;
 
     // Paddle 2
-    const p2Color = Color4.FromHexString('#95ff00ff');
+    const p2Color = Color4.FromHexString('#ff0095ff');
     const p2Colors = [p2Color, p2Color, p2Color, p2Color, p2Color, p2Color];
     const paddle2 = MeshBuilder.CreateBox(
       'paddle2',
