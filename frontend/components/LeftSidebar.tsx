@@ -36,7 +36,7 @@ export function LeftSidebar({ activeTab, onTabChange, onNewPost }: LeftSidebarPr
   interface MeResponse {
     id?: string;
     username?: string;
-    displayname?: string;
+    displayname?: string | null;
     avatarUrl?: string | null;
   }
 

@@ -21,7 +21,7 @@ import type { UserStore } from '../utils/userStore';
 
 interface UserResponse {
   username?: string;
-  displayname?: string;
+  displayname?: string | null;
   avatarUrl?: string | null;
   postsCount?: number;
   friendsCount?: number;
@@ -33,7 +33,7 @@ interface UserResponse {
 
 interface UserSearchResult {
   username: string;
-  displayname?: string;
+  displayname?: string | null;
   avatarUrl?: string | null;
   postsCount?: number;
   friendsCount?: number;
@@ -200,17 +200,25 @@ export default function UserProfile() {
           user={user}
           onClose={() => setEditing(false)}
           onUpdated={(data) => {
-            setUser((prev) => ({ ...(prev ?? {}), ...data }));
-            setMe((prev) => ({ ...(prev ?? {}), ...data }));
-            if (data?.avatarUrl) {
-              setPosts((prev) =>
-                prev.map((p) =>
-                  p.author?.username === user?.username
-                    ? { ...p, author: { ...p.author, avatarUrl: data.avatarUrl } }
-                    : p,
-                ),
-              );
-            }
+              setUser((prev) => ({ ...(prev ?? {}), ...data }));
+              setMe((prev) => ({ ...(prev ?? {}), ...data }));
+              if (data?.avatarUrl) {
+                setPosts((prev) =>
+                  prev.map((p) =>
+                    p.author?.username === user?.username
+                      ? { ...p, author: { ...p.author, avatarUrl: data.avatarUrl } }
+                      : p,
+                  ),
+                );
+              }
+             if (data?.username && data.username !== username) {
+                setEditing(false);
+                navigate(`/users/${data.username}`, { replace: true });
+                return;
+              }
+
+              // close modal after update
+              setEditing(false);
           }}
         />
       )}

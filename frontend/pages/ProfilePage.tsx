@@ -9,7 +9,7 @@ import type { UserStore } from '../utils/userStore';
 interface MeResponse {
   id?: string;
   username?: string;
-  displayname?: string;
+  displayname?: string | null;
   avatarUrl?: string | null;
 }
 

@@ -19,7 +19,7 @@ export function FriendsPage() {
   const [searchResults, setSearchResults] = useState<
     {
       username: string;
-      displayname?: string;
+      displayname?: string | null;
       avatarUrl?: string | null;
       postsCount?: number;
       friendsCount?: number;

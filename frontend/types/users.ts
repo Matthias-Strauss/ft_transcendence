@@ -1,7 +1,7 @@
 export interface FriendUser {
   id: string;
   username: string;
-  displayname?: string;
+  displayname?: string | null;
   avatarUrl?: string | null;
   isOnline?: boolean;
   isFriend?: boolean;
@@ -13,7 +13,7 @@ export interface FriendUser {
 export interface MeResponse {
   id?: string;
   username?: string;
-  displayname?: string;
+  displayname?: string | null;
   email?: string | null;
   avatarUrl?: string | null;
   postsCount?: number;
