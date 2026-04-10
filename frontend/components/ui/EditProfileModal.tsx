@@ -4,7 +4,7 @@ import { AuthedImage } from './AuthedImage';
 import { uploadAvatar, deleteAvatar, apiFetch, logout } from '../../utils/api';
 import { useUserStore } from '../../utils/userStore';
 import { Eye, EyeOff } from 'lucide-react';
-import type { UserStore } from '../../utils/userStore';
+import type { UserStore, User } from '../../utils/userStore';
 
 interface Props {
   user?: {
@@ -24,9 +24,11 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
   const fileRef = useRef<HTMLInputElement | null>(null);
   const updateUser = useUserStore((s: UserStore) => s.update);
   const storeUser = useUserStore((s: UserStore) => s.user);
+
   const [email, setEmail] = useState<string>(storeUser?.email ?? user?.email ?? '');
   const [displayname, setDisplayname] = useState<string>(storeUser?.displayname ?? user?.displayname ?? '');
   const [usernameState, setUsernameState] = useState<string>(storeUser?.username ?? user?.username ?? '');
+
   const [currentPassword, setCurrentPassword] = useState<string>('');
   const [newPassword, setNewPassword] = useState<string>('');
   const [confirmPassword, setConfirmPassword] = useState<string>('');
@@ -67,9 +69,7 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
 
     const url = URL.createObjectURL(selectedFile);
     setPreviewUrl(url);
-    return () => {
-      URL.revokeObjectURL(url);
-    };
+    return () => URL.revokeObjectURL(url);
   }, [selectedFile]);
 
   function onChooseClick() {
@@ -89,14 +89,34 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
       if (res.ok && res.avatarUrl) {
         const sep = res.avatarUrl.includes('?') ? '&' : '?';
         const newUrl = `${res.avatarUrl}${sep}t=${Date.now()}`;
-        onUpdated?.({ avatarUrl: newUrl });
         updateUser({ avatarUrl: newUrl });
+        onUpdated?.({ avatarUrl: newUrl });
         setSelectedFile(null);
       } else {
         alert('Failed to upload avatar.');
       }
     } catch (e) {
       alert('Error uploading avatar.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!confirm('Reset avatar to default?')) return;
+    setLoading(true);
+    try {
+      const res = await deleteAvatar();
+      if (res.ok && res.avatarUrl) {
+        const sep = res.avatarUrl.includes('?') ? '&' : '?';
+        const newUrl = `${res.avatarUrl}${sep}t=${Date.now()}`;
+        onUpdated?.({ avatarUrl: newUrl });
+        updateUser({ avatarUrl: newUrl });
+      } else {
+        alert('Failed to delete avatar.');
+      }
+    } catch (e) {
+      alert('Error deleting avatar.');
     } finally {
       setLoading(false);
     }
@@ -111,7 +131,6 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
     const displayTrim = (displayname ?? '').trim();
     const usernameTrim = (usernameState ?? '').trim().toLowerCase();
 
-    // validation
     if (usernameTrim && !isValidUsername(usernameTrim)) {
       alert('Invalid username — use 3–30 chars: a-z, 0-9, dot, underscore, dash');
       return;
@@ -122,7 +141,7 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
       return;
     }
 
-    const patch: Record<string, unknown> = {};
+    const patch: Partial<User> = {};
     if (payloadEmail !== (storeUser?.email ?? null)) patch.email = payloadEmail;
     if (displayTrim !== '' && displayTrim !== (storeUser?.displayname ?? '')) patch.displayname = displayTrim;
     if (usernameTrim !== '' && usernameTrim !== (storeUser?.username ?? '')) patch.username = usernameTrim;
@@ -144,38 +163,17 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
       }
 
       const data = await res.json();
-
-      const updatePatch: Record<string, unknown> = {};
+      const updatePatch: Partial<User> = {};
       if (typeof data?.email !== 'undefined') updatePatch.email = data.email;
       if (typeof data?.avatarUrl !== 'undefined' && data.avatarUrl) updatePatch.avatarUrl = data.avatarUrl;
       if (typeof data?.displayname !== 'undefined') updatePatch.displayname = data.displayname;
       if (typeof data?.username !== 'undefined') updatePatch.username = data.username;
 
-      updateUser(updatePatch as any);
+      updateUser(updatePatch as Partial<User>);
       onUpdated?.(updatePatch as any);
     } catch (e) {
       console.error('Failed to update profile', e);
       alert('Error saving profile.');
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function handleDelete() {
-    if (!confirm('Reset avatar to default?')) return;
-    setLoading(true);
-    try {
-      const res = await deleteAvatar();
-      if (res.ok && res.avatarUrl) {
-        const sep = res.avatarUrl.includes('?') ? '&' : '?';
-        const newUrl = `${res.avatarUrl}${sep}t=${Date.now()}`;
-        onUpdated?.({ avatarUrl: newUrl });
-        updateUser({ avatarUrl: newUrl });
-      } else {
-        alert('Failed to delete avatar.');
-      }
-    } catch (e) {
-      alert('Error deleting avatar.');
     } finally {
       setLoading(false);
     }
@@ -306,34 +304,43 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
             </p>
 
             <div className="mt-3">
-              <label className="text-[13px] text-[#8b98a5] block mb-1">Email</label>
+              <label className="text-[13px] text-[#8b98a5] block mb-1">Profile</label>
               <div className="flex flex-col gap-2">
                 <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={displayname}
-                    onChange={(e) => setDisplayname(e.target.value)}
-                    placeholder="Display name"
-                    className="flex-1 bg-transparent border border-[#39444d] px-3 py-2 rounded-md text-[#f7f9f9] placeholder:text-[#8b98a5] focus:outline-none"
-                  />
+                  <div className="flex-1">
+                    <label className="text-[12px] text-[#8b98a5] block mb-1">Display name</label>
+                    <input
+                      type="text"
+                      value={displayname}
+                      onChange={(e) => setDisplayname(e.target.value)}
+                      placeholder="Display name"
+                      className="flex-1 bg-transparent border border-[#39444d] px-3 py-2 rounded-md text-[#f7f9f9] placeholder:text-[#8b98a5] focus:outline-none"
+                    />
+                  </div>
 
-                  <input
-                    type="text"
-                    value={usernameState}
-                    onChange={(e) => setUsernameState(e.target.value)}
-                    placeholder="username"
-                    className="w-48 bg-transparent border border-[#39444d] px-3 py-2 rounded-md text-[#f7f9f9] placeholder:text-[#8b98a5] focus:outline-none"
-                  />
+                  <div className="w-48">
+                    <label className="text-[12px] text-[#8b98a5] block mb-1">Username</label>
+                    <input
+                      type="text"
+                      value={usernameState}
+                      onChange={(e) => setUsernameState(e.target.value)}
+                      placeholder="username"
+                      className="w-full bg-transparent border border-[#39444d] px-3 py-2 rounded-md text-[#f7f9f9] placeholder:text-[#8b98a5] focus:outline-none"
+                    />
+                  </div>
                 </div>
 
                 <div className="flex gap-2">
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@example.com"
-                    className="flex-1 bg-transparent border border-[#39444d] px-3 py-2 rounded-md text-[#f7f9f9] placeholder:text-[#8b98a5] focus:outline-none"
-                  />
+                  <div className="flex-1">
+                    <label className="text-[12px] text-[#8b98a5] block mb-1">Email</label>
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="you@example.com"
+                      className="flex-1 bg-transparent border border-[#39444d] px-3 py-2 rounded-md text-[#f7f9f9] placeholder:text-[#8b98a5] focus:outline-none"
+                    />
+                  </div>
 
                   <span className="inline-block" title={saveDisabled ? saveDisableReason : ''}>
                     <button
@@ -346,6 +353,7 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
                     </button>
                   </span>
                 </div>
+
                 <div className="text-[12px] text-[#8b98a5]">
                   <div>Display name: 1–30 chars, words separated by single spaces.</div>
                   <div>Username: 3–30 chars, lowercase a-z, 0-9, dot, underscore, dash.</div>
