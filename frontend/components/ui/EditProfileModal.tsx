@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import '../../styles/edit-profile-modal.css';
 import { AuthedImage } from './AuthedImage';
-import { uploadAvatar, deleteAvatar, apiFetch } from '../../utils/api';
+import { uploadAvatar, deleteAvatar, apiFetch, logout } from '../../utils/api';
 import { useUserStore } from '../../utils/userStore';
+import { Eye, EyeOff } from 'lucide-react';
 import type { UserStore } from '../../utils/userStore';
 
 interface Props {
@@ -24,6 +25,13 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
   const updateUser = useUserStore((s: UserStore) => s.update);
   const storeUser = useUserStore((s: UserStore) => s.user);
   const [email, setEmail] = useState<string>(storeUser?.email ?? user?.email ?? '');
+  const [currentPassword, setCurrentPassword] = useState<string>('');
+  const [newPassword, setNewPassword] = useState<string>('');
+  const [confirmPassword, setConfirmPassword] = useState<string>('');
+  const [passwordLoading, setPasswordLoading] = useState<boolean>(false);
+  const [showCurrent, setShowCurrent] = useState<boolean>(false);
+  const [showNew, setShowNew] = useState<boolean>(false);
+  const [showConfirm, setShowConfirm] = useState<boolean>(false);
 
   useEffect(() => {
     setEmail(storeUser?.email ?? user?.email ?? '');
@@ -130,6 +138,45 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
     }
   }
 
+  async function handleChangePassword() {
+    if (passwordLoading) return;
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      alert('Please fill all password fields.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      alert('New passwords do not match.');
+      return;
+    }
+    if (newPassword.length < 3) {
+      alert('New password is too short.');
+      return;
+    }
+
+    setPasswordLoading(true);
+    try {
+      const res = await apiFetch('/api/me/change-password', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPassword, newPassword }),
+      });
+
+      if (!res.ok) {
+        const txt = await res.text();
+        alert(`Failed to change password: ${res.status} ${txt}`);
+        return;
+      }
+
+      alert('Password changed successfully. You will be logged out.');
+      await logout();
+    } catch (e) {
+      console.error('Failed to change password', e);
+      alert('Error changing password.');
+    } finally {
+      setPasswordLoading(false);
+    }
+  }
+
   const normalizedEmail = (email ?? '').trim();
   const payloadEmailNormalized = normalizedEmail === '' ? null : normalizedEmail;
   const emailUnchanged = payloadEmailNormalized === (storeUser?.email ?? null);
@@ -222,6 +269,96 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
                     {loading ? 'Saving...' : 'Save'}
                   </button>
                 </span>
+              </div>
+            </div>
+
+            <div className="mt-4">
+              <label className="text-[13px] text-[#8b98a5] block mb-1">Change password</label>
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                  <input
+                    type={showCurrent ? 'text' : 'password'}
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    placeholder="Current password"
+                    className="flex-1 bg-transparent border border-[#39444d] px-3 py-2 rounded-md text-[#f7f9f9] placeholder:text-[#8b98a5] focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowCurrent((s) => !s)}
+                    className="btn btn-ghost px-3 py-1 focus:outline-none focus:ring-2 focus:ring-[var(--color-1)] rounded"
+                    aria-label={showCurrent ? 'Hide current password' : 'Show current password'}
+                    title={showCurrent ? 'Hide current password' : 'Show current password'}
+                  >
+                    {showCurrent ? (
+                      <EyeOff className="size-5 text-[#8b98a5] hover:text-[var(--color-1)] transition-colors" />
+                    ) : (
+                      <Eye className="size-5 text-[#8b98a5] hover:text-[var(--color-1)] transition-colors" />
+                    )}
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    type={showNew ? 'text' : 'password'}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="New password"
+                    className="flex-1 bg-transparent border border-[#39444d] px-3 py-2 rounded-md text-[#f7f9f9] placeholder:text-[#8b98a5] focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNew((s) => !s)}
+                    className="btn btn-ghost px-3 py-1 focus:outline-none focus:ring-2 focus:ring-[var(--color-1)] rounded"
+                    aria-label={showNew ? 'Hide new password' : 'Show new password'}
+                    title={showNew ? 'Hide new password' : 'Show new password'}
+                  >
+                    {showNew ? (
+                      <EyeOff className="size-5 text-[#8b98a5] hover:text-[var(--color-1)] transition-colors" />
+                    ) : (
+                      <Eye className="size-5 text-[#8b98a5] hover:text-[var(--color-1)] transition-colors" />
+                    )}
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    type={showConfirm ? 'text' : 'password'}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Confirm new password"
+                    className="flex-1 bg-transparent border border-[#39444d] px-3 py-2 rounded-md text-[#f7f9f9] placeholder:text-[#8b98a5] focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirm((s) => !s)}
+                    className="btn btn-ghost px-3 py-1 focus:outline-none focus:ring-2 focus:ring-[var(--color-1)] rounded"
+                    aria-label={showConfirm ? 'Hide confirm password' : 'Show confirm password'}
+                    title={showConfirm ? 'Hide confirm password' : 'Show confirm password'}
+                  >
+                    {showConfirm ? (
+                      <EyeOff className="size-5 text-[#8b98a5] hover:text-[var(--color-1)] transition-colors" />
+                    ) : (
+                      <Eye className="size-5 text-[#8b98a5] hover:text-[var(--color-1)] transition-colors" />
+                    )}
+                  </button>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={handleChangePassword}
+                    disabled={
+                      passwordLoading ||
+                      !currentPassword ||
+                      !newPassword ||
+                      !confirmPassword ||
+                      newPassword !== confirmPassword
+                    }
+                    className="bg-[var(--color-1)] hover:bg-[var(--color-1)]/90 text-[#f7f9f9] rounded-full py-2 px-4 transition-colors disabled:opacity-40"
+                  >
+                    {passwordLoading ? 'Changing...' : 'Change password'}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
