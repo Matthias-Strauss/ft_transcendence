@@ -35,6 +35,27 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
   const [showCurrent, setShowCurrent] = useState<boolean>(false);
   const [showNew, setShowNew] = useState<boolean>(false);
   const [showConfirm, setShowConfirm] = useState<boolean>(false);
+  const [notification, setNotification] = useState<{
+    type: 'error' | 'success' | 'info';
+    text: string;
+  } | null>(null);
+  const notifTimeoutRef = useRef<number | null>(null);
+
+  const showNotification = (
+    text: string,
+    type: 'error' | 'success' | 'info' = 'error',
+    duration = 5000,
+  ) => {
+    setNotification({ type, text });
+    if (notifTimeoutRef.current) window.clearTimeout(notifTimeoutRef.current);
+    notifTimeoutRef.current = window.setTimeout(() => setNotification(null), duration);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (notifTimeoutRef.current) window.clearTimeout(notifTimeoutRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     setEmail(storeUser?.email ?? user?.email ?? '');
@@ -100,10 +121,12 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
         onUpdated?.({ avatarUrl: newUrl });
         setSelectedFile(null);
       } else {
-        alert('Failed to upload avatar.');
+        showNotification('Failed to upload avatar. Please try again.');
       }
     } catch (e) {
-      alert('Error uploading avatar.');
+      showNotification(
+        'An unexpected error occurred while uploading the avatar. Please try again.',
+      );
     } finally {
       setLoading(false);
     }
@@ -120,10 +143,10 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
         onUpdated?.({ avatarUrl: newUrl });
         updateUser({ avatarUrl: newUrl });
       } else {
-        alert('Failed to delete avatar.');
+        showNotification('Failed to delete avatar. Please try again.');
       }
     } catch (e) {
-      alert('Error deleting avatar.');
+      showNotification('An unexpected error occurred while deleting the avatar. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -139,12 +162,12 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
     const usernameTrim = (usernameState ?? '').trim().toLowerCase();
 
     if (usernameTrim && !isValidUsername(usernameTrim)) {
-      alert('Invalid username — use 3–30 chars: a-z, 0-9, dot, underscore, dash');
+      showNotification('Invalid username — use 3–30 chars: a-z, 0-9, dot, underscore, dash');
       return;
     }
 
     if (displayTrim && !isValidDisplayname(displayTrim)) {
-      alert('Invalid display name — 1–30 chars, words separated by single spaces');
+      showNotification('Invalid display name — 1–30 chars, words separated by single spaces');
       return;
     }
 
@@ -166,8 +189,7 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
       });
 
       if (!res.ok) {
-        const txt = await res.text();
-        alert(`Failed to save profile: ${res.status} ${txt}`);
+        showNotification('Failed to save profile. Please check your input and try again.');
         return;
       }
 
@@ -181,9 +203,10 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
 
       updateUser(updatePatch as Partial<User>);
       onUpdated?.(updatePatch as any);
+      showNotification('Profile saved successfully.', 'success');
     } catch (e) {
       console.error('Failed to update profile', e);
-      alert('Error saving profile.');
+      showNotification('An unexpected error occurred while saving your profile. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -192,15 +215,15 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
   async function handleChangePassword() {
     if (passwordLoading) return;
     if (!currentPassword || !newPassword || !confirmPassword) {
-      alert('Please fill all password fields.');
+      showNotification('Please fill all password fields.');
       return;
     }
     if (newPassword !== confirmPassword) {
-      alert('New passwords do not match.');
+      showNotification('New passwords do not match.');
       return;
     }
     if (newPassword.length < 3) {
-      alert('New password is too short.');
+      showNotification('New password is too short.');
       return;
     }
 
@@ -213,16 +236,19 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
       });
 
       if (!res.ok) {
-        const txt = await res.text();
-        alert(`Failed to change password: ${res.status} ${txt}`);
+        showNotification(
+          'Failed to change password. Please verify your current password and try again.',
+        );
         return;
       }
 
-      alert('Password changed successfully. You will be logged out.');
+      showNotification('Password changed successfully. You will be logged out.', 'success');
       await logout();
     } catch (e) {
       console.error('Failed to change password', e);
-      alert('Error changing password.');
+      showNotification(
+        'An unexpected error occurred while changing your password. Please try again.',
+      );
     } finally {
       setPasswordLoading(false);
     }
@@ -274,6 +300,30 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
             </button>
           </div>
         </div>
+
+        {notification && (
+          <div
+            className={`mt-3 p-3 rounded ${
+              notification.type === 'error'
+                ? 'bg-red-600 text-white'
+                : notification.type === 'success'
+                ? 'bg-green-600 text-white'
+                : 'bg-blue-600 text-white'
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <div className="text-sm">{notification.text}</div>
+              <button
+                type="button"
+                onClick={() => setNotification(null)}
+                className="ml-3 text-white/90"
+                aria-label="Dismiss notification"
+              >
+                ×
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className="mt-4 flex items-start gap-6">
           <div className="size-24 rounded-full overflow-hidden bg-[#0b1220] avatar-frame">
