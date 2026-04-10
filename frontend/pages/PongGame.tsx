@@ -72,24 +72,20 @@ export default function PongGame() {
     // -- Paddles --
 
     // Paddle 1
-    const p1Color = Color4.FromHexString('#95ff00ff');
-    const p1Colors = [p1Color, p1Color, p1Color, p1Color, p1Color, p1Color];
-    const paddle1 = MeshBuilder.CreateBox(
-      'paddle1',
-      { width: 6, height: 0.5, depth: 0.5, faceColors: p1Colors },
-      scene,
-    );
+    const paddle1 = MeshBuilder.CreateBox('paddle1', { width: 6, height: 0.5, depth: 0.5 }, scene);
+    const p1Mat = new StandardMaterial('p1Mat', scene);
+    p1Mat.diffuseColor = Color3.FromHexString('#95ff00');
+    p1Mat.emissiveColor = Color3.FromHexString('#95ff00').scale(0.4);
+    paddle1.material = p1Mat;
     paddle1.position.z = 36;
     paddle1.position.y = 0.25;
 
     // Paddle 2
-    const p2Color = Color4.FromHexString('#ff0095ff');
-    const p2Colors = [p2Color, p2Color, p2Color, p2Color, p2Color, p2Color];
-    const paddle2 = MeshBuilder.CreateBox(
-      'paddle2',
-      { width: 6, height: 0.5, depth: 0.5, faceColors: p2Colors },
-      scene,
-    );
+    const paddle2 = MeshBuilder.CreateBox('paddle2', { width: 6, height: 0.5, depth: 0.5 }, scene);
+    const p2Mat = new StandardMaterial('p2Mat', scene);
+    p2Mat.diffuseColor = Color3.FromHexString('#ff0095');
+    p2Mat.emissiveColor = Color3.FromHexString('#ff0095').scale(0.4);
+    paddle2.material = p2Mat;
     paddle2.position.z = -36;
     paddle2.position.y = 0.25;
 
@@ -99,6 +95,7 @@ export default function PongGame() {
 
     const ballMat = new StandardMaterial('ballMat', scene);
     ballMat.diffuseColor = Color3.FromHexString('#f7f9f9');
+    ballMat.emissiveColor = Color3.FromHexString('#f7f9f9').scale(0.4);
     ball.material = ballMat;
 
     const ballVelocity = new Vector3(0.2, 0, 0.3);
@@ -142,9 +139,12 @@ export default function PongGame() {
         ballVelocity.x *= -1;
       }
 
+      const maxSpeed = 1.2;
+
       // P1 collision
       if (ball.intersectsMesh(paddle1, false) && ballVelocity.z > 0) {
         ballVelocity.z *= -1.1;
+        if (Math.abs(ballVelocity.z) > maxSpeed) ballVelocity.z = -maxSpeed;
         const offset = ball.position.x - paddle1.position.x;
         ballVelocity.x = offset * 0.1;
       }
@@ -152,6 +152,7 @@ export default function PongGame() {
       // P2 collision (far end, -z)
       if (ball.intersectsMesh(paddle2, false) && ballVelocity.z < 0) {
         ballVelocity.z *= -1.1;
+        if (Math.abs(ballVelocity.z) > maxSpeed) ballVelocity.z = maxSpeed;
         const offset = ball.position.x - paddle2.position.x;
         ballVelocity.x = offset * 0.1;
       }
