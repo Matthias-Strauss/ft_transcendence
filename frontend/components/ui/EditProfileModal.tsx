@@ -265,7 +265,7 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div className="bg-[#071026] rounded-lg w-[640px] p-6 modal-card">
+      <div className="bg-[#071026] rounded-lg w-[640px] p-6 modal-card" style={{ marginTop: 30 }}>
         <div className="flex items-start justify-between">
           <h3 className="font-bold text-[18px] text-[#f7f9f9]">Edit profile</h3>
           <div>
@@ -313,12 +313,12 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
               >
                 Reset
               </button>
-              <div className="ml-3 text-sm text-[#8b98a5]">{selectedFile ? selectedFile.name : ''}</div>
+              <div className="ml-3 text-sm text-[#8b98a5]">
+                {selectedFile ? selectedFile.name : ''}
+              </div>
             </div>
 
-            <p className="text-[13px] text-[#8b98a5] mt-3">
-              Supported: JPEG, PNG.
-            </p>
+            <p className="text-[13px] text-[#8b98a5] mt-3">Supported: JPEG, PNG.</p>
 
             <div className="mt-4">
               <label className="text-[13px] text-[#8b98a5] block mb-2">Profile</label>

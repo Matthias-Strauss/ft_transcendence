@@ -200,25 +200,23 @@ export default function UserProfile() {
           user={user}
           onClose={() => setEditing(false)}
           onUpdated={(data) => {
-              setUser((prev) => ({ ...(prev ?? {}), ...data }));
-              setMe((prev) => ({ ...(prev ?? {}), ...data }));
-              if (data?.avatarUrl) {
-                setPosts((prev) =>
-                  prev.map((p) =>
-                    p.author?.username === user?.username
-                      ? { ...p, author: { ...p.author, avatarUrl: data.avatarUrl } }
-                      : p,
-                  ),
-                );
-              }
-             if (data?.username && data.username !== username) {
-                setEditing(false);
-                navigate(`/users/${data.username}`, { replace: true });
-                return;
-              }
-
-              // close modal after update
+            setUser((prev) => ({ ...(prev ?? {}), ...data }));
+            setMe((prev) => ({ ...(prev ?? {}), ...data }));
+            if (data?.avatarUrl) {
+              setPosts((prev) =>
+                prev.map((p) =>
+                  p.author?.username === user?.username
+                    ? { ...p, author: { ...p.author, avatarUrl: data.avatarUrl } }
+                    : p,
+                ),
+              );
+            }
+            if (data?.username && data.username !== username) {
               setEditing(false);
+              navigate(`/users/${data.username}`, { replace: true });
+              return;
+            }
+
           }}
         />
       )}
