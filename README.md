@@ -5,13 +5,14 @@ _This project has been created as part of the 42 curriculum by [mstrauss], [krus
 ## 📖 Description
 
 ft_transcendence is the final project of the 42 Common Core. It is a full-stack web application designed around a social media concept with an integrated multiplayer game layer.
-By the end of March, the project had moved beyond pure planning: authentication, profiles, friends, posts, and chat persistence were already in active development, while the first playable game prototype was being explored in parallel.
+By early April, the project had moved beyond pure planning: authentication, profiles, friends, posts, chat persistence, and notification-related flows were all part of the active implementation effort, while the browser-game track was continuing in parallel.
 
 **Key Features:**
 
 - **Platform Foundation:** Monorepo structure with separated frontend, backend, database, and proxy setup.
 - **Social Core:** Authentication, user profiles, friendships, posts, and direct user-to-user interaction.
 - **Chat Progress:** Real-time chat flow and database-backed message history were already under active implementation.
+- **Notifications & Social Flow:** The platform was already moving toward a more complete social loop with friends, posts, and user-facing updates.
 - **Game Prototype:** A first simple browser game prototype existed while the team was still deciding how the final multiplayer loop would be integrated.
 
 ---
@@ -27,7 +28,7 @@ By the end of March, the project had moved beyond pure planning: authentication,
 
 ### Installation & Execution
 
-This project currently uses Docker for the backend, database, and shared infrastructure. During this phase, the frontend may still be run locally depending on the branch and the feature being tested.
+This project is moving toward a single reproducible Docker-based workflow for evaluation, even though some frontend work may still be tested locally during active development.
 
 1. **Clone the repository:**
 
@@ -42,17 +43,17 @@ This project currently uses Docker for the backend, database, and shared infrast
    ```bash
    cp .env.example .env
    ```
-   Review the database and JWT values in `.env` before starting the backend stack.
+   Review the database and JWT values in `.env` before starting the stack. In particular, confirm the PostgreSQL credentials, `JWT_SECRET`, and local host-related values if you are testing from another machine on the network.
 
 3. **Run the application:**
-   To build and start the backend stack:
+   To build and start the main stack:
 
    ```bash
    docker-compose up --build
    ```
 
-4. **Frontend development:**
-   In the current project phase, the frontend can also be started locally:
+4. **Frontend development (when needed):**
+   In some branches or feature states, the frontend may still be run locally while the backend remains containerized:
 
    ```bash
    cd frontend
@@ -63,6 +64,7 @@ This project currently uses Docker for the backend, database, and shared infrast
 5. **Access:**
    - Frontend: `http://localhost:3000`
    - Backend / API: `http://localhost:8080`
+   - This section is expected to move toward a single documented evaluation flow as integration stabilizes.
 
 ---
 
@@ -81,7 +83,7 @@ This project currently uses Docker for the backend, database, and shared infrast
 ## 📅 Project Management
 
 **Organization:**
-We organized our work around a shared monorepo and split the project into frontend, backend, infrastructure, and documentation tracks. Work was coordinated through discussions, pull requests, and regular syncs as the project structure was still being established.
+We organized our work around a shared monorepo and split the project into frontend, backend, infrastructure, and documentation tracks. Work was coordinated through discussions, pull requests, and regular syncs while the project matured from planning into active integration.
 
 **Tools Used:**
 
@@ -91,7 +93,7 @@ We organized our work around a shared monorepo and split the project into fronte
 - **Documentation / Planning:** `QUESTIONS.md`, `INSTRUCTIONS.md`, `Project_Plan.md`
 
 **Workflow:**
-We used feature branches, pull requests, and peer review as the normal delivery path. Team changes during the project were reflected in role redistribution, milestone planning, and ongoing coordination through chat and review comments.
+We used feature branches, pull requests, and peer review as the normal delivery path. By this point, the team was also explicitly tracking ownership by 42 login names to make contribution reviews, balancing, and later evaluation easier to explain.
 
 ---
 
@@ -157,36 +159,37 @@ The database had already moved past the placeholder stage by late March. The cur
 
 ## ✅ Planned / Active Modules
 
-At this point in the project, the team is targeting a social-media-first implementation path that reaches the required score with one clear multiplayer game and a strong web foundation.
+At this point in the project, the team is targeting a social-media-first implementation path that reaches the required score with one clear multiplayer game and a strong web foundation. The modules below reflect work that is already active in the codebase or clearly owned by a specific part of the team.
 
 | Category | Module | Type | Points | Why This Module Fits The Project |
 | :------- | :----- | :--- | :----- | :------------------------------- |
 | Web | Framework for frontend + backend | Major | 2 | The project is being built as a structured full-stack application rather than a loose prototype, with React on the frontend and Express on the backend. |
-| Web | User interaction | Major | 2 | A social media concept depends on profiles, messaging, and friendship-related interaction, so this is core to the product direction. |
-| Web | Real-time features | Major | 2 | Real-time communication is needed for chat and for the multiplayer game layer planned around the social platform. |
-| Web | ORM | Minor | 1 | Prisma reduces friction in managing the relational database as auth, users, and future social/game entities expand. |
-| Web | File upload and management system | Minor | 1 | Avatar handling is already relevant for profiles and is a natural extension for social posts later. |
-| User Management | Standard user management and authentication | Major | 2 | Authentication, editable profiles, and account handling are foundation features for every other planned module. |
-| Gaming and User Experience | Complete web-based game | Major | 2 | The team agreed that one 1v1 web-based game is enough to unlock the gaming branch while keeping the project manageable. |
-| Gaming and User Experience | Remote players | Major | 2 | The selected game should be played live between users on different devices, making multiplayer support part of the core scope. |
-| Gaming and User Experience | Advanced chat features | Minor | 1 | Chat is a natural bridge between the social platform and the game, especially for invites and user blocking. |
-| Web | Complete notification system for all creation, update, and deletion actions | Minor | 1 | Notifications strengthen the social experience and were discussed as a low-cost way to add value beyond the feed itself. |
+| Web | User interaction | Major | 2 | Profiles, friendships, posts, and direct messaging are already central to the app structure, so this module matches the main product identity rather than being an add-on. |
+| Web | Real-time features | Major | 2 | Real-time behavior is being used for chat already and is also the expected backbone for the final multiplayer experience. |
+| Web | ORM | Minor | 1 | Prisma is already shaping the schema and backend data access layer, making this a concrete implementation choice rather than only a planning decision. |
+| Web | File upload and management system | Minor | 1 | Avatar and media-related flows are part of the user/profile experience and fit naturally into the growing social feature set. |
+| User Management | Standard user management and authentication | Major | 2 | Login, registration, token refresh, and editable account data are already active work and unlock every other protected feature in the platform. |
+| Gaming and User Experience | Complete web-based game | Major | 2 | The team has already begun implementing a browser-game prototype, so this remains the chosen route for the gaming branch. |
+| Gaming and User Experience | Remote players | Major | 2 | The game direction is explicitly multiplayer, which means remote play is not optional but part of the target implementation. |
+| Gaming and User Experience | Advanced chat features | Minor | 1 | Persistent chat history, friend-aware communication, and invite-oriented flows tie the social side of the product to the game side. |
+| Web | Complete notification system for all creation, update, and deletion actions | Minor | 1 | Notifications now fit the real social interactions being built and help make the platform feel cohesive rather than a collection of isolated pages. |
 
-**Planned score at this stage: 16 points, with the social platform already actively covering a large part of the web and user-management scope.**
+**Planned score at this stage: 16 points, with feature ownership and implementation direction now clear enough to defend during review.**
 
 ---
 
 ## ✨ Features List & Assignment
 
-| Feature | Developer(s) | Description |
-| :------ | :----------- | :---------- |
-| **Authentication Flow** | [jmuhlber], [vmamoten] | Login, registration, token handling, and backend auth endpoints were already being integrated into the app flow. |
-| **Profiles** | [vmamoten], [kruseva] | Profile page work was in progress, including styling updates and account-facing UI. |
-| **Friends System** | [jmuhlber] | Friend requests and relationship handling were close to functional by the end of March. |
-| **Posts / Feed Foundation** | [kruseva], [jmuhlber] | The project already had the basis for social content and feed-related backend/frontend work. |
-| **Chat With History** | [kruseva], [jmuhlber] | Real-time messaging was being connected to persistent database storage for chat history. |
-| **Game Prototype** | [bszikora], [mstrauss] | A first simple browser game prototype existed as an early test bed for the final multiplayer direction. |
-| **Infrastructure & Setup** | [mstrauss], [jmuhlber] | Docker, service layout, and local setup flow were already established to support team-wide development. |
+| Feature | Owner | Developer(s) | Description |
+| :------ | :---- | :----------- | :---------- |
+| **Authentication Flow** | [jmuhlber] | [jmuhlber], [vmamoten] | Login, registration, token handling, and backend auth endpoints were being integrated into the app flow, with ownership now tracked by login for review purposes. |
+| **Profiles** | [vmamoten] | [vmamoten], [kruseva] | Profile page work was in progress, including styling updates and account-facing UI. |
+| **Friends System** | [jmuhlber] | [jmuhlber] | Friend requests and relationship handling were close to functional by early April. |
+| **Posts / Feed Foundation** | [kruseva] | [kruseva], [jmuhlber] | The project already had the basis for social content and feed-related backend/frontend work. |
+| **Chat With History** | [kruseva] | [kruseva], [jmuhlber] | Real-time messaging was being connected to persistent database storage for chat history. |
+| **Notifications** | [vmamoten] | [vmamoten], [jmuhlber] | Notification-oriented flows were being added around the emerging social interactions in the app. |
+| **Game Prototype** | [bszikora] | [bszikora], [mstrauss] | A first simple browser game prototype existed as an early test bed for the final multiplayer direction. |
+| **Infrastructure & Setup** | [mstrauss] | [mstrauss], [jmuhlber] | Docker, service layout, and local setup flow were already established to support team-wide development. |
 
 ---
 
