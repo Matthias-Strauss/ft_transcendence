@@ -7,14 +7,9 @@ import { Eye, EyeOff } from 'lucide-react';
 import type { UserStore, User } from '../../utils/userStore';
 
 interface Props {
-  user?: {
-    avatarUrl?: string | null;
-    displayname?: string | null;
-    username?: string;
-    email?: string | null;
-  };
-  onClose?: () => void;
-  onUpdated?: (data: { avatarUrl?: string | null; email?: string | null; displayname?: string | null; username?: string }) => void;
+  user?: User | null;
+  onClose: () => void;
+  onUpdated?: (patch: Partial<User>) => void;
 }
 
 export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
@@ -26,8 +21,12 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
   const storeUser = useUserStore((s: UserStore) => s.user);
 
   const [email, setEmail] = useState<string>(storeUser?.email ?? user?.email ?? '');
-  const [displayname, setDisplayname] = useState<string>(storeUser?.displayname ?? user?.displayname ?? '');
-  const [usernameState, setUsernameState] = useState<string>(storeUser?.username ?? user?.username ?? '');
+  const [displayname, setDisplayname] = useState<string>(
+    storeUser?.displayname ?? user?.displayname ?? '',
+  );
+  const [usernameState, setUsernameState] = useState<string>(
+    storeUser?.username ?? user?.username ?? '',
+  );
 
   const [currentPassword, setCurrentPassword] = useState<string>('');
   const [newPassword, setNewPassword] = useState<string>('');
@@ -41,7 +40,14 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
     setEmail(storeUser?.email ?? user?.email ?? '');
     setDisplayname(storeUser?.displayname ?? user?.displayname ?? '');
     setUsernameState(storeUser?.username ?? user?.username ?? '');
-  }, [storeUser?.email, user?.email, storeUser?.displayname, user?.displayname, storeUser?.username, user?.username]);
+  }, [
+    storeUser?.email,
+    user?.email,
+    storeUser?.displayname,
+    user?.displayname,
+    storeUser?.username,
+    user?.username,
+  ]);
 
   const isValidEmail = (v: string) => {
     if (!v) return false;
@@ -143,8 +149,10 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
 
     const patch: Partial<User> = {};
     if (payloadEmail !== (storeUser?.email ?? null)) patch.email = payloadEmail;
-    if (displayTrim !== '' && displayTrim !== (storeUser?.displayname ?? '')) patch.displayname = displayTrim;
-    if (usernameTrim !== '' && usernameTrim !== (storeUser?.username ?? '')) patch.username = usernameTrim;
+    if (displayTrim !== '' && displayTrim !== (storeUser?.displayname ?? ''))
+      patch.displayname = displayTrim;
+    if (usernameTrim !== '' && usernameTrim !== (storeUser?.username ?? ''))
+      patch.username = usernameTrim;
 
     if (Object.keys(patch).length === 0) return;
 
@@ -165,7 +173,8 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
       const data = await res.json();
       const updatePatch: Partial<User> = {};
       if (typeof data?.email !== 'undefined') updatePatch.email = data.email;
-      if (typeof data?.avatarUrl !== 'undefined' && data.avatarUrl) updatePatch.avatarUrl = data.avatarUrl;
+      if (typeof data?.avatarUrl !== 'undefined' && data.avatarUrl)
+        updatePatch.avatarUrl = data.avatarUrl;
       if (typeof data?.displayname !== 'undefined') updatePatch.displayname = data.displayname;
       if (typeof data?.username !== 'undefined') updatePatch.username = data.username;
 
@@ -225,15 +234,21 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
   const usernameNormalized = (usernameState ?? '').trim().toLowerCase();
 
   const emailChanged = payloadEmailNormalized !== (storeUser?.email ?? null);
-  const displaynameChanged = displayNameNormalized !== '' && displayNameNormalized !== (storeUser?.displayname ?? '');
-  const usernameChanged = usernameNormalized !== '' && usernameNormalized !== (storeUser?.username ?? '');
+  const displaynameChanged =
+    displayNameNormalized !== '' && displayNameNormalized !== (storeUser?.displayname ?? '');
+  const usernameChanged =
+    usernameNormalized !== '' && usernameNormalized !== (storeUser?.username ?? '');
 
   const emailInvalid = payloadEmailNormalized !== null && !isValidEmail(payloadEmailNormalized);
   const displaynameInvalid = displaynameChanged && !isValidDisplayname(displayNameNormalized);
   const usernameInvalid = usernameChanged && !isValidUsername(usernameNormalized);
 
   const saveDisabled =
-    loading || (!emailChanged && !displaynameChanged && !usernameChanged) || emailInvalid || displaynameInvalid || usernameInvalid;
+    loading ||
+    (!emailChanged && !displaynameChanged && !usernameChanged) ||
+    emailInvalid ||
+    displaynameInvalid ||
+    usernameInvalid;
 
   const saveDisableReason = loading
     ? 'Saving...'
@@ -259,7 +274,7 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
           </div>
         </div>
 
-        <div className="mt-4 flex items-center gap-6">
+        <div className="mt-4 flex items-start gap-6">
           <div className="size-24 rounded-full overflow-hidden bg-[#0b1220] avatar-frame">
             <AuthedImage
               src={previewUrl ?? user?.avatarUrl ?? '/uploads/avatars/default.png'}
@@ -268,16 +283,15 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
             />
           </div>
 
-          <div className="flex flex-col gap-2">
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/png,image/jpeg"
-              onChange={onFileChange}
-              className="hidden"
-            />
-
+          <div className="flex-1">
             <div className="flex gap-2">
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/png,image/jpeg"
+                onChange={onFileChange}
+                className="hidden"
+              />
               <button type="button" onClick={onChooseClick} className="btn">
                 Choose file
               </button>
@@ -299,49 +313,47 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
               </button>
             </div>
 
-            <p className="text-[13px] text-[#8b98a5]">
-              Supported: JPEG, PNG. Max size per server config.
+            <p className="text-[13px] text-[#8b98a5] mt-3">
+              Supported: JPEG, PNG.
             </p>
 
-            <div className="mt-3">
-              <label className="text-[13px] text-[#8b98a5] block mb-1">Profile</label>
-              <div className="flex flex-col gap-2">
-                <div className="flex gap-2">
-                  <div className="flex-1">
-                    <label className="text-[12px] text-[#8b98a5] block mb-1">Display name</label>
-                    <input
-                      type="text"
-                      value={displayname}
-                      onChange={(e) => setDisplayname(e.target.value)}
-                      placeholder="Display name"
-                      className="flex-1 bg-transparent border border-[#39444d] px-3 py-2 rounded-md text-[#f7f9f9] placeholder:text-[#8b98a5] focus:outline-none"
-                    />
-                  </div>
-
-                  <div className="w-48">
-                    <label className="text-[12px] text-[#8b98a5] block mb-1">Username</label>
-                    <input
-                      type="text"
-                      value={usernameState}
-                      onChange={(e) => setUsernameState(e.target.value)}
-                      placeholder="username"
-                      className="w-full bg-transparent border border-[#39444d] px-3 py-2 rounded-md text-[#f7f9f9] placeholder:text-[#8b98a5] focus:outline-none"
-                    />
-                  </div>
+            <div className="mt-4">
+              <label className="text-[13px] text-[#8b98a5] block mb-2">Profile</label>
+              <div className="flex flex-col gap-3">
+                <div>
+                  <label className="text-[12px] text-[#8b98a5] block mb-1">Display name</label>
+                  <input
+                    type="text"
+                    value={displayname}
+                    onChange={(e) => setDisplayname(e.target.value)}
+                    placeholder="Display name"
+                    className="w-full bg-transparent border border-[#39444d] px-3 py-2 rounded-md text-[#f7f9f9] placeholder:text-[#8b98a5] focus:outline-none"
+                  />
                 </div>
 
-                <div className="flex gap-2">
-                  <div className="flex-1">
-                    <label className="text-[12px] text-[#8b98a5] block mb-1">Email</label>
-                    <input
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="you@example.com"
-                      className="flex-1 bg-transparent border border-[#39444d] px-3 py-2 rounded-md text-[#f7f9f9] placeholder:text-[#8b98a5] focus:outline-none"
-                    />
-                  </div>
+                <div>
+                  <label className="text-[12px] text-[#8b98a5] block mb-1">Username</label>
+                  <input
+                    type="text"
+                    value={usernameState}
+                    onChange={(e) => setUsernameState(e.target.value)}
+                    placeholder="username"
+                    className="w-full bg-transparent border border-[#39444d] px-3 py-2 rounded-md text-[#f7f9f9] placeholder:text-[#8b98a5] focus:outline-none"
+                  />
+                </div>
 
+                <div>
+                  <label className="text-[12px] text-[#8b98a5] block mb-1">Email</label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@example.com"
+                    className="w-full bg-transparent border border-[#39444d] px-3 py-2 rounded-md text-[#f7f9f9] placeholder:text-[#8b98a5] focus:outline-none"
+                  />
+                </div>
+
+                <div className="flex justify-end">
                   <span className="inline-block" title={saveDisabled ? saveDisableReason : ''}>
                     <button
                       type="button"
@@ -361,8 +373,8 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
               </div>
             </div>
 
-            <div className="mt-4">
-              <label className="text-[13px] text-[#8b98a5] block mb-1">Change password</label>
+            <div className="mt-6">
+              <label className="text-[13px] text-[#8b98a5] block mb-2">Change password</label>
               <div className="flex flex-col gap-2">
                 <div className="flex items-center gap-2">
                   <input
@@ -432,6 +444,7 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
                     )}
                   </button>
                 </div>
+
                 <div className="flex gap-2">
                   <button
                     type="button"
