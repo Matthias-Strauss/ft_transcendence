@@ -92,6 +92,16 @@ export default function PongGame() {
     paddle2.position.z = -36;
     paddle2.position.y = 0.25;
 
+    // --- Ball ---
+    const ball = MeshBuilder.CreateSphere('ball', { diameter: 1.5 }, scene);
+    ball.position.y = 0.75;
+
+    const ballMat = new StandardMaterial('ballMat', scene);
+    ballMat.diffuseColor = Color3.FromHexString('#f7f9f9');
+    ball.material = ballMat;
+
+    const ballVelocity = new Vector3(0.2, 0, 0.3);
+
     // --- Keyboard input ---
     const keys: Record<string, boolean> = {};
     const onKeyDown = (e: KeyboardEvent) => {
@@ -121,6 +131,21 @@ export default function PongGame() {
       }
       if (keys['d'] && paddle2.position.x < paddleLimit) {
         paddle2.position.x += paddleSpeed;
+      }
+
+      // Ball movement
+      ball.position.addInPlace(ballVelocity);
+
+      // Bounce off side walls (x axis)
+      if (ball.position.x <= -19.2 || ball.position.x >= 19.2) {
+        ballVelocity.x *= -1;
+      }
+
+      // Reset if ball goes past either end (temporary — scoring comes in Step 4)
+      if (ball.position.z > 40 || ball.position.z < -40) {
+        ball.position = new Vector3(0, 0.75, 0);
+        ballVelocity.x = 0.2 * (Math.random() > 0.5 ? 1 : -1);
+        ballVelocity.z = 0.3 * (ball.position.z > 0 ? -1 : 1);
       }
     });
 
