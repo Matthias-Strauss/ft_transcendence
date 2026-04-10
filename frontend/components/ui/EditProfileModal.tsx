@@ -79,6 +79,7 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
   }, [selectedFile]);
 
   function onChooseClick() {
+    if (fileRef.current) fileRef.current.value = '';
     fileRef.current?.click();
   }
 
@@ -284,13 +285,14 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
           </div>
 
           <div className="flex-1">
-            <div className="flex gap-2">
+            <div className="flex gap-2 items-center">
               <input
                 ref={fileRef}
                 type="file"
                 accept="image/png,image/jpeg"
                 onChange={onFileChange}
                 className="hidden"
+                style={{ display: 'none' }}
               />
               <button type="button" onClick={onChooseClick} className="btn">
                 Choose file
@@ -311,6 +313,7 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
               >
                 Reset
               </button>
+              <div className="ml-3 text-sm text-[#8b98a5]">{selectedFile ? selectedFile.name : ''}</div>
             </div>
 
             <p className="text-[13px] text-[#8b98a5] mt-3">
