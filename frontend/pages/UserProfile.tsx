@@ -9,16 +9,19 @@ import {
   withdrawFriendRequest,
   removeFriend,
 } from '../utils/api';
+import EditProfileModal from '../components/ui/EditProfileModal';
 import { runFriendAction } from '../utils/friendActions';
 import { PostCard } from '../components/ui/PostCard';
 import type { Post } from '../types/posts';
 import ChatState from '../utils/chatState';
 import '../styles/UserProfile.css';
 import { AuthedImage } from '../components/ui/AuthedImage';
+import { useUserStore } from '../utils/userStore';
+import type { UserStore } from '../utils/userStore';
 
 interface UserResponse {
   username?: string;
-  displayname?: string;
+  displayname?: string | null;
   avatarUrl?: string | null;
   postsCount?: number;
   friendsCount?: number;
@@ -30,7 +33,7 @@ interface UserResponse {
 
 interface UserSearchResult {
   username: string;
-  displayname?: string;
+  displayname?: string | null;
   avatarUrl?: string | null;
   postsCount?: number;
   friendsCount?: number;
@@ -42,11 +45,13 @@ export default function UserProfile() {
   const [user, setUser] = useState<UserResponse | null>(null);
   const [me, setMe] = useState<UserResponse | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
+  const storeUser = useUserStore((s: UserStore) => s.user);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<UserSearchResult[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [sendingRequest, setSendingRequest] = useState(false);
+  const [editing, setEditing] = useState(false);
 
   useEffect(() => {
     if (!username) return;
@@ -88,6 +93,7 @@ export default function UserProfile() {
         if (res.ok) {
           const data = await res.json();
           setMe(data);
+          useUserStore.getState().setUser(data);
         }
       } catch (e) {
         console.error('Failed to load current user', e);
@@ -96,6 +102,10 @@ export default function UserProfile() {
 
     void loadMe();
   }, []);
+
+  useEffect(() => {
+    if (storeUser) setMe(storeUser as UserResponse);
+  }, [storeUser]);
 
   useEffect(() => {
     if (searchQuery.trim().length < 2) {
@@ -128,6 +138,17 @@ export default function UserProfile() {
 
   const normalize = (s?: string | null) => (s ?? '').toString().replace(/^@/, '').toLowerCase();
   const isMine = normalize(me?.username) === normalize(username as string | undefined);
+
+  useEffect(() => {
+    if (!user?.username || !user?.avatarUrl) return;
+    setPosts((prev) =>
+      prev.map((p) =>
+        p.author?.username === user.username
+          ? { ...p, author: { ...p.author, avatarUrl: user.avatarUrl } }
+          : p,
+      ),
+    );
+  }, [user?.avatarUrl, user?.username]);
 
   const handleSendFriendRequest = async () => {
     if (!user?.username) return;
@@ -174,6 +195,31 @@ export default function UserProfile() {
 
   return (
     <div>
+      {editing && (
+        <EditProfileModal
+          user={user}
+          onClose={() => setEditing(false)}
+          onUpdated={(data) => {
+            setUser((prev) => ({ ...(prev ?? {}), ...data }));
+            setMe((prev) => ({ ...(prev ?? {}), ...data }));
+            if (data?.avatarUrl) {
+              setPosts((prev) =>
+                prev.map((p) =>
+                  p.author?.username === user?.username
+                    ? { ...p, author: { ...p.author, avatarUrl: data.avatarUrl } }
+                    : p,
+                ),
+              );
+            }
+            if (data?.username && data.username !== username) {
+              setEditing(false);
+              navigate(`/users/${data.username}`, { replace: true });
+              return;
+            }
+
+          }}
+        />
+      )}
       <div className="user-profile-header">
         <div className="flex items-center justify-between p-4">
           <h1 className="text-[20px] font-bold text-[#f7f9f9]">
@@ -255,7 +301,10 @@ export default function UserProfile() {
             <div className="ml-auto flex gap-2">
               {isMine ? (
                 <>
-                  <button className="bg-[var(--color-1)] hover:bg-[var(--color-1)]/90 text-[#f7f9f9] rounded-full py-2 px-4 transition-colors">
+                  <button
+                    onClick={() => setEditing(true)}
+                    className="bg-[var(--color-1)] hover:bg-[var(--color-1)]/90 text-[#f7f9f9] rounded-full py-2 px-4 transition-colors"
+                  >
                     Edit profile
                   </button>
                   <button

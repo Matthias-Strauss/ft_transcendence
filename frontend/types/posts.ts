@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 export interface Author {
   id: string;
   username: string;
-  displayname?: string;
+  displayname?: string | null;
   avatarUrl?: string | null;
   isFriend?: boolean;
 }
@@ -21,7 +21,7 @@ export interface Comment {
   author?: {
     id: string;
     username: string;
-    displayname?: string;
+    displayname?: string | null;
     avatarUrl?: string | null;
   };
 }

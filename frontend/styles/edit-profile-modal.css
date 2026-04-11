@@ -1,0 +1,171 @@
+/* Styles specific to EditProfileModal component */
+.modal-card {
+  background: linear-gradient(180deg, rgba(11, 18, 32, 0.65), rgba(11, 18, 32, 0.55));
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 12px;
+  width: 640px;
+  padding: 24px;
+  box-shadow: 0 12px 40px rgba(2, 6, 23, 0.6);
+  backdrop-filter: blur(10px);
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.modal-card:hover {
+  transform: translateY(-4px);
+}
+
+.avatar-frame {
+  padding: 4px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(106, 0, 255, 0.12), rgba(255, 0, 149, 0.12));
+  display: inline-block;
+  box-shadow: 0 8px 20px rgba(2, 6, 23, 0.5);
+  /* keep avatar compact — same size as default `.size-24` */
+  width: calc(var(--spacing) * 24);
+  height: calc(var(--spacing) * 24);
+}
+.avatar-frame img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0.5rem 0.85rem;
+  border-radius: 999px;
+  font-weight: 700;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--card-foreground);
+  cursor: pointer;
+  transition: transform 0.12s, box-shadow 0.12s, background 0.12s;
+}
+.btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px rgba(2, 6, 23, 0.6);
+}
+.btn[disabled] {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--muted-foreground);
+  border-color: rgba(255, 255, 255, 0.03);
+}
+
+@media (max-width: 720px) {
+  .modal-card {
+    width: calc(100% - 32px);
+    padding: 16px;
+    margin: 0 16px;
+  }
+}
+
+/* Notification box inside modal */
+.notification-box {
+  position: relative;
+  padding: 12px;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(2, 6, 23, 0.6);
+  overflow: hidden;
+}
+.notification-box .text-sm {
+  line-height: 1.2;
+}
+.notification-box.error {
+  background-color: #dc2626; /* solid red */
+  color: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+}
+.notification-box.success {
+  background-color: #059669; /* solid green */
+  color: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+}
+.notification-box.info {
+  background-color: #2563eb; /* solid blue */
+  color: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+}
+.notification-progress {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  margin-top: 8px;
+  overflow: hidden;
+}
+.notification-bar {
+  width: 100%;
+  height: 100%;
+  transform-origin: left center;
+  animation-name: notify-shrink;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+.notification-box.error .notification-bar {
+  background: linear-gradient(90deg, #fb7185, #ef4444);
+}
+.notification-box.success .notification-bar {
+  background: linear-gradient(90deg, #60a5fa, #12b76a);
+}
+.notification-box.info .notification-bar {
+  background: linear-gradient(90deg, #60a5fa, #06b6d4);
+}
+
+@keyframes notify-shrink {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0%;
+  }
+}
+
+/* Centered notification wrapper */
+.notification-centered {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 99999;
+  width: min(900px, calc(100% - 48px));
+  max-width: 92%;
+  pointer-events: auto;
+}
+
+/* Confirmation dialog styles */
+.confirm-overlay {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 100001;
+  width: min(480px, 92%);
+  pointer-events: auto;
+}
+.confirm-box {
+  background-color: #071026;
+  padding: 18px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.04);
+  box-shadow: 0 12px 40px rgba(2,6,23,0.6);
+}
+.confirm-box .text-sm {
+  color: #f7f9f9;
+}
+.confirm-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
