@@ -11,6 +11,16 @@ import {
 } from '@babylonjs/core';
 import { useEffect, useRef, useState } from 'react';
 
+import { LocalPongSim } from '../game/localPongSim';
+import {
+  ARENA_DEPTH,
+  ARENA_WIDTH,
+  BALL_DIAMETER,
+  PADDLE_DEPTH,
+  PADDLE_P1_Z,
+  PADDLE_P2_Z,
+  PADDLE_WIDTH,
+} from '../game/pongConstants';
 import { socket } from '../socket';
 
 type PongWelcome = { username: string; socketId: string };
@@ -62,7 +72,11 @@ export default function PongGame() {
     // --- Arena ---
 
     // Floor
-    const floor = MeshBuilder.CreateGround('floor', { width: 40, height: 80 }, scene);
+    const floor = MeshBuilder.CreateGround(
+      'floor',
+      { width: ARENA_WIDTH, height: ARENA_DEPTH },
+      scene,
+    );
     const floorMat = new StandardMaterial('floorMat', scene);
     floorMat.diffuseColor = Color3.FromHexString('#0f172a');
     floor.material = floorMat;
@@ -75,19 +89,19 @@ export default function PongGame() {
     // Left wall
     const leftWall = MeshBuilder.CreateBox(
       'leftWall',
-      { width: 0.5, height: 1, depth: 80, faceColors: wallColors },
+      { width: 0.5, height: 1, depth: ARENA_DEPTH, faceColors: wallColors },
       scene,
     );
-    leftWall.position.x = -20;
+    leftWall.position.x = -ARENA_WIDTH / 2;
     leftWall.position.y = 0.5;
 
     // Right wall
     const rightWall = MeshBuilder.CreateBox(
       'rightWall',
-      { width: 0.5, height: 1, depth: 80, faceColors: wallColors },
+      { width: 0.5, height: 1, depth: ARENA_DEPTH, faceColors: wallColors },
       scene,
     );
-    rightWall.position.x = 20;
+    rightWall.position.x = ARENA_WIDTH / 2;
     rightWall.position.y = 0.5;
 
     // Center line
@@ -95,7 +109,7 @@ export default function PongGame() {
     const lineColors = [lineColor, lineColor, lineColor, lineColor, lineColor, lineColor];
     const centerLine = MeshBuilder.CreateBox(
       'centerLine',
-      { width: 40, height: 0.05, depth: 0.1, faceColors: lineColors },
+      { width: ARENA_WIDTH, height: 0.05, depth: 0.1, faceColors: lineColors },
       scene,
     );
     centerLine.position.y = 0.1;
@@ -103,25 +117,33 @@ export default function PongGame() {
     // -- Paddles --
 
     // Paddle 1
-    const paddle1 = MeshBuilder.CreateBox('paddle1', { width: 6, height: 0.5, depth: 0.5 }, scene);
+    const paddle1 = MeshBuilder.CreateBox(
+      'paddle1',
+      { width: PADDLE_WIDTH, height: 0.5, depth: PADDLE_DEPTH },
+      scene,
+    );
     const p1Mat = new StandardMaterial('p1Mat', scene);
     p1Mat.diffuseColor = Color3.FromHexString('#95ff00');
     p1Mat.emissiveColor = Color3.FromHexString('#95ff00').scale(0.4);
     paddle1.material = p1Mat;
-    paddle1.position.z = 36;
+    paddle1.position.z = PADDLE_P1_Z;
     paddle1.position.y = 0.25;
 
     // Paddle 2
-    const paddle2 = MeshBuilder.CreateBox('paddle2', { width: 6, height: 0.5, depth: 0.5 }, scene);
+    const paddle2 = MeshBuilder.CreateBox(
+      'paddle2',
+      { width: PADDLE_WIDTH, height: 0.5, depth: PADDLE_DEPTH },
+      scene,
+    );
     const p2Mat = new StandardMaterial('p2Mat', scene);
     p2Mat.diffuseColor = Color3.FromHexString('#ff0095');
     p2Mat.emissiveColor = Color3.FromHexString('#ff0095').scale(0.4);
     paddle2.material = p2Mat;
-    paddle2.position.z = -36;
+    paddle2.position.z = PADDLE_P2_Z;
     paddle2.position.y = 0.25;
 
     // --- Ball ---
-    const ball = MeshBuilder.CreateSphere('ball', { diameter: 1.5 }, scene);
+    const ball = MeshBuilder.CreateSphere('ball', { diameter: BALL_DIAMETER }, scene);
     ball.position.y = 0.75;
 
     const ballMat = new StandardMaterial('ballMat', scene);
@@ -129,7 +151,10 @@ export default function PongGame() {
     ballMat.emissiveColor = Color3.FromHexString('#f7f9f9').scale(0.4);
     ball.material = ballMat;
 
-    const ballVelocity = new Vector3(0.2, 0, 0.3);
+    // --- Simulation ---
+    const sim = new LocalPongSim();
+    let lastScoreP1 = 0;
+    let lastScoreP2 = 0;
 
     // --- Keyboard input ---
     const keys: Record<string, boolean> = {};
@@ -142,66 +167,22 @@ export default function PongGame() {
     window.addEventListener('keydown', onKeyDown);
     window.addEventListener('keyup', onKeyUp);
 
-    const paddleSpeed = 0.6;
-    const paddleLimit = 16;
-
     scene.registerBeforeRender(() => {
-      // P1: Arrow keys
-      if (keys['arrowleft'] && paddle1.position.x < paddleLimit) {
-        paddle1.position.x += paddleSpeed;
-      }
-      if (keys['arrowright'] && paddle1.position.x > -paddleLimit) {
-        paddle1.position.x -= paddleSpeed;
-      }
+      sim.setInput('p1', { left: !!keys['arrowleft'], right: !!keys['arrowright'] });
+      sim.setInput('p2', { left: !!keys['a'], right: !!keys['d'] });
 
-      // P2: A/D keys
-      if (keys['a'] && paddle2.position.x < paddleLimit) {
-        paddle2.position.x += paddleSpeed;
-      }
-      if (keys['d'] && paddle2.position.x > -paddleLimit) {
-        paddle2.position.x -= paddleSpeed;
-      }
+      sim.step();
 
-      // Ball movement
-      ball.position.addInPlace(ballVelocity);
+      const snap = sim.snapshot();
+      paddle1.position.x = snap.p1.x;
+      paddle2.position.x = snap.p2.x;
+      ball.position.x = snap.ball.x;
+      ball.position.z = snap.ball.z;
 
-      // Bounce off side walls
-      if (ball.position.x <= -19.2 || ball.position.x >= 19.2) {
-        ballVelocity.x *= -1;
-      }
-
-      const maxSpeed = 1.2;
-
-      // P1 collision
-      if (ball.intersectsMesh(paddle1, false) && ballVelocity.z > 0) {
-        ballVelocity.z *= -1.1;
-        if (Math.abs(ballVelocity.z) > maxSpeed) ballVelocity.z = -maxSpeed;
-        const offset = ball.position.x - paddle1.position.x;
-        ballVelocity.x = offset * 0.1;
-      }
-
-      // P2 collision (far end, -z)
-      if (ball.intersectsMesh(paddle2, false) && ballVelocity.z < 0) {
-        ballVelocity.z *= -1.1;
-        if (Math.abs(ballVelocity.z) > maxSpeed) ballVelocity.z = maxSpeed;
-        const offset = ball.position.x - paddle2.position.x;
-        ballVelocity.x = offset * 0.1;
-      }
-
-      // P2 scores a point
-      if (ball.position.z > 40) {
-        setScore((s) => ({ ...s, p2: s.p2 + 1 }));
-        ball.position = new Vector3(0, 0.75, 0);
-        ballVelocity.x = 0.2 * (Math.random() > 0.5 ? 1 : -1);
-        ballVelocity.z = -0.3;
-      }
-
-      // P1 scores a point
-      if (ball.position.z < -40) {
-        setScore((s) => ({ ...s, p1: s.p1 + 1 }));
-        ball.position = new Vector3(0, 0.75, 0);
-        ballVelocity.x = 0.2 * (Math.random() > 0.5 ? 1 : -1);
-        ballVelocity.z = 0.3;
+      if (snap.score.p1 !== lastScoreP1 || snap.score.p2 !== lastScoreP2) {
+        lastScoreP1 = snap.score.p1;
+        lastScoreP2 = snap.score.p2;
+        setScore({ p1: snap.score.p1, p2: snap.score.p2 });
       }
     });
 
