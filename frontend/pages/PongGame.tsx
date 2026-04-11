@@ -11,9 +11,40 @@ import {
 } from '@babylonjs/core';
 import { useEffect, useRef, useState } from 'react';
 
+import { socket } from '../socket';
+
+type PongWelcome = { username: string; socketId: string };
+
 export default function PongGame() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [score, setScore] = useState({ p1: 0, p2: 0 });
+
+  useEffect(() => {
+    const onConnect = () => {
+      console.log('[pong] socket connected:', socket.id);
+      socket.emit('pong:hello');
+    };
+    const onDisconnect = (reason: string) => {
+      console.log('[pong] socket disconnected:', reason);
+    };
+    const onWelcome = (payload: PongWelcome) => {
+      console.log('[pong] welcome:', payload);
+    };
+
+    socket.on('connect', onConnect);
+    socket.on('disconnect', onDisconnect);
+    socket.on('pong:welcome', onWelcome);
+
+    if (socket.connected) {
+      onConnect();
+    }
+
+    return () => {
+      socket.off('connect', onConnect);
+      socket.off('disconnect', onDisconnect);
+      socket.off('pong:welcome', onWelcome);
+    };
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;

@@ -1,6 +1,7 @@
 import type { Socket, Server as SocketIOServer } from 'socket.io';
 
 import { bindChatMessageHandler } from './chat.js';
+import { bindPongHandlers } from './pong.js';
 import type { UserSocketRegistry } from './registry.js';
 import type { SocketUser } from './types.js';
 
@@ -16,6 +17,7 @@ export function bindConnectionHandler(io: SocketIOServer, registry: UserSocketRe
     console.log('Authenticated user connected:', user);
 
     bindChatMessageHandler(io, socket, user, registry);
+    bindPongHandlers(io, socket, user, registry);
     // continuing match or starting game
 
     // track user position *(ball position
