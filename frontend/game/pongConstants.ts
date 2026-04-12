@@ -1,3 +1,5 @@
+export const WIN_SCORE = 5;
+
 export const ARENA_WIDTH = 40;
 export const ARENA_DEPTH = 80;
 

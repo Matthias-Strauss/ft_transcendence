@@ -9,7 +9,7 @@ import {
   StandardMaterial,
   Vector3,
 } from '@babylonjs/core';
-import { useEffect, useRef, useState } from 'react';
+import { type CSSProperties, useEffect, useRef, useState } from 'react';
 
 import type { PongInput, PongSnapshot } from '../game/localPongSim';
 import {
@@ -20,34 +20,32 @@ import {
   PADDLE_P1_Z,
   PADDLE_P2_Z,
   PADDLE_WIDTH,
+  WIN_SCORE,
 } from '../game/pongConstants';
 import { socket } from '../socket';
 
-type Mode = 'connecting' | 'waiting' | 'playing' | 'ended';
+type Mode = 'idle' | 'waiting' | 'playing' | 'ended';
 type Slot = 'p1' | 'p2';
 
 type PongMatched = { matchId: string; youAre: Slot; opponent: string };
-type PongEnded = { reason: 'left' | 'disconnect'; finalScore: { p1: number; p2: number } };
+type PongEnded = {
+  reason: 'left' | 'disconnect' | 'score';
+  finalScore: { p1: number; p2: number };
+};
 
 export default function PongGame() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const snapshotRef = useRef<PongSnapshot | null>(null);
-  const [mode, setMode] = useState<Mode>('connecting');
+  const [mode, setMode] = useState<Mode>('idle');
+  const [connected, setConnected] = useState(socket.connected);
   const [opponent, setOpponent] = useState<string>('');
   const [youAre, setYouAre] = useState<Slot | null>(null);
   const [score, setScore] = useState({ p1: 0, p2: 0 });
   const [endedReason, setEndedReason] = useState<PongEnded['reason'] | null>(null);
 
   useEffect(() => {
-    const joinIfConnected = () => {
-      if (socket.connected) {
-        socket.emit('pong:join');
-      }
-    };
-
-    const onConnect = () => {
-      socket.emit('pong:join');
-    };
+    const onConnect = () => setConnected(true);
+    const onDisconnect = () => setConnected(false);
     const onWaiting = () => {
       setMode('waiting');
     };
@@ -69,15 +67,15 @@ export default function PongGame() {
     };
 
     socket.on('connect', onConnect);
+    socket.on('disconnect', onDisconnect);
     socket.on('pong:waiting', onWaiting);
     socket.on('pong:matched', onMatched);
     socket.on('pong:state', onState);
     socket.on('pong:ended', onEnded);
 
-    joinIfConnected();
-
     return () => {
       socket.off('connect', onConnect);
+      socket.off('disconnect', onDisconnect);
       socket.off('pong:waiting', onWaiting);
       socket.off('pong:matched', onMatched);
       socket.off('pong:state', onState);
@@ -87,6 +85,25 @@ export default function PongGame() {
       }
     };
   }, []);
+
+  const findMatch = () => {
+    if (!socket.connected) return;
+    snapshotRef.current = null;
+    setScore({ p1: 0, p2: 0 });
+    setEndedReason(null);
+    setMode('waiting');
+    socket.emit('pong:join');
+  };
+
+  const leaveQueue = () => {
+    socket.emit('pong:leave');
+    setMode('idle');
+  };
+
+  const backToLobby = () => {
+    setEndedReason(null);
+    setMode('idle');
+  };
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -229,46 +246,60 @@ export default function PongGame() {
     };
   }, []);
 
-  const overlayText = (() => {
-    if (mode === 'connecting') return 'Connecting…';
-    if (mode === 'waiting') return 'Waiting for opponent…';
-    if (mode === 'ended') {
-      const reason = endedReason === 'disconnect' ? 'Opponent disconnected' : 'Opponent left';
-      return `${reason} — final ${score.p1} : ${score.p2}`;
+  const endedTitle = (() => {
+    if (mode !== 'ended') return null;
+    if (endedReason === 'disconnect') return 'Opponent disconnected';
+    if (endedReason === 'left') return 'Opponent left';
+    if (endedReason === 'score' && youAre) {
+      const winner: Slot = score.p1 > score.p2 ? 'p1' : 'p2';
+      return youAre === winner ? 'You won!' : 'You lost';
     }
-    return null;
+    return 'Game over';
   })();
+
+  const buttonStyle: CSSProperties = {
+    fontFamily: 'monospace',
+    fontSize: 16,
+    padding: '10px 20px',
+    borderRadius: 6,
+    border: '1px solid #f7f9f9',
+    background: 'transparent',
+    color: '#f7f9f9',
+    cursor: 'pointer',
+  };
 
   return (
     <div style={{ width: '100%', height: '100vh', position: 'relative' }}>
       <canvas ref={canvasRef} style={{ width: '100%', height: '100%' }} />
-      <div
-        style={{
-          position: 'absolute',
-          top: 20,
-          left: '50%',
-          transform: 'translateX(-50%)',
-          color: '#f7f9f9',
-          fontSize: 32,
-          fontFamily: 'monospace',
-          fontWeight: 'bold',
-          textShadow: '2px 2px 4px rgba(0,0,0,0.8)',
-          pointerEvents: 'none',
-          textAlign: 'center',
-        }}
-      >
-        <div>
-          <span style={{ color: '#95ff00' }}>{score.p1}</span>
-          {' - '}
-          <span style={{ color: '#ff0095' }}>{score.p2}</span>
-        </div>
-        {mode === 'playing' && youAre && opponent && (
-          <div style={{ fontSize: 14, marginTop: 6, opacity: 0.8 }}>
-            you are {youAre} · vs {opponent}
+      {mode === 'playing' && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 20,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            color: '#f7f9f9',
+            fontSize: 32,
+            fontFamily: 'monospace',
+            fontWeight: 'bold',
+            textShadow: '2px 2px 4px rgba(0,0,0,0.8)',
+            pointerEvents: 'none',
+            textAlign: 'center',
+          }}
+        >
+          <div>
+            <span style={{ color: '#95ff00' }}>{score.p1}</span>
+            {' - '}
+            <span style={{ color: '#ff0095' }}>{score.p2}</span>
           </div>
-        )}
-      </div>
-      {overlayText && (
+          {youAre && opponent && (
+            <div style={{ fontSize: 14, marginTop: 6, opacity: 0.8 }}>
+              you are {youAre} · vs {opponent}
+            </div>
+          )}
+        </div>
+      )}
+      {mode !== 'playing' && (
         <div
           style={{
             position: 'absolute',
@@ -276,15 +307,54 @@ export default function PongGame() {
             left: '50%',
             transform: 'translate(-50%, -50%)',
             color: '#f7f9f9',
-            fontSize: 24,
             fontFamily: 'monospace',
-            background: 'rgba(0,0,0,0.6)',
-            padding: '16px 28px',
-            borderRadius: 8,
-            pointerEvents: 'none',
+            background: 'rgba(0,0,0,0.75)',
+            padding: '28px 40px',
+            borderRadius: 10,
+            textAlign: 'center',
+            minWidth: 280,
           }}
         >
-          {overlayText}
+          {mode === 'idle' && (
+            <>
+              <div style={{ fontSize: 36, fontWeight: 'bold', marginBottom: 8 }}>PONG</div>
+              <div style={{ fontSize: 14, opacity: 0.7, marginBottom: 24 }}>
+                First to {WIN_SCORE}
+              </div>
+              <button style={buttonStyle} onClick={findMatch} disabled={!connected}>
+                {connected ? 'Find Match' : 'Connecting…'}
+              </button>
+            </>
+          )}
+          {mode === 'waiting' && (
+            <>
+              <div style={{ fontSize: 22, marginBottom: 24 }}>Waiting for opponent…</div>
+              <button style={buttonStyle} onClick={leaveQueue}>
+                Leave Queue
+              </button>
+            </>
+          )}
+          {mode === 'ended' && (
+            <>
+              <div style={{ fontSize: 28, fontWeight: 'bold', marginBottom: 12 }}>
+                {endedTitle}
+              </div>
+              <div style={{ fontSize: 20, marginBottom: 24 }}>
+                Final:{' '}
+                <span style={{ color: '#95ff00' }}>{score.p1}</span>
+                {' : '}
+                <span style={{ color: '#ff0095' }}>{score.p2}</span>
+              </div>
+              <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+                <button style={buttonStyle} onClick={findMatch} disabled={!connected}>
+                  Play Again
+                </button>
+                <button style={buttonStyle} onClick={backToLobby}>
+                  Back to Lobby
+                </button>
+              </div>
+            </>
+          )}
         </div>
       )}
     </div>
