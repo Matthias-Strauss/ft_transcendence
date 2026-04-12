@@ -20,6 +20,6 @@ export type PongMatchedPayload = {
 };
 
 export type PongEndedPayload = {
-  reason: 'left' | 'disconnect';
+  reason: 'left' | 'disconnect' | 'score';
   finalScore: { p1: number; p2: number };
 };

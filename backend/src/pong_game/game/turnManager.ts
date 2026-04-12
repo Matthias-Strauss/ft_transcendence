@@ -1,10 +1,10 @@
 import type { Server as SocketIOServer } from 'socket.io';
 
-import { TICK_MS } from './constants.js';
+import { TICK_MS, WIN_SCORE } from './constants.js';
 import { GameEngine } from './engine.js';
 import { Player, type PongInput } from './player.js';
 
-export type MatchEndReason = 'left' | 'disconnect';
+export type MatchEndReason = 'left' | 'disconnect' | 'score';
 
 type Match = {
   id: string;
@@ -28,12 +28,41 @@ export function createMatchManager(io: SocketIOServer): MatchManager {
   const tickTimer = setInterval(tick, TICK_MS);
 
   function tick() {
-    for (const match of matches.values()) {
+    const ended: string[] = [];
+    for (const [matchId, match] of matches) {
       match.engine.step();
       const snap = match.engine.snapshot();
       io.to(match.engine.p1.socketId).emit('pong:state', snap);
       io.to(match.engine.p2.socketId).emit('pong:state', snap);
+      if (snap.score.p1 >= WIN_SCORE || snap.score.p2 >= WIN_SCORE) {
+        ended.push(matchId);
+      }
     }
+    for (const matchId of ended) {
+      const match = matches.get(matchId);
+      if (!match) continue;
+      endMatch(matchId, 'score', match.engine.snapshot().score);
+    }
+  }
+
+  function endMatch(
+    matchId: string,
+    reason: MatchEndReason,
+    finalScore: { p1: number; p2: number },
+  ) {
+    const match = matches.get(matchId);
+    if (!match) return;
+
+    const p1Id = match.engine.p1.socketId;
+    const p2Id = match.engine.p2.socketId;
+    io.to(p1Id).emit('pong:ended', { reason, finalScore });
+    io.to(p2Id).emit('pong:ended', { reason, finalScore });
+
+    matches.delete(matchId);
+    socketToMatchId.delete(p1Id);
+    socketToMatchId.delete(p2Id);
+    socketToSlot.delete(p1Id);
+    socketToSlot.delete(p2Id);
   }
 
   function join(socketId: string, username: string) {
@@ -96,21 +125,7 @@ export function createMatchManager(io: SocketIOServer): MatchManager {
     const match = matches.get(matchId);
     if (!match) return;
 
-    const snap = match.engine.snapshot();
-    const otherSocketId =
-      match.engine.p1.socketId === socketId
-        ? match.engine.p2.socketId
-        : match.engine.p1.socketId;
-    io.to(otherSocketId).emit('pong:ended', {
-      reason,
-      finalScore: snap.score,
-    });
-
-    matches.delete(matchId);
-    socketToMatchId.delete(match.engine.p1.socketId);
-    socketToMatchId.delete(match.engine.p2.socketId);
-    socketToSlot.delete(match.engine.p1.socketId);
-    socketToSlot.delete(match.engine.p2.socketId);
+    endMatch(matchId, reason, match.engine.snapshot().score);
   }
 
   function shutdown() {
