@@ -8,9 +8,18 @@ export type ChatMessagePayload = {
   to?: string;
 };
 
-export type PongHelloPayload = Record<string, never>;
+export type PongInputPayload = {
+  left: boolean;
+  right: boolean;
+};
 
-export type PongWelcomePayload = {
-  username: string;
-  socketId: string;
+export type PongMatchedPayload = {
+  matchId: string;
+  youAre: 'p1' | 'p2';
+  opponent: string;
+};
+
+export type PongEndedPayload = {
+  reason: 'left' | 'disconnect';
+  finalScore: { p1: number; p2: number };
 };
