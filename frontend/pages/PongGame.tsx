@@ -11,7 +11,7 @@ import {
 } from '@babylonjs/core';
 import { useEffect, useRef, useState } from 'react';
 
-import { LocalPongSim } from '../game/localPongSim';
+import type { PongInput, PongSnapshot } from '../game/localPongSim';
 import {
   ARENA_DEPTH,
   ARENA_WIDTH,
@@ -23,36 +23,68 @@ import {
 } from '../game/pongConstants';
 import { socket } from '../socket';
 
-type PongWelcome = { username: string; socketId: string };
+type Mode = 'connecting' | 'waiting' | 'playing' | 'ended';
+type Slot = 'p1' | 'p2';
+
+type PongMatched = { matchId: string; youAre: Slot; opponent: string };
+type PongEnded = { reason: 'left' | 'disconnect'; finalScore: { p1: number; p2: number } };
 
 export default function PongGame() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const snapshotRef = useRef<PongSnapshot | null>(null);
+  const [mode, setMode] = useState<Mode>('connecting');
+  const [opponent, setOpponent] = useState<string>('');
+  const [youAre, setYouAre] = useState<Slot | null>(null);
   const [score, setScore] = useState({ p1: 0, p2: 0 });
+  const [endedReason, setEndedReason] = useState<PongEnded['reason'] | null>(null);
 
   useEffect(() => {
+    const joinIfConnected = () => {
+      if (socket.connected) {
+        socket.emit('pong:join');
+      }
+    };
+
     const onConnect = () => {
-      console.log('[pong] socket connected:', socket.id);
-      socket.emit('pong:hello');
+      socket.emit('pong:join');
     };
-    const onDisconnect = (reason: string) => {
-      console.log('[pong] socket disconnected:', reason);
+    const onWaiting = () => {
+      setMode('waiting');
     };
-    const onWelcome = (payload: PongWelcome) => {
-      console.log('[pong] welcome:', payload);
+    const onMatched = (payload: PongMatched) => {
+      snapshotRef.current = null;
+      setOpponent(payload.opponent);
+      setYouAre(payload.youAre);
+      setScore({ p1: 0, p2: 0 });
+      setEndedReason(null);
+      setMode('playing');
+    };
+    const onState = (snap: PongSnapshot) => {
+      snapshotRef.current = snap;
+    };
+    const onEnded = (payload: PongEnded) => {
+      setEndedReason(payload.reason);
+      setScore(payload.finalScore);
+      setMode('ended');
     };
 
     socket.on('connect', onConnect);
-    socket.on('disconnect', onDisconnect);
-    socket.on('pong:welcome', onWelcome);
+    socket.on('pong:waiting', onWaiting);
+    socket.on('pong:matched', onMatched);
+    socket.on('pong:state', onState);
+    socket.on('pong:ended', onEnded);
 
-    if (socket.connected) {
-      onConnect();
-    }
+    joinIfConnected();
 
     return () => {
       socket.off('connect', onConnect);
-      socket.off('disconnect', onDisconnect);
-      socket.off('pong:welcome', onWelcome);
+      socket.off('pong:waiting', onWaiting);
+      socket.off('pong:matched', onMatched);
+      socket.off('pong:state', onState);
+      socket.off('pong:ended', onEnded);
+      if (socket.connected) {
+        socket.emit('pong:leave');
+      }
     };
   }, []);
 
@@ -63,15 +95,11 @@ export default function PongGame() {
     const engine = new Engine(canvas, true);
     const scene = new Scene(engine);
 
-    // Camera: angled view
     const camera = new FreeCamera('camera1', new Vector3(0, 30, 70), scene);
     camera.setTarget(new Vector3(0, 0, 0));
 
-    const light = new HemisphericLight('light', new Vector3(3, 4, 6), scene);
+    new HemisphericLight('light', new Vector3(3, 4, 6), scene);
 
-    // --- Arena ---
-
-    // Floor
     const floor = MeshBuilder.CreateGround(
       'floor',
       { width: ARENA_WIDTH, height: ARENA_DEPTH },
@@ -81,12 +109,9 @@ export default function PongGame() {
     floorMat.diffuseColor = Color3.FromHexString('#0f172a');
     floor.material = floorMat;
 
-    // Wall color
-
     const wallColor = Color4.FromHexString('#6a00ffff');
     const wallColors = [wallColor, wallColor, wallColor, wallColor, wallColor, wallColor];
 
-    // Left wall
     const leftWall = MeshBuilder.CreateBox(
       'leftWall',
       { width: 0.5, height: 1, depth: ARENA_DEPTH, faceColors: wallColors },
@@ -95,7 +120,6 @@ export default function PongGame() {
     leftWall.position.x = -ARENA_WIDTH / 2;
     leftWall.position.y = 0.5;
 
-    // Right wall
     const rightWall = MeshBuilder.CreateBox(
       'rightWall',
       { width: 0.5, height: 1, depth: ARENA_DEPTH, faceColors: wallColors },
@@ -104,7 +128,6 @@ export default function PongGame() {
     rightWall.position.x = ARENA_WIDTH / 2;
     rightWall.position.y = 0.5;
 
-    // Center line
     const lineColor = Color4.FromHexString('#334155ff');
     const lineColors = [lineColor, lineColor, lineColor, lineColor, lineColor, lineColor];
     const centerLine = MeshBuilder.CreateBox(
@@ -114,9 +137,6 @@ export default function PongGame() {
     );
     centerLine.position.y = 0.1;
 
-    // -- Paddles --
-
-    // Paddle 1
     const paddle1 = MeshBuilder.CreateBox(
       'paddle1',
       { width: PADDLE_WIDTH, height: 0.5, depth: PADDLE_DEPTH },
@@ -129,7 +149,6 @@ export default function PongGame() {
     paddle1.position.z = PADDLE_P1_Z;
     paddle1.position.y = 0.25;
 
-    // Paddle 2
     const paddle2 = MeshBuilder.CreateBox(
       'paddle2',
       { width: PADDLE_WIDTH, height: 0.5, depth: PADDLE_DEPTH },
@@ -142,7 +161,6 @@ export default function PongGame() {
     paddle2.position.z = PADDLE_P2_Z;
     paddle2.position.y = 0.25;
 
-    // --- Ball ---
     const ball = MeshBuilder.CreateSphere('ball', { diameter: BALL_DIAMETER }, scene);
     ball.position.y = 0.75;
 
@@ -151,29 +169,39 @@ export default function PongGame() {
     ballMat.emissiveColor = Color3.FromHexString('#f7f9f9').scale(0.4);
     ball.material = ballMat;
 
-    // --- Simulation ---
-    const sim = new LocalPongSim();
-    let lastScoreP1 = 0;
-    let lastScoreP2 = 0;
+    // --- Input: send pong:input on change only ---
+    let lastInput: PongInput = { left: false, right: false };
+    const keys = { left: false, right: false };
+    const maybeSendInput = () => {
+      if (keys.left === lastInput.left && keys.right === lastInput.right) return;
+      lastInput = { left: keys.left, right: keys.right };
+      socket.emit('pong:input', lastInput);
+    };
 
-    // --- Keyboard input ---
-    const keys: Record<string, boolean> = {};
     const onKeyDown = (e: KeyboardEvent) => {
-      keys[e.key.toLowerCase()] = true;
+      const k = e.key.toLowerCase();
+      if (k === 'arrowleft') keys.left = true;
+      else if (k === 'arrowright') keys.right = true;
+      else return;
+      maybeSendInput();
     };
     const onKeyUp = (e: KeyboardEvent) => {
-      keys[e.key.toLowerCase()] = false;
+      const k = e.key.toLowerCase();
+      if (k === 'arrowleft') keys.left = false;
+      else if (k === 'arrowright') keys.right = false;
+      else return;
+      maybeSendInput();
     };
     window.addEventListener('keydown', onKeyDown);
     window.addEventListener('keyup', onKeyUp);
 
+    let lastScoreP1 = 0;
+    let lastScoreP2 = 0;
+
     scene.registerBeforeRender(() => {
-      sim.setInput('p1', { left: !!keys['arrowleft'], right: !!keys['arrowright'] });
-      sim.setInput('p2', { left: !!keys['a'], right: !!keys['d'] });
+      const snap = snapshotRef.current;
+      if (!snap) return;
 
-      sim.step();
-
-      const snap = sim.snapshot();
       paddle1.position.x = snap.p1.x;
       paddle2.position.x = snap.p2.x;
       ball.position.x = snap.ball.x;
@@ -201,6 +229,16 @@ export default function PongGame() {
     };
   }, []);
 
+  const overlayText = (() => {
+    if (mode === 'connecting') return 'Connecting…';
+    if (mode === 'waiting') return 'Waiting for opponent…';
+    if (mode === 'ended') {
+      const reason = endedReason === 'disconnect' ? 'Opponent disconnected' : 'Opponent left';
+      return `${reason} — final ${score.p1} : ${score.p2}`;
+    }
+    return null;
+  })();
+
   return (
     <div style={{ width: '100%', height: '100vh', position: 'relative' }}>
       <canvas ref={canvasRef} style={{ width: '100%', height: '100%' }} />
@@ -216,12 +254,39 @@ export default function PongGame() {
           fontWeight: 'bold',
           textShadow: '2px 2px 4px rgba(0,0,0,0.8)',
           pointerEvents: 'none',
+          textAlign: 'center',
         }}
       >
-        <span style={{ color: '#95ff00' }}>{score.p1}</span>
-        {' - '}
-        <span style={{ color: '#ff0095' }}>{score.p2}</span>
+        <div>
+          <span style={{ color: '#95ff00' }}>{score.p1}</span>
+          {' - '}
+          <span style={{ color: '#ff0095' }}>{score.p2}</span>
+        </div>
+        {mode === 'playing' && youAre && opponent && (
+          <div style={{ fontSize: 14, marginTop: 6, opacity: 0.8 }}>
+            you are {youAre} · vs {opponent}
+          </div>
+        )}
       </div>
+      {overlayText && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            color: '#f7f9f9',
+            fontSize: 24,
+            fontFamily: 'monospace',
+            background: 'rgba(0,0,0,0.6)',
+            padding: '16px 28px',
+            borderRadius: 8,
+            pointerEvents: 'none',
+          }}
+        >
+          {overlayText}
+        </div>
+      )}
     </div>
   );
 }
