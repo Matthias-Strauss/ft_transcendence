@@ -1,8 +1,10 @@
-import { Heart, MessageCircle, Share2, MoreHorizontal } from 'lucide-react';
+import { Heart, MessageCircle, Share2, MoreHorizontal, Trash } from 'lucide-react';
 import type { Post, DropdownItem } from '../../types/posts';
 import { User } from './User';
 import { Bookmark, Repeat2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import ConfirmDialog from './ConfirmDialog';
+import { useUserStore } from '../../utils/userStore';
 import { apiFetch } from '../../utils/api';
 import Dropdown from './Dropdown';
 import CommentSection from './CommentSection';
@@ -10,15 +12,22 @@ import { AuthedImage } from './AuthedImage';
 
 interface PostCardProps {
   post: Post;
+  onDeleted?: (id: string) => void;
 }
 
-export function PostCard({ post }: PostCardProps) {
+export function PostCard({ post, onDeleted }: PostCardProps) {
+  const currentUser = useUserStore((s) => s.user);
   const items: DropdownItem[] = [
     { id: 0, text: 'Save', icon: <Bookmark /> },
     { id: 1, text: 'Share', icon: <Repeat2 /> },
   ];
+  if (currentUser?.id === post.authorId) {
+    items.push({ id: 2, text: 'Delete', icon: <Trash /> });
+  }
   const token = localStorage.getItem('accessToken');
   const [isOpen, setIsOpen] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const [commentOpen, setCommentOpen] = useState(false);
   const [commentCount, setCommentCount] = useState(
     post.commentCount ?? post.comments?.meta?.total ?? 0,
@@ -48,8 +57,27 @@ export function PostCard({ post }: PostCardProps) {
   const handleDropdownActionSuccess = (action: string) => {
     if (action === 'Share') {
       setShared((prev) => prev + 1);
+    } else if (action === 'Delete') {
+      onDeleted?.(post.id);
     }
   };
+
+  async function performDelete() {
+    setDeleteLoading(true);
+    try {
+      const res = await apiFetch(`/api/posts/${post.id}`, { method: 'DELETE' });
+      if (res.ok) {
+        onDeleted?.(post.id);
+      } else {
+        console.error('Failed to delete post', res.status);
+      }
+    } catch (e) {
+      console.error('Failed to delete post', e);
+    } finally {
+      setDeleteLoading(false);
+      setPendingDelete(false);
+    }
+  }
 
   const handlePostLike = async () => {
     if (isLikePending || !token) {
@@ -115,9 +143,22 @@ export function PostCard({ post }: PostCardProps) {
                   postId={post.id}
                   authorId={post.authorId}
                   onActionSuccess={handleDropdownActionSuccess}
+                  onRequestAction={(action) => {
+                    if (action === 'Delete') setPendingDelete(true);
+                  }}
                 />
               )}
             </div>
+            <ConfirmDialog
+              isOpen={pendingDelete}
+              title="Delete post"
+              message="Are you sure you want to delete this post? This action cannot be undone."
+              confirmText="Delete"
+              cancelText="Cancel"
+              loading={deleteLoading}
+              onCancel={() => setPendingDelete(false)}
+              onConfirm={performDelete}
+            />
           </div>
 
           {post.gameTag && (
