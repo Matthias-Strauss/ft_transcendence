@@ -40,7 +40,7 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
     text: string;
     duration?: number;
   } | null>(null);
-  
+
   const notifTimeoutRef = useRef<number | null>(null);
   const [confirmingReset, setConfirmingReset] = useState<boolean>(false);
 
@@ -348,7 +348,6 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
           </div>
         </div>
 
-    
         {confirmingReset && (
           <div className="confirm-overlay" role="dialog" aria-modal="true">
             <div className="confirm-box">

@@ -1,10 +1,7 @@
-// this will be specifically designed based on
-// the device of the user
-// The pop up modal should show only in desktop
-
 import { forwardRef, useState, type ChangeEvent } from 'react';
 import { apiFetch } from '../../utils/api';
 import { ImagePlus, X } from 'lucide-react';
+import showToast from '../utils/toast';
 
 interface CreatePostFormProps {
   onPostCreated?: () => void;
@@ -74,7 +71,9 @@ const CreatePostForm = forwardRef<HTMLTextAreaElement, CreatePostFormProps>(
         setGameTag('');
         onPostCreated?.();
       } catch (error) {
-        console.error('Error creating post:', error);
+        showToast('Error creating post. Please try again.', 'error');
+      } finally {
+        showToast('Post created successfully!', 'success');
       }
     };
 

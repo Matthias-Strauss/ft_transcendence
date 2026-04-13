@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { apiFetch } from '../../utils/api';
 import { PostCard } from './PostCard';
 import type { Post } from '../../types/posts';
+import showToast from '../utils/toast';
 
 interface ApiResponse {
   items: Post[];
@@ -29,7 +30,7 @@ export function PostsFeed({ refreshKey = 0 }: PostsFeedProps) {
         const data: ApiResponse = await response.json();
         setPosts(data.items);
       } catch (err) {
-        console.error(err);
+        showToast('Error loading posts. Please try again later.', 'error');
       } finally {
         setLoading(false);
       }

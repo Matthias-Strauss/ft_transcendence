@@ -5,6 +5,7 @@ import type { Post } from '../types/posts';
 import { AuthedImage } from '../components/ui/AuthedImage';
 import { useUserStore } from '../utils/userStore';
 import type { UserStore } from '../utils/userStore';
+import showToast from '../utils/toast';
 
 interface MeResponse {
   id?: string;
@@ -112,7 +113,9 @@ export function ProfilePage() {
                   try {
                     await logout();
                   } catch (e) {
-                    console.error('Logout failed', e);
+                    showToast('Logout failed. Please try again.', 'error');
+                  } finally {
+                    showToast('Logged out successfully!', 'success');
                   }
                 }}
                 className="bg-transparent border border-[#39444d] text-[#f7f9f9] rounded-full py-2 px-4 transition-colors"

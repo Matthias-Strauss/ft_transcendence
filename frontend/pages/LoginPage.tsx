@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import '../styles/auth.css';
 import { connectSocketWithToken } from '../socket';
+import showToast from '../utils/toast';
 
 interface LoginResponse {
   accessToken: string;
@@ -45,9 +46,10 @@ export default function LoginPage() {
       navigate('/');
     } catch (err) {
       setError('Network error. Please try again.');
-      console.log(err);
+      showToast('Login failed. Please try again.', 'error');
     } finally {
       setSubmitting(false);
+      showToast('Login successful! Welcome back.', 'success');
     }
   };
 
