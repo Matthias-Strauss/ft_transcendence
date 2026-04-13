@@ -40,9 +40,14 @@ type PongResumed = {
 };
 type PongOpponentDisconnected = { graceMs: number };
 
+const RENDER_DELAY_MS = 33;
+const SNAPSHOT_BUFFER_MAX = 8;
+
+type TimedSnapshot = { t: number; snap: PongSnapshot };
+
 export default function PongGame() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const snapshotRef = useRef<PongSnapshot | null>(null);
+  const snapshotBufferRef = useRef<TimedSnapshot[]>([]);
   const cameraRef = useRef<FreeCamera | null>(null);
   const [mode, setMode] = useState<Mode>('idle');
   const [connected, setConnected] = useState(socket.connected);
@@ -72,8 +77,12 @@ export default function PongGame() {
     const onWaiting = () => {
       setMode('waiting');
     };
+    let lastSeenScoreP1 = 0;
+    let lastSeenScoreP2 = 0;
     const onMatched = (payload: PongMatched) => {
-      snapshotRef.current = null;
+      snapshotBufferRef.current = [];
+      lastSeenScoreP1 = 0;
+      lastSeenScoreP2 = 0;
       setOpponent(payload.opponent);
       setYouAre(payload.youAre);
       setScore({ p1: 0, p2: 0 });
@@ -81,7 +90,14 @@ export default function PongGame() {
       setMode('playing');
     };
     const onState = (snap: PongSnapshot) => {
-      snapshotRef.current = snap;
+      const buf = snapshotBufferRef.current;
+      buf.push({ t: Date.now(), snap });
+      if (buf.length > SNAPSHOT_BUFFER_MAX) buf.shift();
+      if (snap.score.p1 !== lastSeenScoreP1 || snap.score.p2 !== lastSeenScoreP2) {
+        lastSeenScoreP1 = snap.score.p1;
+        lastSeenScoreP2 = snap.score.p2;
+        setScore({ p1: snap.score.p1, p2: snap.score.p2 });
+      }
     };
     const onEnded = (payload: PongEnded) => {
       setEndedReason(payload.reason);
@@ -96,6 +112,9 @@ export default function PongGame() {
       setOpponentGoneUntil(null);
     };
     const onResumed = (payload: PongResumed) => {
+      snapshotBufferRef.current = [];
+      lastSeenScoreP1 = payload.score.p1;
+      lastSeenScoreP2 = payload.score.p2;
       setOpponent(payload.opponent);
       setYouAre(payload.youAre);
       setScore(payload.score);
@@ -147,7 +166,7 @@ export default function PongGame() {
 
   const findMatch = () => {
     if (!socket.connected) return;
-    snapshotRef.current = null;
+    snapshotBufferRef.current = [];
     setScore({ p1: 0, p2: 0 });
     setEndedReason(null);
     setMode('waiting');
@@ -156,7 +175,7 @@ export default function PongGame() {
 
   const leaveQueue = () => {
     socket.emit('pong:leave');
-    snapshotRef.current = null;
+    snapshotBufferRef.current = [];
     setOpponent('');
     setYouAre(null);
     setScore({ p1: 0, p2: 0 });
@@ -167,7 +186,7 @@ export default function PongGame() {
 
   const leaveMatch = () => {
     socket.emit('pong:leave');
-    snapshotRef.current = null;
+    snapshotBufferRef.current = [];
     setOpponent('');
     setYouAre(null);
     setScore({ p1: 0, p2: 0 });
@@ -186,6 +205,7 @@ export default function PongGame() {
     if (!canvas) return;
 
     const engine = new Engine(canvas, true);
+    engine.setHardwareScalingLevel(1);
     const scene = new Scene(engine);
 
     const camera = new FreeCamera('camera1', new Vector3(0, 30, 70), scene);
@@ -293,23 +313,42 @@ export default function PongGame() {
     window.addEventListener('keydown', onKeyDown);
     window.addEventListener('keyup', onKeyUp);
 
-    let lastScoreP1 = 0;
-    let lastScoreP2 = 0;
-
     scene.registerBeforeRender(() => {
-      const snap = snapshotRef.current;
-      if (!snap) return;
+      const buf = snapshotBufferRef.current;
+      if (buf.length === 0) return;
 
-      paddle1.position.x = snap.p1.x;
-      paddle2.position.x = snap.p2.x;
-      ball.position.x = snap.ball.x;
-      ball.position.z = snap.ball.z;
-
-      if (snap.score.p1 !== lastScoreP1 || snap.score.p2 !== lastScoreP2) {
-        lastScoreP1 = snap.score.p1;
-        lastScoreP2 = snap.score.p2;
-        setScore({ p1: snap.score.p1, p2: snap.score.p2 });
+      const renderAt = Date.now() - RENDER_DELAY_MS;
+      let prev = buf[0];
+      let next = buf[buf.length - 1];
+      for (let i = 0; i < buf.length - 1; i++) {
+        if (buf[i].t <= renderAt && buf[i + 1].t >= renderAt) {
+          prev = buf[i];
+          next = buf[i + 1];
+          break;
+        }
       }
+
+      let p1x: number;
+      let p2x: number;
+      let bx: number;
+      let bz: number;
+      if (prev === next || next.t <= prev.t) {
+        p1x = next.snap.p1.x;
+        p2x = next.snap.p2.x;
+        bx = next.snap.ball.x;
+        bz = next.snap.ball.z;
+      } else {
+        const alpha = Math.min(1, Math.max(0, (renderAt - prev.t) / (next.t - prev.t)));
+        p1x = prev.snap.p1.x + (next.snap.p1.x - prev.snap.p1.x) * alpha;
+        p2x = prev.snap.p2.x + (next.snap.p2.x - prev.snap.p2.x) * alpha;
+        bx = prev.snap.ball.x + (next.snap.ball.x - prev.snap.ball.x) * alpha;
+        bz = prev.snap.ball.z + (next.snap.ball.z - prev.snap.ball.z) * alpha;
+      }
+
+      paddle1.position.x = p1x;
+      paddle2.position.x = p2x;
+      ball.position.x = bx;
+      ball.position.z = bz;
     });
 
     engine.runRenderLoop(() => {
