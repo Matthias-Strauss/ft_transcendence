@@ -8,6 +8,8 @@ export function bindPongHandlers(
   user: SocketUser,
   matchManager: MatchManager,
 ) {
+  matchManager.reconnect(socket.id, user.username);
+
   socket.on('pong:join', () => {
     matchManager.join(socket.id, user.username);
   });

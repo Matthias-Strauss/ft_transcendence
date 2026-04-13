@@ -3,7 +3,7 @@ import { PADDLE_LIMIT, PADDLE_SPEED } from './constants.js';
 export type PongInput = { left: boolean; right: boolean };
 
 export class Player {
-  readonly socketId: string;
+  socketId: string;
   readonly username: string;
   paddleX: number;
   score: number;

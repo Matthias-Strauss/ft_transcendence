@@ -32,6 +32,13 @@ type PongEnded = {
   reason: 'left' | 'disconnect' | 'score';
   finalScore: { p1: number; p2: number };
 };
+type PongResumed = {
+  matchId: string;
+  youAre: Slot;
+  opponent: string;
+  score: { p1: number; p2: number };
+};
+type PongOpponentDisconnected = { graceMs: number };
 
 export default function PongGame() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -42,6 +49,8 @@ export default function PongGame() {
   const [youAre, setYouAre] = useState<Slot | null>(null);
   const [score, setScore] = useState({ p1: 0, p2: 0 });
   const [endedReason, setEndedReason] = useState<PongEnded['reason'] | null>(null);
+  const [opponentGoneUntil, setOpponentGoneUntil] = useState<number | null>(null);
+  const [, forceTick] = useState(0);
 
   useEffect(() => {
     const onConnect = () => setConnected(true);
@@ -63,7 +72,21 @@ export default function PongGame() {
     const onEnded = (payload: PongEnded) => {
       setEndedReason(payload.reason);
       setScore(payload.finalScore);
+      setOpponentGoneUntil(null);
       setMode('ended');
+    };
+    const onOpponentDisconnected = (payload: PongOpponentDisconnected) => {
+      setOpponentGoneUntil(Date.now() + payload.graceMs);
+    };
+    const onOpponentReturned = () => {
+      setOpponentGoneUntil(null);
+    };
+    const onResumed = (payload: PongResumed) => {
+      setOpponent(payload.opponent);
+      setYouAre(payload.youAre);
+      setScore(payload.score);
+      setEndedReason(null);
+      setMode('playing');
     };
 
     socket.on('connect', onConnect);
@@ -72,6 +95,9 @@ export default function PongGame() {
     socket.on('pong:matched', onMatched);
     socket.on('pong:state', onState);
     socket.on('pong:ended', onEnded);
+    socket.on('pong:opponent_disconnected', onOpponentDisconnected);
+    socket.on('pong:opponent_returned', onOpponentReturned);
+    socket.on('pong:resumed', onResumed);
 
     return () => {
       socket.off('connect', onConnect);
@@ -80,11 +106,26 @@ export default function PongGame() {
       socket.off('pong:matched', onMatched);
       socket.off('pong:state', onState);
       socket.off('pong:ended', onEnded);
+      socket.off('pong:opponent_disconnected', onOpponentDisconnected);
+      socket.off('pong:opponent_returned', onOpponentReturned);
+      socket.off('pong:resumed', onResumed);
       if (socket.connected) {
         socket.emit('pong:leave');
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (opponentGoneUntil === null) return;
+    const interval = setInterval(() => {
+      if (Date.now() >= opponentGoneUntil) {
+        setOpponentGoneUntil(null);
+      } else {
+        forceTick((n) => n + 1);
+      }
+    }, 250);
+    return () => clearInterval(interval);
+  }, [opponentGoneUntil]);
 
   const findMatch = () => {
     if (!socket.connected) return;
@@ -296,6 +337,35 @@ export default function PongGame() {
             <div style={{ fontSize: 14, marginTop: 6, opacity: 0.8 }}>
               you are {youAre} · vs {opponent}
             </div>
+          )}
+        </div>
+      )}
+      {mode === 'playing' && (!connected || opponentGoneUntil !== null) && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            color: '#f7f9f9',
+            fontSize: 22,
+            fontFamily: 'monospace',
+            background: 'rgba(0,0,0,0.75)',
+            padding: '20px 32px',
+            borderRadius: 10,
+            textAlign: 'center',
+            pointerEvents: 'none',
+          }}
+        >
+          {!connected ? (
+            'Reconnecting…'
+          ) : (
+            <>
+              <div>Opponent disconnected</div>
+              <div style={{ fontSize: 16, marginTop: 8, opacity: 0.8 }}>
+                Waiting {Math.max(0, Math.ceil(((opponentGoneUntil ?? 0) - Date.now()) / 1000))}s
+              </div>
+            </>
           )}
         </div>
       )}

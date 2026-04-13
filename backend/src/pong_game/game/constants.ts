@@ -6,6 +6,8 @@ export const TICK_MS = 1000 / TICK_HZ;
 
 export const WIN_SCORE = 5;
 
+export const RECONNECT_GRACE_MS = 15000;
+
 export const ARENA_WIDTH = 40;
 export const ARENA_DEPTH = 80;
 
