@@ -20,6 +20,10 @@ export default function SocialApp() {
 
   const handleNewPost = () => {
     shouldFocusComposerRef.current = true;
+
+    if (location.pathname !== '/') {
+      navigate('/');
+    }
     setActiveTab('home');
   };
 

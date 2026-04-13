@@ -244,6 +244,9 @@ export default function UserProfile() {
           onUpdated={(data) => {
             setUser((prev) => ({ ...(prev ?? {}), ...data }));
             setMe((prev) => ({ ...(prev ?? {}), ...data }));
+            if (data?.avatarUrl && data.avatarUrl !== me?.avatarUrl) {
+              showToast('Profile picture updated successfully!', 'success');
+            }
             if (data?.avatarUrl) {
               setPosts((prev) =>
                 prev.map((p) =>
@@ -252,6 +255,7 @@ export default function UserProfile() {
                     : p,
                 ),
               );
+              showToast('Profile updated successfully!', 'success');
             }
             if (data?.username && data.username !== username) {
               setEditing(false);
@@ -451,10 +455,8 @@ export default function UserProfile() {
                   setPosts((prev) => prev.filter((p) => p.id !== id));
                   setUser((prev) =>
                     prev
-                     
-                    ? { ...(prev as any), postsCount: Math.max(0, (prev.postsCount ?? 0) - 1) }
-                     
-                    : prev,
+                      ? { ...(prev as any), postsCount: Math.max(0, (prev.postsCount ?? 0) - 1) }
+                      : prev,
                   );
                 }}
               />
