@@ -44,12 +44,12 @@ export default function LoginPage() {
       localStorage.setItem('accessToken', data.accessToken);
       connectSocketWithToken(data.accessToken);
       navigate('/');
+      showToast('Login successful! Welcome back.', 'success');
     } catch (err) {
       setError('Network error. Please try again.');
       showToast('Login failed. Please try again.', 'error');
     } finally {
       setSubmitting(false);
-      showToast('Login successful! Welcome back.', 'success');
     }
   };
 

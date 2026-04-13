@@ -244,9 +244,6 @@ export default function UserProfile() {
           onUpdated={(data) => {
             setUser((prev) => ({ ...(prev ?? {}), ...data }));
             setMe((prev) => ({ ...(prev ?? {}), ...data }));
-            if (data?.avatarUrl && data.avatarUrl !== me?.avatarUrl) {
-              showToast('Profile picture updated successfully!', 'success');
-            }
             if (data?.avatarUrl) {
               setPosts((prev) =>
                 prev.map((p) =>
@@ -255,7 +252,6 @@ export default function UserProfile() {
                     : p,
                 ),
               );
-              showToast('Profile updated successfully!', 'success');
             }
             if (data?.username && data.username !== username) {
               setEditing(false);

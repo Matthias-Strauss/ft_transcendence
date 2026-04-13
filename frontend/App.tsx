@@ -28,29 +28,31 @@ export default function App() {
   }, []);
 
   return (
-    <Routes>
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/register" element={<RegistrationPage />} />
-      <Route
-        path="/game"
-        element={
-          <ProtectedRoute>
-            <PongGame />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/"
-        element={
-          <ProtectedRoute>
-            <SocialApp />
-          </ProtectedRoute>
-        }
-      >
-        <Route path="users/:username" element={<UserProfile />} />
-      </Route>
+    <>
       <Toast />
-    </Routes>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegistrationPage />} />
+        <Route
+          path="/game"
+          element={
+            <ProtectedRoute>
+              <PongGame />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute>
+              <SocialApp />
+            </ProtectedRoute>
+          }
+        >
+          <Route path="users/:username" element={<UserProfile />} />
+        </Route>
+      </Routes>
+    </>
   );
 }
