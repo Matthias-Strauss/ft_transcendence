@@ -55,6 +55,7 @@ export function ProfilePage() {
           setPosts(payload.items || []);
         }
       } catch (err) {
+        showToast('Failed to load profile. Please try again.', 'error');
       } finally {
         useEffect(() => {
           if (storeUser) setMe(storeUser as MeResponse);
