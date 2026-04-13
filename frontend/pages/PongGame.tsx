@@ -51,6 +51,11 @@ export default function PongGame() {
   const [endedReason, setEndedReason] = useState<PongEnded['reason'] | null>(null);
   const [opponentGoneUntil, setOpponentGoneUntil] = useState<number | null>(null);
   const [, forceTick] = useState(0);
+  const modeRef = useRef<Mode>('idle');
+
+  useEffect(() => {
+    modeRef.current = mode;
+  }, [mode]);
 
   useEffect(() => {
     const onConnect = () => setConnected(true);
@@ -231,6 +236,7 @@ export default function PongGame() {
     let lastInput: PongInput = { left: false, right: false };
     const keys = { left: false, right: false };
     const maybeSendInput = () => {
+      if (modeRef.current !== 'playing') return;
       if (keys.left === lastInput.left && keys.right === lastInput.right) return;
       lastInput = { left: keys.left, right: keys.right };
       socket.emit('pong:input', lastInput);
