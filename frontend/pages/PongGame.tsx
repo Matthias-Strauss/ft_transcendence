@@ -64,7 +64,10 @@ export default function PongGame() {
   }, [youAre]);
 
   useEffect(() => {
-    const onConnect = () => setConnected(true);
+    const onConnect = () => {
+      setConnected(true);
+      socket.emit('pong:rejoin');
+    };
     const onDisconnect = () => setConnected(false);
     const onWaiting = () => {
       setMode('waiting');
@@ -109,6 +112,10 @@ export default function PongGame() {
     socket.on('pong:opponent_disconnected', onOpponentDisconnected);
     socket.on('pong:opponent_returned', onOpponentReturned);
     socket.on('pong:resumed', onResumed);
+
+    if (socket.connected) {
+      socket.emit('pong:rejoin');
+    }
 
     return () => {
       socket.off('connect', onConnect);
