@@ -17,6 +17,8 @@ export default function SocialApp() {
   const navigate = useNavigate();
   const location = useLocation();
   const viewingUser = location.pathname.startsWith('/users/');
+  const viewingGame = location.pathname === '/game';
+  const showingNestedRoute = viewingUser || viewingGame;
 
   const handleNewPost = () => {
     shouldFocusComposerRef.current = true;
@@ -83,13 +85,6 @@ export default function SocialApp() {
     switch (activeTab) {
       case 'home':
         return <HomeFeed ref={inputRef} />;
-      case 'leaderboard':
-        return (
-          <div className="p-8 text-center">
-            <h2 className="font-bold text-[20px] text-[#f7f9f9] mb-2">Leaderboard</h2>
-            <p className="text-[#8b98a5]">Check out the top players!</p>
-          </div>
-        );
       case 'notifications':
         return (
           <div className="p-8 text-center">
@@ -124,9 +119,9 @@ export default function SocialApp() {
 
       <div className="ml-[220px] gap-6 px-4 py-4 flex">
         <main className="min-h-[calc(100vh-2rem)] flex-1 border-x border-[#39444d] bg-[#0f172a]">
-          {!viewingUser && <HomeFeed ref={inputRef} isVisible={activeTab === 'home'} />}
-          {!viewingUser && activeTab !== 'home' && renderContent()}
-          {viewingUser && <Outlet />}
+          {!showingNestedRoute && <HomeFeed ref={inputRef} isVisible={activeTab === 'home'} />}
+          {!showingNestedRoute && activeTab !== 'home' && renderContent()}
+          {showingNestedRoute && <Outlet />}
         </main>
 
         {chatPanelOpen ? (

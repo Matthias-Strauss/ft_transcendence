@@ -31,15 +31,6 @@ export default function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegistrationPage />} />
       <Route
-        path="/game"
-        element={
-          <ProtectedRoute>
-            <PongGame />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
         path="/"
         element={
           <ProtectedRoute>
@@ -47,6 +38,7 @@ export default function App() {
           </ProtectedRoute>
         }
       >
+        <Route path="game" element={<PongGame />} />
         <Route path="users/:username" element={<UserProfile />} />
       </Route>
     </Routes>

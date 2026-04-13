@@ -156,6 +156,23 @@ export default function PongGame() {
 
   const leaveQueue = () => {
     socket.emit('pong:leave');
+    snapshotRef.current = null;
+    setOpponent('');
+    setYouAre(null);
+    setScore({ p1: 0, p2: 0 });
+    setEndedReason(null);
+    setOpponentGoneUntil(null);
+    setMode('idle');
+  };
+
+  const leaveMatch = () => {
+    socket.emit('pong:leave');
+    snapshotRef.current = null;
+    setOpponent('');
+    setYouAre(null);
+    setScore({ p1: 0, p2: 0 });
+    setEndedReason(null);
+    setOpponentGoneUntil(null);
     setMode('idle');
   };
 
@@ -342,7 +359,7 @@ export default function PongGame() {
   };
 
   return (
-    <div style={{ width: '100%', height: '100vh', position: 'relative' }}>
+    <div style={{ width: '100%', height: 'calc(100vh - 2rem)', position: 'relative' }}>
       <canvas ref={canvasRef} style={{ width: '100%', height: '100%' }} />
       {mode === 'playing' && (
         <div
@@ -371,6 +388,21 @@ export default function PongGame() {
             </div>
           )}
         </div>
+      )}
+      {mode === 'playing' && (
+        <button
+          style={{
+            ...buttonStyle,
+            position: 'absolute',
+            top: 20,
+            right: 20,
+            background: 'rgba(0,0,0,0.55)',
+            pointerEvents: 'auto',
+          }}
+          onClick={leaveMatch}
+        >
+          Leave Game
+        </button>
       )}
       {mode === 'playing' && (!connected || opponentGoneUntil !== null) && (
         <div
