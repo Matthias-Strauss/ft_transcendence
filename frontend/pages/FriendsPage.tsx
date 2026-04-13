@@ -19,7 +19,7 @@ export function FriendsPage() {
   const [searchResults, setSearchResults] = useState<
     {
       username: string;
-      displayname?: string;
+      displayname?: string | null;
       avatarUrl?: string | null;
       postsCount?: number;
       friendsCount?: number;
@@ -261,9 +261,6 @@ function RequestsList() {
 
   const incoming = requests.filter((r) => Boolean(r.friendRequestIncoming));
   const outgoing = requests.filter((r) => Boolean(r.friendRequestSentByMe));
-
-  const incomingFiltered = incoming;
-  const outgoingFiltered = outgoing;
 
   return (
     <div className="p-4 space-y-6">
