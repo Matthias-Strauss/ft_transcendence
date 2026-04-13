@@ -1,8 +1,9 @@
-import { Heart, MessageCircle, Share2, MoreHorizontal } from 'lucide-react';
+import { Heart, MessageCircle, Share2, MoreHorizontal, Trash } from 'lucide-react';
 import type { Post, DropdownItem } from '../../types/posts';
 import { User } from './User';
 import { Bookmark, Repeat2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { useUserStore } from '../../utils/userStore';
 import { apiFetch } from '../../utils/api';
 import Dropdown from './Dropdown';
 import CommentSection from './CommentSection';
@@ -10,13 +11,18 @@ import { AuthedImage } from './AuthedImage';
 
 interface PostCardProps {
   post: Post;
+  onDeleted?: (id: string) => void;
 }
 
-export function PostCard({ post }: PostCardProps) {
+export function PostCard({ post, onDeleted }: PostCardProps) {
+  const currentUser = useUserStore((s) => s.user);
   const items: DropdownItem[] = [
     { id: 0, text: 'Save', icon: <Bookmark /> },
     { id: 1, text: 'Share', icon: <Repeat2 /> },
   ];
+  if (currentUser?.id === post.authorId) {
+    items.push({ id: 2, text: 'Delete', icon: <Trash /> });
+  }
   const token = localStorage.getItem('accessToken');
   const [isOpen, setIsOpen] = useState(false);
   const [commentOpen, setCommentOpen] = useState(false);
@@ -48,6 +54,8 @@ export function PostCard({ post }: PostCardProps) {
   const handleDropdownActionSuccess = (action: string) => {
     if (action === 'Share') {
       setShared((prev) => prev + 1);
+    } else if (action === 'Delete') {
+      onDeleted?.(post.id);
     }
   };
 

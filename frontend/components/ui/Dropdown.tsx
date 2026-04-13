@@ -43,6 +43,17 @@ async function handleAction({
 
       return response.ok;
     }
+    case 'Delete': {
+      if (!window.confirm('Delete this post?')) {
+        return false;
+      }
+
+      const response = await apiFetch(`/api/posts/${postId}`, {
+        method: 'DELETE',
+      });
+
+      return response.ok;
+    }
     default:
       return false;
   }
