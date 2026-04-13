@@ -1,9 +1,16 @@
 import type { DropdownItem } from '../../types/posts';
 import { apiFetch } from '../../utils/api';
+import showToast from '../../utils/toast';
 
 interface DropdownProps {
   items: DropdownItem[];
-  onActionSuccess?: (action: string) => void;
+  onActionSuccess?: (
+    action: string,
+    data?: {
+      shareCount?: number;
+      incremented?: boolean;
+    },
+  ) => void;
   onRequestAction?: (action: string) => void;
 }
 
@@ -15,10 +22,16 @@ async function handleAction({
   action: string;
   postId: string;
   authorId: string;
-}): Promise<boolean> {
+}): Promise<{
+  ok: boolean;
+  data?: {
+    shareCount?: number;
+    incremented?: boolean;
+  };
+}> {
   const token = localStorage.getItem('accessToken');
   if (!token) {
-    return false;
+    return { ok: false };
   }
 
   switch (action) {
@@ -30,8 +43,8 @@ async function handleAction({
         },
         body: JSON.stringify({ postId, authorId }),
       });
-
-      return response.ok;
+      showToast('Post Saved', 'success');
+      return { ok: response.ok };
     }
     case 'Share': {
       const response = await apiFetch(`/api/posts/${postId}/share`, {
@@ -42,10 +55,19 @@ async function handleAction({
         body: JSON.stringify({ postId, authorId }),
       });
 
-      return response.ok;
+      if (!response.ok) {
+        return { ok: false };
+      }
+
+      const data = (await response.json()) as {
+        shareCount?: number;
+        incremented?: boolean;
+      };
+
+      return { ok: true, data };
     }
     default:
-      return false;
+      return { ok: false };
   }
 }
 
@@ -80,10 +102,10 @@ export default function Dropdown({
                     return;
                   }
 
-                  const success = await handleAction({ action: item.text, postId, authorId });
+                  const result = await handleAction({ action: item.text, postId, authorId });
 
-                  if (success) {
-                    onActionSuccess?.(item.text);
+                  if (result.ok) {
+                    onActionSuccess?.(item.text, result.data);
                   }
                 }}
               >
