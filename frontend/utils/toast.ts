@@ -21,5 +21,3 @@ const showToast = (
 };
 
 export default showToast;
-
-export { ToastContainer } from 'react-toastify';

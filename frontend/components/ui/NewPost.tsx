@@ -1,7 +1,7 @@
 import { forwardRef, useState, type ChangeEvent } from 'react';
 import { apiFetch } from '../../utils/api';
 import { ImagePlus, X } from 'lucide-react';
-import showToast from '../utils/toast';
+import showToast from '../../utils/toast';
 
 interface CreatePostFormProps {
   onPostCreated?: () => void;

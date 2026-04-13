@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { apiFetch } from '../../utils/api';
 import { PostCard } from './PostCard';
 import type { Post } from '../../types/posts';
-import showToast from '../utils/toast';
+import showToast from '../../utils/toast';
 
 interface ApiResponse {
   items: Post[];

@@ -7,6 +7,7 @@ import RegistrationPage from './pages/RegistrationPage';
 import UserProfile from './pages/UserProfile';
 import PongGame from './pages/PongGame';
 import { connectSocketFromStorage, disconnectSocket, socket } from './socket';
+import { Toast } from './components/ui/Toast';
 
 export default function App() {
   useEffect(() => {
@@ -49,6 +50,7 @@ export default function App() {
       >
         <Route path="users/:username" element={<UserProfile />} />
       </Route>
+      <Toast />
     </Routes>
   );
 }
