@@ -43,6 +43,7 @@ type PongOpponentDisconnected = { graceMs: number };
 export default function PongGame() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const snapshotRef = useRef<PongSnapshot | null>(null);
+  const cameraRef = useRef<FreeCamera | null>(null);
   const [mode, setMode] = useState<Mode>('idle');
   const [connected, setConnected] = useState(socket.connected);
   const [opponent, setOpponent] = useState<string>('');
@@ -52,10 +53,15 @@ export default function PongGame() {
   const [opponentGoneUntil, setOpponentGoneUntil] = useState<number | null>(null);
   const [, forceTick] = useState(0);
   const modeRef = useRef<Mode>('idle');
+  const youAreRef = useRef<Slot | null>(null);
 
   useEffect(() => {
     modeRef.current = mode;
   }, [mode]);
+
+  useEffect(() => {
+    youAreRef.current = youAre;
+  }, [youAre]);
 
   useEffect(() => {
     const onConnect = () => setConnected(true);
@@ -160,6 +166,7 @@ export default function PongGame() {
 
     const camera = new FreeCamera('camera1', new Vector3(0, 30, 70), scene);
     camera.setTarget(new Vector3(0, 0, 0));
+    cameraRef.current = camera;
 
     new HemisphericLight('light', new Vector3(3, 4, 6), scene);
 
@@ -237,8 +244,11 @@ export default function PongGame() {
     const keys = { left: false, right: false };
     const maybeSendInput = () => {
       if (modeRef.current !== 'playing') return;
-      if (keys.left === lastInput.left && keys.right === lastInput.right) return;
-      lastInput = { left: keys.left, right: keys.right };
+      const invert = youAreRef.current === 'p2';
+      const left = invert ? keys.right : keys.left;
+      const right = invert ? keys.left : keys.right;
+      if (left === lastInput.left && right === lastInput.right) return;
+      lastInput = { left, right };
       socket.emit('pong:input', lastInput);
     };
 
@@ -289,9 +299,18 @@ export default function PongGame() {
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
       window.removeEventListener('resize', handleResize);
+      cameraRef.current = null;
       engine.dispose();
     };
   }, []);
+
+  useEffect(() => {
+    const camera = cameraRef.current;
+    if (!camera) return;
+    const z = youAre === 'p2' ? -70 : 70;
+    camera.position.set(0, 30, z);
+    camera.setTarget(new Vector3(0, 0, 0));
+  }, [youAre]);
 
   const endedTitle = (() => {
     if (mode !== 'ended') return null;
