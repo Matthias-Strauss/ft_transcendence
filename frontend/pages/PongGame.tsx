@@ -74,6 +74,12 @@ export default function PongGame() {
   }, [youAre]);
 
   useEffect(() => {
+    const emitLeaveIfActive = () => {
+      if (!socket.connected) return;
+      if (modeRef.current !== 'waiting' && modeRef.current !== 'playing') return;
+      socket.emit('pong:leave');
+    };
+
     const onConnect = () => {
       setConnected(true);
       socket.emit('pong:rejoin');
@@ -147,10 +153,7 @@ export default function PongGame() {
     socket.on('pong:opponent_disconnected', onOpponentDisconnected);
     socket.on('pong:opponent_returned', onOpponentReturned);
     socket.on('pong:resumed', onResumed);
-
-    if (socket.connected) {
-      socket.emit('pong:rejoin');
-    }
+    window.addEventListener('pagehide', emitLeaveIfActive);
 
     return () => {
       socket.off('connect', onConnect);
@@ -162,9 +165,8 @@ export default function PongGame() {
       socket.off('pong:opponent_disconnected', onOpponentDisconnected);
       socket.off('pong:opponent_returned', onOpponentReturned);
       socket.off('pong:resumed', onResumed);
-      if (socket.connected) {
-        socket.emit('pong:leave');
-      }
+      window.removeEventListener('pagehide', emitLeaveIfActive);
+      emitLeaveIfActive();
     };
   }, []);
 

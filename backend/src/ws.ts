@@ -10,6 +10,8 @@ import { createUserSocketRegistry } from './ws/registry.js';
 export function setupWebSocket(httpServer: HttpServer) {
   const io = new SocketIOServer(httpServer, {
     path: '/socket.io',
+    pingInterval: 3000,
+    pingTimeout: 3000,
     cors: {
       origin: [APP_ORIGIN, FRONTEND_ORIGIN],
       credentials: true,
