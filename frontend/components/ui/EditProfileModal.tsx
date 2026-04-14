@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import '../../styles/edit-profile-modal.css';
 import { AuthedImage } from './AuthedImage';
 import { uploadAvatar, deleteAvatar, apiFetch, logout } from '../../utils/api';
+import { validatePassword } from '../../utils/password';
 import { useUserStore } from '../../utils/userStore';
 import { Eye, EyeOff } from 'lucide-react';
 import type { UserStore, User } from '../../utils/userStore';
@@ -231,8 +232,9 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
       showNotification('New passwords do not match.');
       return;
     }
-    if (newPassword.length < 3) {
-      showNotification('New password is too short.');
+    const pwdErr = validatePassword(newPassword);
+    if (pwdErr) {
+      showNotification(pwdErr);
       return;
     }
 
@@ -245,8 +247,12 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
       });
 
       if (!res.ok) {
+        const payload = await res.json().catch(() => null);
+        const serverMsg =
+          payload?.message || (payload?.details && payload.details[0]?.message) || null;
         showNotification(
-          'Failed to change password. Please verify your current password and try again.',
+          serverMsg ||
+            'Failed to change password. Please verify your current password and try again.',
         );
         return;
       }
