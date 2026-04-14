@@ -10,6 +10,7 @@ type Slot = 'p1' | 'p2';
 
 type Match = {
   id: string;
+  room: string;
   engine: GameEngine;
   paused: { slot: Slot; timer: NodeJS.Timeout; username: string } | null;
 };
@@ -38,8 +39,7 @@ export function createMatchManager(io: SocketIOServer): MatchManager {
       if (match.paused) continue;
       match.engine.step();
       const snap = match.engine.snapshot();
-      io.to(match.engine.p1.socketId).emit('pong:state', snap);
-      io.to(match.engine.p2.socketId).emit('pong:state', snap);
+      io.to(match.room).emit('pong:state', snap);
       if (snap.score.p1 >= WIN_SCORE || snap.score.p2 >= WIN_SCORE) {
         ended.push(matchId);
       }
@@ -67,8 +67,9 @@ export function createMatchManager(io: SocketIOServer): MatchManager {
 
     const p1Id = match.engine.p1.socketId;
     const p2Id = match.engine.p2.socketId;
-    io.to(p1Id).emit('pong:ended', { reason, finalScore });
-    io.to(p2Id).emit('pong:ended', { reason, finalScore });
+    io.to(match.room).emit('pong:ended', { reason, finalScore });
+    io.sockets.sockets.get(p1Id)?.leave(match.room);
+    io.sockets.sockets.get(p2Id)?.leave(match.room);
 
     matches.delete(matchId);
     socketToMatchId.delete(p1Id);
@@ -120,6 +121,7 @@ export function createMatchManager(io: SocketIOServer): MatchManager {
     pendingReconnects.delete(username);
     socketToMatchId.set(socketId, matchId);
     socketToSlot.set(socketId, slot);
+    io.sockets.sockets.get(socketId)?.join(match.room);
 
     io.to(socketId).emit('pong:resumed', {
       matchId,
@@ -145,8 +147,10 @@ export function createMatchManager(io: SocketIOServer): MatchManager {
 
     const p1 = new Player(waiting.socketId, waiting.username);
     const p2 = new Player(socketId, username);
+    const matchId = `m${nextMatchId++}`;
     const match: Match = {
-      id: `m${nextMatchId++}`,
+      id: matchId,
+      room: `match:${matchId}`,
       engine: new GameEngine(p1, p2),
       paused: null,
     };
@@ -156,6 +160,8 @@ export function createMatchManager(io: SocketIOServer): MatchManager {
     socketToMatchId.set(p2.socketId, match.id);
     socketToSlot.set(p1.socketId, 'p1');
     socketToSlot.set(p2.socketId, 'p2');
+    io.sockets.sockets.get(p1.socketId)?.join(match.room);
+    io.sockets.sockets.get(p2.socketId)?.join(match.room);
 
     io.to(p1.socketId).emit('pong:matched', {
       matchId: match.id,
