@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { Send } from 'lucide-react';
 import { socket } from '../socket';
+import { apiFetch } from '../utils/api';
 import '../styles/chat.css';
 import { uploadFile } from '../utils/send_file';
 import { FileUp } from 'lucide-react';
@@ -14,35 +15,13 @@ interface Message {
   isOwn?: boolean;
 }
 
-interface ChatPayload {
-  text: string;
-  from?: string;
-  username?: string;
-}
+// interface ChatPayload {
+//   text: string;
+//   from?: string;
+//   username?: string;
+// }
 
-const MOCK_MESSAGES: Message[] = [
-  {
-    id: '1',
-    user: 'seagull',
-    message: 'Ready to play?',
-    time: '2:30 PM',
-    isOwn: false,
-  },
-  {
-    id: '2',
-    user: 'You',
-    message: "Yeah! Let's go",
-    time: '2:31 PM',
-    isOwn: true,
-  },
-  {
-    id: '3',
-    user: 'seagull',
-    message: 'You still here?',
-    time: '2:31 PM',
-    isOwn: false,
-  },
-];
+const MOCK_MESSAGES: Message[] = [];
 
 interface ChatPanelProps {
   onClose?: () => void;
@@ -87,20 +66,44 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
       ]);
     };
 
-    const onChatMessage = (payload: ChatPayload) => {
-      const isOwn = payload.from === socket.id;
-      const userName = isOwn ? 'You' : payload.username ?? 'Player';
+    const onChatMessage = (payload: any) => {
+      try {
+        if (payload && typeof payload === 'object' && 'text' in payload && 'sender' in payload) {
+          const isOwn = Boolean(payload.isOwn);
+          const userName = isOwn
+            ? 'You'
+            : payload.sender.displayname ?? payload.sender.username ?? 'Player';
+          const createdAt = payload.createdAt ? new Date(payload.createdAt) : new Date();
 
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: `${Date.now()}-${Math.random()}`,
-          user: userName,
-          message: payload.text,
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          isOwn,
-        },
-      ]);
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: payload.id ?? `${Date.now()}-${Math.random()}`,
+              user: userName,
+              message: payload.text,
+              time: createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              isOwn,
+            },
+          ]);
+          return;
+        }
+
+        const isOwn = payload.from === socket.id;
+        const userName = isOwn ? 'You' : payload.username ?? 'Player';
+
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `${Date.now()}-${Math.random()}`,
+            user: userName,
+            message: payload.text,
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            isOwn,
+          },
+        ]);
+      } catch (e) {
+        console.error('Error handling chat message', e);
+      }
     };
 
     socket.on('connect', onConnect);
@@ -114,6 +117,49 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
       socket.off('chat:message', onChatMessage);
     };
   }, []);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadConversation(username: string) {
+      try {
+        setMessages([]);
+        const res = await apiFetch(
+          `/api/chat/conversations/${encodeURIComponent(username)}/messages`,
+        );
+        if (!res.ok) return;
+        const data = await res.json();
+        const mapped: Message[] = (data.messages || []).map((m: any) => ({
+          id: m.id,
+          user: m.isOwn ? 'You' : m.sender.displayname ?? m.sender.username,
+          message: m.text ?? '',
+          time: new Date(m.createdAt).toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+          }),
+          isOwn: Boolean(m.isOwn),
+        }));
+
+        if (mounted) setMessages(mapped);
+        try {
+          await apiFetch(`/api/chat/conversations/${encodeURIComponent(username)}/read`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+          });
+        } catch (e) {}
+      } catch (e) {
+        console.error('Failed to load conversation', e);
+      }
+    }
+
+    if (targetUsername) {
+      void loadConversation(targetUsername);
+    }
+
+    return () => {
+      mounted = false;
+    };
+  }, [targetUsername]);
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
