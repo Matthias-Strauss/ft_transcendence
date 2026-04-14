@@ -212,7 +212,7 @@ export default function PongGame() {
     if (!canvas) return;
 
     const engine = new Engine(canvas, true);
-    engine.setHardwareScalingLevel(1);
+    engine.setHardwareScalingLevel(Math.max(1, window.devicePixelRatio));
     engineRef.current = engine;
     const scene = new Scene(engine);
 
@@ -306,7 +306,8 @@ export default function PongGame() {
 
     const onKeyDown = (e: KeyboardEvent) => {
       const k = e.key.toLowerCase();
-      if (k === 'h') { //DEBUG
+      if (k === 'h') {
+        //DEBUG
         debugHud.toggle(); //DEBUG
         return; //DEBUG
       } //DEBUG
@@ -523,12 +524,9 @@ export default function PongGame() {
           )}
           {mode === 'ended' && (
             <>
-              <div style={{ fontSize: 28, fontWeight: 'bold', marginBottom: 12 }}>
-                {endedTitle}
-              </div>
+              <div style={{ fontSize: 28, fontWeight: 'bold', marginBottom: 12 }}>{endedTitle}</div>
               <div style={{ fontSize: 20, marginBottom: 24 }}>
-                Final:{' '}
-                <span style={{ color: '#95ff00' }}>{score.p1}</span>
+                Final: <span style={{ color: '#95ff00' }}>{score.p1}</span>
                 {' : '}
                 <span style={{ color: '#ff0095' }}>{score.p2}</span>
               </div>
