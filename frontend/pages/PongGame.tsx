@@ -211,7 +211,7 @@ export default function PongGame() {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const engine = new Engine(canvas, true);
+    const engine = new Engine(canvas, false);
     engine.setHardwareScalingLevel(Math.max(1, window.devicePixelRatio));
     engineRef.current = engine;
     const scene = new Scene(engine);
