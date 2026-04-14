@@ -46,6 +46,17 @@ async function handleAction({
       showToast('Post Saved', 'success');
       return { ok: response.ok };
     }
+    case 'Remove': {
+      const response = await apiFetch(`/api/posts/${postId}/bookmark`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        showToast('Post removed from saved.', 'success');
+      }
+
+      return { ok: response.ok };
+    }
     case 'Share': {
       const response = await apiFetch(`/api/posts/${postId}/share`, {
         method: 'POST',
