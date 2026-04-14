@@ -87,7 +87,16 @@ export function Bookmarked({ pageSize = 10 }: BookmarkedProps) {
         <p className="p-4 text-[#8b98a5]">No saved posts yet.</p>
       )}
 
-      {!loading && bookmarkedPosts.map((post) => <SavedCard key={post.id} post={post} />)}
+      {!loading &&
+        bookmarkedPosts.map((post) => (
+          <SavedCard
+            key={post.id}
+            post={post}
+            onRemoved={(id) => {
+              setBookmarkedPosts((prev) => prev.filter((p) => p.id !== id));
+            }}
+          />
+        ))}
 
       {hasMore && (
         <div className="mt-4 mb-6 text-center">

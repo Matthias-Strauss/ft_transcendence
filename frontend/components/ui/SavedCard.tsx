@@ -7,9 +7,10 @@ import Dropdown from './Dropdown';
 
 interface SavedCardProps {
   post: Post;
+  onRemoved?: (id: string) => void;
 }
 
-export function SavedCard({ post }: SavedCardProps) {
+export function SavedCard({ post, onRemoved }: SavedCardProps) {
   const bookmarked: Bookmarked = {
     id: post.id,
     bookmarkedByMe: post.bookmarkedByMe ?? true,
@@ -21,7 +22,7 @@ export function SavedCard({ post }: SavedCardProps) {
 
   const handleDropdownActionSuccess = (action: string) => {
     if (action === 'Remove') {
-      //should refresh state
+      onRemoved?.(post.id);
     }
   };
 
