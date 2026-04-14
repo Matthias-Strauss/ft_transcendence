@@ -3,11 +3,7 @@ import type { Socket } from 'socket.io';
 import type { MatchManager } from '../pong_game/game/turnManager.js';
 import type { PongInputPayload, SocketUser } from './types.js';
 
-export function bindPongHandlers(
-  socket: Socket,
-  user: SocketUser,
-  matchManager: MatchManager,
-) {
+export function bindPongHandlers(socket: Socket, user: SocketUser, matchManager: MatchManager) {
   socket.on('pong:join', () => {
     matchManager.join(socket.id, user.username);
   });

@@ -23,6 +23,7 @@ import {
   WIN_SCORE,
 } from '../game/pongConstants';
 import { socket } from '../socket';
+import { usePongDebugHud } from './PongDebugHud'; //DEBUG
 
 type Mode = 'idle' | 'waiting' | 'playing' | 'ended';
 type Slot = 'p1' | 'p2';
@@ -49,6 +50,8 @@ export default function PongGame() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const snapshotBufferRef = useRef<TimedSnapshot[]>([]);
   const cameraRef = useRef<FreeCamera | null>(null);
+  const engineRef = useRef<Engine | null>(null);
+  const debugHud = usePongDebugHud(engineRef); //DEBUG
   const [mode, setMode] = useState<Mode>('idle');
   const [connected, setConnected] = useState(socket.connected);
   const [opponent, setOpponent] = useState<string>('');
@@ -81,6 +84,7 @@ export default function PongGame() {
     let lastSeenScoreP2 = 0;
     const onMatched = (payload: PongMatched) => {
       snapshotBufferRef.current = [];
+      debugHud.reset(); //DEBUG
       lastSeenScoreP1 = 0;
       lastSeenScoreP2 = 0;
       setOpponent(payload.opponent);
@@ -90,9 +94,11 @@ export default function PongGame() {
       setMode('playing');
     };
     const onState = (snap: PongSnapshot) => {
+      const now = Date.now();
       const buf = snapshotBufferRef.current;
-      buf.push({ t: Date.now(), snap });
+      buf.push({ t: now, snap });
       if (buf.length > SNAPSHOT_BUFFER_MAX) buf.shift();
+      debugHud.notifySnapshot(now); //DEBUG
       if (snap.score.p1 !== lastSeenScoreP1 || snap.score.p2 !== lastSeenScoreP2) {
         lastSeenScoreP1 = snap.score.p1;
         lastSeenScoreP2 = snap.score.p2;
@@ -113,6 +119,7 @@ export default function PongGame() {
     };
     const onResumed = (payload: PongResumed) => {
       snapshotBufferRef.current = [];
+      debugHud.reset(); //DEBUG
       lastSeenScoreP1 = payload.score.p1;
       lastSeenScoreP2 = payload.score.p2;
       setOpponent(payload.opponent);
@@ -206,6 +213,7 @@ export default function PongGame() {
 
     const engine = new Engine(canvas, true);
     engine.setHardwareScalingLevel(1);
+    engineRef.current = engine;
     const scene = new Scene(engine);
 
     const camera = new FreeCamera('camera1', new Vector3(0, 30, 70), scene);
@@ -298,6 +306,10 @@ export default function PongGame() {
 
     const onKeyDown = (e: KeyboardEvent) => {
       const k = e.key.toLowerCase();
+      if (k === 'h') { //DEBUG
+        debugHud.toggle(); //DEBUG
+        return; //DEBUG
+      } //DEBUG
       if (k === 'arrowleft') keys.left = true;
       else if (k === 'arrowright') keys.right = true;
       else return;
@@ -363,6 +375,7 @@ export default function PongGame() {
       window.removeEventListener('keyup', onKeyUp);
       window.removeEventListener('resize', handleResize);
       cameraRef.current = null;
+      engineRef.current = null;
       engine.dispose();
     };
   }, []);
@@ -400,6 +413,7 @@ export default function PongGame() {
   return (
     <div style={{ width: '100%', height: 'calc(100vh - 2rem)', position: 'relative' }}>
       <canvas ref={canvasRef} style={{ width: '100%', height: '100%' }} />
+      {debugHud.element /*DEBUG*/}
       {mode === 'playing' && (
         <div
           style={{
