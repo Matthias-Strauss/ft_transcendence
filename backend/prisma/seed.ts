@@ -24,11 +24,7 @@ async function seedUser(
 
   const user = await prisma.user.upsert({
     where: { username },
-    update: {
-      password: passwordHash,
-      email,
-      displayname: displayName,
-    },
+    update: {},
     create: {
       username,
       password: passwordHash,
@@ -246,6 +242,12 @@ async function syncCommentLikeCounter(commentIds: string[]) {
 }
 
 async function main() {
+  // If any users already exist, skip full seeding to avoid overwriting real/dev data
+  const existingUsers = await prisma.user.count();
+  if (existingUsers > 0) {
+    console.log(`seed.ts: database not empty (${existingUsers} users), skipping seed`);
+    return;
+  }
   const testUser = await seedUser('test', 'test42', 'test@test.com', 'test user');
   const seagullUser = await seedUser('seagull', 'seagull42', 'sea@gull.com', 'Mr. Seagull');
 
