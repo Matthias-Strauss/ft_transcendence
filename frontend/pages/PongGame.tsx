@@ -62,6 +62,7 @@ export default function PongGame() {
   const [, forceTick] = useState(0);
   const modeRef = useRef<Mode>('idle');
   const youAreRef = useRef<Slot | null>(null);
+  const ignoreNextEndedRef = useRef(false);
 
   useEffect(() => {
     modeRef.current = mode;
@@ -78,11 +79,13 @@ export default function PongGame() {
     };
     const onDisconnect = () => setConnected(false);
     const onWaiting = () => {
+      ignoreNextEndedRef.current = false;
       setMode('waiting');
     };
     let lastSeenScoreP1 = 0;
     let lastSeenScoreP2 = 0;
     const onMatched = (payload: PongMatched) => {
+      ignoreNextEndedRef.current = false;
       snapshotBufferRef.current = [];
       debugHud.reset(); //DEBUG
       lastSeenScoreP1 = 0;
@@ -106,6 +109,10 @@ export default function PongGame() {
       }
     };
     const onEnded = (payload: PongEnded) => {
+      if (ignoreNextEndedRef.current) {
+        ignoreNextEndedRef.current = false;
+        return;
+      }
       setEndedReason(payload.reason);
       setScore(payload.finalScore);
       setOpponentGoneUntil(null);
@@ -118,6 +125,7 @@ export default function PongGame() {
       setOpponentGoneUntil(null);
     };
     const onResumed = (payload: PongResumed) => {
+      ignoreNextEndedRef.current = false;
       snapshotBufferRef.current = [];
       debugHud.reset(); //DEBUG
       lastSeenScoreP1 = payload.score.p1;
@@ -173,6 +181,7 @@ export default function PongGame() {
 
   const findMatch = () => {
     if (!socket.connected) return;
+    ignoreNextEndedRef.current = false;
     snapshotBufferRef.current = [];
     setScore({ p1: 0, p2: 0 });
     setEndedReason(null);
@@ -181,6 +190,7 @@ export default function PongGame() {
   };
 
   const leaveQueue = () => {
+    ignoreNextEndedRef.current = false;
     socket.emit('pong:leave');
     snapshotBufferRef.current = [];
     setOpponent('');
@@ -192,6 +202,7 @@ export default function PongGame() {
   };
 
   const leaveMatch = () => {
+    ignoreNextEndedRef.current = true;
     socket.emit('pong:leave');
     snapshotBufferRef.current = [];
     setOpponent('');
