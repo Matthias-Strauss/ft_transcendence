@@ -230,6 +230,7 @@ export default function PongGame() {
     const floorMat = new StandardMaterial('floorMat', scene);
     floorMat.diffuseColor = Color3.FromHexString('#0f172a');
     floor.material = floorMat;
+    floor.freezeWorldMatrix();
 
     const wallColor = Color4.FromHexString('#6a00ffff');
     const wallColors = [wallColor, wallColor, wallColor, wallColor, wallColor, wallColor];
@@ -241,6 +242,7 @@ export default function PongGame() {
     );
     leftWall.position.x = -ARENA_WIDTH / 2;
     leftWall.position.y = 0.5;
+    leftWall.freezeWorldMatrix();
 
     const rightWall = MeshBuilder.CreateBox(
       'rightWall',
@@ -249,6 +251,7 @@ export default function PongGame() {
     );
     rightWall.position.x = ARENA_WIDTH / 2;
     rightWall.position.y = 0.5;
+    rightWall.freezeWorldMatrix();
 
     const lineColor = Color4.FromHexString('#334155ff');
     const lineColors = [lineColor, lineColor, lineColor, lineColor, lineColor, lineColor];
@@ -258,6 +261,7 @@ export default function PongGame() {
       scene,
     );
     centerLine.position.y = 0.1;
+    centerLine.freezeWorldMatrix();
 
     const paddle1 = MeshBuilder.CreateBox(
       'paddle1',
