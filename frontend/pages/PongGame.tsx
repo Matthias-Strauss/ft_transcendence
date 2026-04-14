@@ -3,13 +3,14 @@ import {
   Color4,
   Engine,
   FreeCamera,
+  GlowLayer,
   HemisphericLight,
   MeshBuilder,
   Scene,
   StandardMaterial,
   Vector3,
 } from '@babylonjs/core';
-import { type CSSProperties, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 
 import {
   ARENA_DEPTH,
@@ -238,6 +239,8 @@ export default function PongGame() {
 
     new HemisphericLight('light', new Vector3(3, 4, 6), scene);
 
+    const gl = new GlowLayer('glow', scene);
+    gl.intensity = 1.0;
     const floor = MeshBuilder.CreateGround(
       'floor',
       { width: ARENA_WIDTH, height: ARENA_DEPTH },
@@ -256,6 +259,10 @@ export default function PongGame() {
       { width: 0.5, height: 1, depth: ARENA_DEPTH, faceColors: wallColors },
       scene,
     );
+    const wallMat = new StandardMaterial('wallMat', scene);
+    wallMat.diffuseColor = Color3.FromHexString('#6a00ff');
+    wallMat.emissiveColor = Color3.FromHexString('#6a00ff').scale(1.0);
+    leftWall.material = wallMat;
     leftWall.position.x = -ARENA_WIDTH / 2;
     leftWall.position.y = 0.5;
     leftWall.freezeWorldMatrix();
@@ -265,6 +272,7 @@ export default function PongGame() {
       { width: 0.5, height: 1, depth: ARENA_DEPTH, faceColors: wallColors },
       scene,
     );
+    rightWall.material = wallMat;
     rightWall.position.x = ARENA_WIDTH / 2;
     rightWall.position.y = 0.5;
     rightWall.freezeWorldMatrix();
@@ -286,7 +294,7 @@ export default function PongGame() {
     );
     const p1Mat = new StandardMaterial('p1Mat', scene);
     p1Mat.diffuseColor = Color3.FromHexString('#95ff00');
-    p1Mat.emissiveColor = Color3.FromHexString('#95ff00').scale(0.4);
+    p1Mat.emissiveColor = Color3.FromHexString('#95ff00').scale(1.0);
     paddle1.material = p1Mat;
     paddle1.position.z = PADDLE_P1_Z;
     paddle1.position.y = 0.25;
@@ -298,7 +306,7 @@ export default function PongGame() {
     );
     const p2Mat = new StandardMaterial('p2Mat', scene);
     p2Mat.diffuseColor = Color3.FromHexString('#ff0095');
-    p2Mat.emissiveColor = Color3.FromHexString('#ff0095').scale(0.4);
+    p2Mat.emissiveColor = Color3.FromHexString('#ff0095').scale(1.0);
     paddle2.material = p2Mat;
     paddle2.position.z = PADDLE_P2_Z;
     paddle2.position.y = 0.25;
@@ -308,7 +316,7 @@ export default function PongGame() {
 
     const ballMat = new StandardMaterial('ballMat', scene);
     ballMat.diffuseColor = Color3.FromHexString('#f7f9f9');
-    ballMat.emissiveColor = Color3.FromHexString('#f7f9f9').scale(0.4);
+    ballMat.emissiveColor = Color3.FromHexString('#f7f9f9').scale(1.0);
     ball.material = ballMat;
 
     // --- Input: send pong:input on change only ---
