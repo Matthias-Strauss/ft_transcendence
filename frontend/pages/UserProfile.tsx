@@ -45,6 +45,10 @@ export default function UserProfile() {
   const [user, setUser] = useState<UserResponse | null>(null);
   const [me, setMe] = useState<UserResponse | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
+  const [postsLoadingMore, setPostsLoadingMore] = useState(false);
+  const [postsHasMore, setPostsHasMore] = useState(false);
+  const [postsNextCursor, setPostsNextCursor] = useState<string | null>(null);
+  const POSTS_PAGE_SIZE = 10;
   const storeUser = useUserStore((s: UserStore) => s.user);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -56,35 +60,72 @@ export default function UserProfile() {
   useEffect(() => {
     if (!username) return;
 
+    let cancelled = false;
+
     async function load() {
       setLoading(true);
+      setPosts([]);
+      setPostsNextCursor(null);
+      setPostsHasMore(false);
+
       try {
         const res = await apiFetch(`/api/users/${username}`);
         if (res.ok) {
           const data = await res.json();
-          setUser(data);
+          if (!cancelled) setUser(data);
         } else {
-          setUser(null);
+          if (!cancelled) setUser(null);
         }
 
-        const postsRes = await apiFetch(`/api/users/${username}/posts`);
+        const postsRes = await apiFetch(`/api/users/${username}/posts?limit=${POSTS_PAGE_SIZE}`);
         if (postsRes.ok) {
           const payload = await postsRes.json();
-          setPosts(payload.items || []);
+          if (!cancelled) {
+            setPosts(payload.items || []);
+            setPostsHasMore(Boolean(payload.meta?.hasMore));
+            setPostsNextCursor(payload.meta?.nextCursor ?? null);
+          }
         } else {
-          setPosts([]);
+          if (!cancelled) setPosts([]);
         }
       } catch (e) {
         console.error('Failed to load user profile', e);
-        setUser(null);
-        setPosts([]);
+        if (!cancelled) {
+          setUser(null);
+          setPosts([]);
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
 
     void load();
+
+    return () => {
+      cancelled = true;
+    };
   }, [username]);
+
+  const loadMorePosts = async () => {
+    if (!postsHasMore || postsLoadingMore || !postsNextCursor || !username) return;
+    setPostsLoadingMore(true);
+    try {
+      const res = await apiFetch(
+        `/api/users/${username}/posts?limit=${POSTS_PAGE_SIZE}&cursor=${encodeURIComponent(
+          postsNextCursor,
+        )}`,
+      );
+      if (!res.ok) throw new Error('Failed to load more posts');
+      const payload = await res.json();
+      setPosts((prev) => [...prev, ...(payload.items || [])]);
+      setPostsHasMore(Boolean(payload.meta?.hasMore));
+      setPostsNextCursor(payload.meta?.nextCursor ?? null);
+    } catch (e) {
+      console.error('Failed to load more posts', e);
+    } finally {
+      setPostsLoadingMore(false);
+    }
+  };
 
   useEffect(() => {
     async function loadMe() {
@@ -216,7 +257,6 @@ export default function UserProfile() {
               navigate(`/users/${data.username}`, { replace: true });
               return;
             }
-
           }}
         />
       )}
@@ -401,18 +441,35 @@ export default function UserProfile() {
         {posts.length === 0 ? (
           <div className="p-8 text-[#8b98a5]">No posts yet</div>
         ) : (
-          posts.map((post) => (
-            <PostCard
-              post={post}
-              key={post.id}
-              onDeleted={(id) => {
-                setPosts((prev) => prev.filter((p) => p.id !== id));
-                setUser((prev) =>
-                  prev ? { ...prev, postsCount: Math.max(0, (prev.postsCount ?? 0) - 1) } : prev,
-                );
-              }}
-            />
-          ))
+          <>
+            {posts.map((post) => (
+              <PostCard
+                post={post}
+                key={post.id}
+                onDeleted={(id) => {
+                  setPosts((prev) => prev.filter((p) => p.id !== id));
+                  setUser((prev) =>
+                    prev
+                      ? { ...(prev as any), postsCount: Math.max(0, (prev.postsCount ?? 0) - 1) }
+                      : prev,
+                  );
+                }}
+              />
+            ))}
+
+            {postsHasMore && (
+              <div className="mt-4 text-center">
+                <button
+                  type="button"
+                  onClick={loadMorePosts}
+                  disabled={postsLoadingMore}
+                  className="bg-[var(--color-1)] hover:bg-[var(--color-1)]/90 text-[#f7f9f9] rounded-full py-2 px-4 transition-colors disabled:opacity-40"
+                >
+                  {postsLoadingMore ? 'Loading...' : 'Load more'}
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

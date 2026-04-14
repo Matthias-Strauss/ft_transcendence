@@ -10,6 +10,7 @@ interface HomeFeedProps {
 export const HomeFeed = forwardRef<HTMLTextAreaElement, HomeFeedProps>(
   ({ isVisible = true }, ref) => {
     const [postsRefreshKey, setPostsRefreshKey] = useState(0);
+    const [activeTab, setActiveTab] = useState<'forYou' | 'global'>('forYou');
 
     const handlePostCreated = () => {
       setPostsRefreshKey((prev) => prev + 1);
@@ -26,18 +27,32 @@ export const HomeFeed = forwardRef<HTMLTextAreaElement, HomeFeedProps>(
           </div>
           <div className="flex border-b border-[#39444d]">
             <button
-              className="flex-1 py-4 font-medium text-[15px] text-[#f7f9f9] border-b-4 transition-colors hover:bg-[#1e293b]"
-              style={{ borderColor: 'var(--color-1)' }}
+              type="button"
+              onClick={() => setActiveTab('forYou')}
+              className={`flex-1 py-4 font-medium text-[15px] transition-colors hover:bg-[#1e293b] ${
+                activeTab === 'forYou' ? 'text-[#f7f9f9] border-b-4' : 'text-[#8b98a5]'
+              }`}
+              style={activeTab === 'forYou' ? { borderColor: 'var(--color-1)' } : undefined}
             >
               For You
             </button>
-            <button className="flex-1 py-4 font-medium text-[15px] text-[#8b98a5] hover:bg-[#1e293b] transition-colors">
-              Following
+            <button
+              type="button"
+              onClick={() => setActiveTab('global')}
+              className={`flex-1 py-4 font-medium text-[15px] transition-colors hover:bg-[#1e293b] ${
+                activeTab === 'global' ? 'text-[#f7f9f9] border-b-4' : 'text-[#8b98a5]'
+              }`}
+              style={activeTab === 'global' ? { borderColor: 'var(--color-1)' } : undefined}
+            >
+              Global
             </button>
           </div>
         </div>
         <CreatePostForm onPostCreated={handlePostCreated} ref={ref} />
-        <PostsFeed refreshKey={postsRefreshKey} />
+        <PostsFeed
+          refreshKey={postsRefreshKey}
+          scope={activeTab === 'global' ? 'public_feed' : undefined}
+        />
       </div>
     );
   },
