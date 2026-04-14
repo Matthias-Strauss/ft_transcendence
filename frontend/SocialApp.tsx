@@ -9,6 +9,7 @@ import { FriendsPage } from './pages/FriendsPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { setLogoutHandler, setAccessTokenListener } from './utils/api';
 import useChatStore from './utils/chatState';
+import { Bookmarked } from './pages/Bookmarked';
 
 export default function SocialApp() {
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
@@ -111,12 +112,7 @@ export default function SocialApp() {
       case 'friends':
         return <FriendsPage />;
       case 'saved':
-        return (
-          <div className="p-8 text-center">
-            <h2 className="font-bold text-[20px] text-[#f7f9f9] mb-2">Saved</h2>
-            <p className="text-[#8b98a5]">Your saved posts will appear here</p>
-          </div>
-        );
+        return <Bookmarked />;
       case 'profile':
         return <ProfilePage />;
     }
