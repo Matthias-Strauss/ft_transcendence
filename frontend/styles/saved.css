@@ -1,0 +1,12 @@
+.saved-post-ul {
+    list-style-type: none;
+    color: #06b6d4;
+    align-self: start;
+    justify-content:space-between;
+    flex: content;
+}
+
+.saved-post-li {
+    position: relative;
+
+}
