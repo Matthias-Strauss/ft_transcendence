@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import '../styles/auth.css';
 import { connectSocketWithToken } from '../socket';
@@ -16,7 +16,8 @@ export default function LoginPage() {
 
   const demoBoard = ['X', 'O', 'X', 'O', 'X', '', '', 'O', ''];
 
-  const handleLogin = async () => {
+  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
     setError('');
 
     if (!username.trim() || !password.trim()) {
@@ -88,7 +89,7 @@ export default function LoginPage() {
           <h3 className="heading">Welcome back</h3>
           <p className="sub">Log in to continue your game</p>
 
-          <div className="auth-form">
+          <form onSubmit={handleLogin} className="auth-form">
             <div className={`input-group ${username ? 'filled' : ''}`}>
               <input id="username" value={username} onChange={(e) => setUsername(e.target.value)} />
               <label htmlFor="username">Username</label>
@@ -107,15 +108,14 @@ export default function LoginPage() {
             {error && <div className="error-box">{error}</div>}
 
             <button
-              type="button"
+              type="submit"
               className="btn-submit"
               disabled={submitting}
               aria-busy={submitting}
-              onClick={handleLogin}
             >
               {submitting ? <span className="spinner" /> : 'Login'}
             </button>
-          </div>
+          </form>
 
           <div className="alt">
             Don&apos;t have an account?{' '}
