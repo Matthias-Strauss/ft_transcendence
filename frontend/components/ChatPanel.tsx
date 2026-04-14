@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
-import { Send } from 'lucide-react';
+import { Send, FileUp } from 'lucide-react';
 import { socket } from '../socket';
 import { apiFetch } from '../utils/api';
 import '../styles/chat.css';
 import { uploadFile } from '../utils/send_file';
-import { FileUp } from 'lucide-react';
 import useChatStore, { type ChatMessage } from '../utils/chatState';
 import useUserStore from '../utils/userStore';
 
@@ -16,16 +15,117 @@ interface Message {
   isOwn?: boolean;
 }
 
-// interface ChatPayload {
-//   text: string;
-//   from?: string;
-//   username?: string;
-// }
-
 const MOCK_MESSAGES: Message[] = [];
 
 interface ChatPanelProps {
   onClose?: () => void;
+}
+
+interface NormalizedIncomingMessage {
+  chatMessage: ChatMessage;
+  otherUsername: string | null;
+  senderUsername: string | null;
+  recipientUsername: string | null;
+  isDirect: boolean;
+}
+
+function formatTime(value?: string | number | Date) {
+  const date = value ? new Date(value) : new Date();
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function mapApiMessageToChatMessage(m: any): ChatMessage {
+  return {
+    id: m.id,
+    user: m.isOwn ? 'You' : m.sender?.displayname ?? m.sender?.username ?? 'Player',
+    message: m.text ?? '',
+    time: formatTime(m.createdAt),
+    isOwn: Boolean(m.isOwn),
+  };
+}
+
+function normalizeIncomingPayload(payload: any, meUsername: string | null): NormalizedIncomingMessage | null {
+  if (!payload || typeof payload !== 'object') return null;
+
+  // New format:
+  // {
+  //   id,
+  //   text,
+  //   createdAt,
+  //   isOwn,
+  //   sender: { username, displayname },
+  //   recipient: { username }
+  // }
+  if ('text' in payload && 'sender' in payload) {
+    const senderUsername = payload.sender?.username ?? null;
+    const recipientUsername = payload.recipient?.username ?? null;
+    const isOwn = Boolean(payload.isOwn);
+    const isDirect = Boolean(senderUsername && recipientUsername);
+
+    let otherUsername: string | null = null;
+    if (meUsername) {
+      otherUsername = senderUsername === meUsername ? recipientUsername : senderUsername;
+    } else {
+      otherUsername = senderUsername ?? recipientUsername;
+    }
+
+    return {
+      chatMessage: {
+        id: payload.id ?? `${Date.now()}-${Math.random()}`,
+        user: isOwn ? 'You' : payload.sender?.displayname ?? payload.sender?.username ?? 'Player',
+        message: payload.text ?? '',
+        time: formatTime(payload.createdAt),
+        isOwn,
+      },
+      otherUsername,
+      senderUsername,
+      recipientUsername,
+      isDirect,
+    };
+  }
+
+  // Fallback old format:
+  // {
+  //   text,
+  //   username,
+  //   to,
+  //   from
+  // }
+  const senderUsername = payload.username ?? null;
+  const recipientUsername = payload.to ?? null;
+  const isOwn = payload.from === socket.id;
+  const isDirect = Boolean(recipientUsername);
+
+  let otherUsername: string | null = null;
+  if (meUsername) {
+    otherUsername = senderUsername === meUsername ? recipientUsername : senderUsername;
+  } else {
+    otherUsername = senderUsername ?? recipientUsername;
+  }
+
+  return {
+    chatMessage: {
+      id: payload.id ?? `${Date.now()}-${Math.random()}`,
+      user: isOwn ? 'You' : senderUsername ?? 'Player',
+      message: payload.text ?? '',
+      time: formatTime(),
+      isOwn,
+    },
+    otherUsername,
+    senderUsername,
+    recipientUsername,
+    isDirect,
+  };
+}
+
+function shouldShowMessageInActiveChat(
+  activeTarget: string | null,
+  senderUsername: string | null,
+  recipientUsername: string | null,
+) {
+  if (!activeTarget) return false;
+
+  return senderUsername === activeTarget || recipientUsername === activeTarget;
 }
 
 export function ChatPanel({ onClose }: ChatPanelProps) {
@@ -37,18 +137,6 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
   const [progress, setProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
 
-  const shortenFileName = (name: string, maxLength = 20) => {
-    if (name.length <= maxLength) {
-      return name;
-    }
-
-    return `${name.slice(0, maxLength - 3)}...`;
-  };
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
-
   const targetUsername = useChatStore((state) => state.targetUsername);
   const targetUsernameRef = useRef<string | null>(null);
 
@@ -58,6 +146,15 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
   const appendMessageForUser = useChatStore((s) => s.appendMessageForUser);
   const messagesByUser = useChatStore((s) => s.messagesByUser);
 
+  const shortenFileName = (name: string, maxLength = 20) => {
+    if (name.length <= maxLength) return name;
+    return `${name.slice(0, maxLength - 3)}...`;
+  };
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
   useEffect(() => {
     targetUsernameRef.current = targetUsername;
   }, [targetUsername]);
@@ -65,6 +162,7 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
   useEffect(() => {
     const onConnect = () => setConnected(true);
     const onDisconnect = () => setConnected(false);
+
     const onWelcome = (message: string) => {
       setMessages((prev) => [
         ...prev,
@@ -72,7 +170,7 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
           id: `${Date.now()}-welcome`,
           user: 'System',
           message,
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          time: formatTime(),
           isOwn: false,
         },
       ]);
@@ -81,144 +179,40 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
     const onChatMessage = (payload: any) => {
       try {
         const activeTarget = targetUsernameRef.current;
+        const normalized = normalizeIncomingPayload(payload, meUsername);
 
-        if (payload && typeof payload === 'object' && 'text' in payload && 'sender' in payload) {
-          const senderUsername = payload.sender?.username ?? null;
-          const recipientUsername = payload.recipient?.username ?? null;
-          const isDirect = Boolean(senderUsername && recipientUsername);
+        if (!normalized) return;
 
-          let otherUsername: string | null = null;
-          if (meUsername) {
-            if (senderUsername === meUsername) otherUsername = recipientUsername;
-            else otherUsername = senderUsername;
-          } else {
-            otherUsername = senderUsername ?? recipientUsername;
-          }
+        const {
+          chatMessage,
+          otherUsername,
+          senderUsername,
+          recipientUsername,
+          isDirect,
+        } = normalized;
 
-          if (activeTarget) {
-            if (!(senderUsername === activeTarget || recipientUsername === activeTarget)) {
-              if (otherUsername) {
-                const mapped: ChatMessage = {
-                  id: payload.id ?? `${Date.now()}-${Math.random()}`,
-                  user:
-                    payload.sender?.displayname ??
-                    payload.sender?.username ??
-                    payload.sender?.username ??
-                    'Player',
-                  message: payload.text,
-                  time: new Date(payload.createdAt ?? Date.now()).toLocaleTimeString([], {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  }),
-                  isOwn: Boolean(payload.isOwn),
-                };
-                appendMessageForUser(otherUsername, mapped);
-              }
-              return;
-            }
-          } else {
-            if (isDirect) {
-              if (otherUsername) {
-                const mapped: ChatMessage = {
-                  id: payload.id ?? `${Date.now()}-${Math.random()}`,
-                  user:
-                    payload.sender?.displayname ??
-                    payload.sender?.username ??
-                    payload.sender?.username ??
-                    'Player',
-                  message: payload.text,
-                  time: new Date(payload.createdAt ?? Date.now()).toLocaleTimeString([], {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  }),
-                  isOwn: Boolean(payload.isOwn),
-                };
-                appendMessageForUser(otherUsername, mapped);
-              }
-              return;
-            }
-          }
-
-          const isOwn = Boolean(payload.isOwn);
-          const userName = isOwn
-            ? 'You'
-            : payload.sender.displayname ?? payload.sender.username ?? 'Player';
-          const createdAt = payload.createdAt ? new Date(payload.createdAt) : new Date();
-
-          const mapped: ChatMessage = {
-            id: payload.id ?? `${Date.now()}-${Math.random()}`,
-            user: userName,
-            message: payload.text,
-            time: createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            isOwn,
-          };
-
-          if (otherUsername) appendMessageForUser(otherUsername, mapped);
-          setMessages((prev) => [...prev, mapped]);
-          return;
-        }
-
-        const senderName = payload?.username ?? null;
-        const toName = payload?.to ?? null;
-        const isDirectFallback = Boolean(toName);
-
-        let otherUsernameFallback: string | null = null;
-        if (meUsername) {
-          if (senderName === meUsername) otherUsernameFallback = toName;
-          else otherUsernameFallback = senderName;
-        } else {
-          otherUsernameFallback = senderName ?? toName;
+        if (otherUsername) {
+          appendMessageForUser(otherUsername, chatMessage);
         }
 
         if (activeTarget) {
-          if (
-            !(
-              senderName === activeTarget ||
-              toName === activeTarget ||
-              (payload?.from === socket.id && toName === activeTarget)
-            )
-          ) {
-            if (otherUsernameFallback) {
-              const mapped: ChatMessage = {
-                id: `${Date.now()}-${Math.random()}`,
-                user: senderName ?? 'Player',
-                message: payload.text ?? '',
-                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                isOwn: payload.from === socket.id,
-              };
-              appendMessageForUser(otherUsernameFallback, mapped);
-            }
-            return;
-          }
-        } else {
-          if (isDirectFallback) {
-            if (otherUsernameFallback) {
-              const mapped: ChatMessage = {
-                id: `${Date.now()}-${Math.random()}`,
-                user: senderName ?? 'Player',
-                message: payload.text ?? '',
-                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                isOwn: payload.from === socket.id,
-              };
-              appendMessageForUser(otherUsernameFallback, mapped);
-            }
-            return;
-          }
+          const shouldShow = shouldShowMessageInActiveChat(
+            activeTarget,
+            senderUsername,
+            recipientUsername,
+          );
+
+          if (!shouldShow) return;
+
+          setMessages((prev) => [...prev, chatMessage]);
+          return;
         }
 
-        const isOwn = payload.from === socket.id;
-        const userName = isOwn ? 'You' : payload.username ?? 'Player';
+        if (!activeTarget && isDirect) {
+          return;
+        }
 
-        const mappedFallback: ChatMessage = {
-          id: `${Date.now()}-${Math.random()}`,
-          user: userName,
-          message: payload.text,
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          isOwn,
-        };
-
-        if (otherUsernameFallback) appendMessageForUser(otherUsernameFallback, mappedFallback);
-        setMessages((prev) => [...prev, mappedFallback]);
+        setMessages((prev) => [...prev, chatMessage]);
       } catch (e) {
         console.error('Error handling chat message', e);
       }
@@ -228,13 +222,14 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
     socket.on('disconnect', onDisconnect);
     socket.on('welcome', onWelcome);
     socket.on('chat:message', onChatMessage);
+
     return () => {
       socket.off('connect', onConnect);
       socket.off('disconnect', onDisconnect);
       socket.off('welcome', onWelcome);
       socket.off('chat:message', onChatMessage);
     };
-  }, []);
+  }, [appendMessageForUser, meUsername]);
 
   useEffect(() => {
     let mounted = true;
@@ -245,27 +240,24 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
           `/api/chat/conversations/${encodeURIComponent(username)}/messages`,
         );
         if (!res.ok) return;
-        const data = await res.json();
-        const mapped: ChatMessage[] = (data.messages || []).map((m: any) => ({
-          id: m.id,
-          user: m.isOwn ? 'You' : m.sender.displayname ?? m.sender.username,
-          message: m.text ?? '',
-          time: new Date(m.createdAt).toLocaleTimeString([], {
-            hour: '2-digit',
-            minute: '2-digit',
-          }),
-          isOwn: Boolean(m.isOwn),
-        }));
 
-        setMessagesForUser(username, mapped as ChatMessage[]);
-        if (mounted) setMessages(mapped as Message[]);
+        const data = await res.json();
+        const mapped: ChatMessage[] = (data.messages || []).map(mapApiMessageToChatMessage);
+
+        setMessagesForUser(username, mapped);
+
+        if (mounted) {
+          setMessages(mapped as Message[]);
+        }
 
         try {
           await apiFetch(`/api/chat/conversations/${encodeURIComponent(username)}/read`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
           });
-        } catch (e) {}
+        } catch {
+          // ignore read-mark errors
+        }
       } catch (e) {
         console.error('Failed to load conversation', e);
       }
@@ -275,6 +267,7 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
       const cached = messagesByUser[targetUsername];
       if (cached) setMessages(cached as Message[]);
       else setMessages([]);
+
       void loadConversation(targetUsername);
     }
 
@@ -284,23 +277,29 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
   }, [targetUsername, messagesByUser, setMessagesForUser]);
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setFile(file);
+    const selectedFile = e.target.files?.[0];
+    if (selectedFile) {
+      setFile(selectedFile);
       setProgress(0);
       setIsUploading(true);
 
-      uploadFile(file, {
+      uploadFile(selectedFile, {
         onProgress: (percent) => setProgress(percent),
         onComplete: () => setIsUploading(false),
       });
     }
     e.target.value = '';
   };
+
   const handleSend = () => {
     const text = inputValue.trim();
     if (!text || !connected) return;
-    socket.emit('chat:message', { text, to: targetUsername ?? undefined });
+
+    socket.emit('chat:message', {
+      text,
+      to: targetUsername ?? undefined,
+    });
+
     setInputValue('');
   };
 
@@ -320,6 +319,7 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
               <span className={`chat-status-dot ${connected ? 'online' : 'offline'}`} />
               {connected ? 'Connected' : 'Offline'}
             </div>
+
             {onClose && (
               <button type="button" className="chat-close-btn" onClick={onClose}>
                 Close
@@ -336,6 +336,7 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
                   <span className="chat-message-user">{msg.user}</span>
                   <span className="chat-message-time">{msg.time}</span>
                 </div>
+
                 <div
                   className={`chat-bubble ${msg.isOwn ? 'chat-bubble-own' : 'chat-bubble-other'}`}
                 >
@@ -357,9 +358,9 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
               onKeyDown={(e) => e.key === 'Enter' && handleSend()}
               className="chat-input"
             />
+
             <label className="cursor-pointer text-xl hover:opacity-80 transition">
               <FileUp className="size-6 text-[#8b98a5]" />
-
               <input
                 type="file"
                 accept=".doc,.docx,.pdf,video/*"
@@ -367,6 +368,7 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
                 style={{ display: 'none' }}
               />
             </label>
+
             <button
               onClick={handleSend}
               disabled={!connected}
