@@ -215,6 +215,8 @@ export default function PongGame() {
     engine.setHardwareScalingLevel(Math.max(1, window.devicePixelRatio));
     engineRef.current = engine;
     const scene = new Scene(engine);
+    scene.skipPointerMovePicking = true;
+    scene.blockMaterialDirtyMechanism = true;
 
     const camera = new FreeCamera('camera1', new Vector3(0, 30, 70), scene);
     camera.setTarget(new Vector3(0, 0, 0));
