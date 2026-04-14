@@ -330,6 +330,8 @@ export default function PongGame() {
     window.addEventListener('keydown', onKeyDown);
     window.addEventListener('keyup', onKeyUp);
 
+    scene.freezeActiveMeshes();
+
     scene.registerBeforeRender(() => {
       const buf = snapshotBufferRef.current;
       if (buf.length === 0) return;
