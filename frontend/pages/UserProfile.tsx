@@ -408,7 +408,7 @@ export default function UserProfile() {
               onDeleted={(id) => {
                 setPosts((prev) => prev.filter((p) => p.id !== id));
                 setUser((prev) =>
-                  prev ? { ...(prev as any), postsCount: Math.max(0, (prev.postsCount ?? 0) - 1) } : prev,
+                  prev ? { ...prev, postsCount: Math.max(0, (prev.postsCount ?? 0) - 1) } : prev,
                 );
               }}
             />

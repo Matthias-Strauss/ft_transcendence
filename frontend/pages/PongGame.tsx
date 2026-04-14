@@ -190,20 +190,8 @@ export default function PongGame() {
     socket.emit('pong:join');
   };
 
-  const leaveQueue = () => {
-    ignoreNextEndedRef.current = false;
-    socket.emit('pong:leave');
-    snapshotBufferRef.current = [];
-    setOpponent('');
-    setYouAre(null);
-    setScore({ p1: 0, p2: 0 });
-    setEndedReason(null);
-    setOpponentGoneUntil(null);
-    setMode('idle');
-  };
-
-  const leaveMatch = () => {
-    ignoreNextEndedRef.current = true;
+  const leaveGame = (suppressEndEvent: boolean) => {
+    ignoreNextEndedRef.current = suppressEndEvent;
     socket.emit('pong:leave');
     snapshotBufferRef.current = [];
     setOpponent('');
@@ -472,7 +460,7 @@ export default function PongGame() {
             background: 'rgba(0,0,0,0.55)',
             pointerEvents: 'auto',
           }}
-          onClick={leaveMatch}
+          onClick={() => leaveGame(true)}
         >
           Leave Game
         </button>
@@ -536,7 +524,7 @@ export default function PongGame() {
           {mode === 'waiting' && (
             <>
               <div style={{ fontSize: 22, marginBottom: 24 }}>Waiting for opponent…</div>
-              <button style={buttonStyle} onClick={leaveQueue}>
+              <button style={buttonStyle} onClick={() => leaveGame(false)}>
                 Leave Queue
               </button>
             </>
