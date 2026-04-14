@@ -10,8 +10,10 @@ type Slot = 'p1' | 'p2';
 
 type Match = {
   id: string;
+  room: string;
   engine: GameEngine;
   paused: { slot: Slot; timer: NodeJS.Timeout; username: string } | null;
+  tickCount: number;
 };
 
 export type MatchManager = {
@@ -37,17 +39,18 @@ export function createMatchManager(io: SocketIOServer): MatchManager {
     for (const [matchId, match] of matches) {
       if (match.paused) continue;
       match.engine.step();
-      const snap = match.engine.snapshot();
-      io.to(match.engine.p1.socketId).emit('pong:state', snap);
-      io.to(match.engine.p2.socketId).emit('pong:state', snap);
-      if (snap.score.p1 >= WIN_SCORE || snap.score.p2 >= WIN_SCORE) {
+      match.tickCount++;
+      if (match.tickCount % 2 === 0) {
+        io.to(match.room).emit('pong:state', match.engine.snapshot());
+      }
+      if (match.engine.p1.score >= WIN_SCORE || match.engine.p2.score >= WIN_SCORE) {
         ended.push(matchId);
       }
     }
     for (const matchId of ended) {
       const match = matches.get(matchId);
       if (!match) continue;
-      endMatch(matchId, 'score', match.engine.snapshot().score);
+      endMatch(matchId, 'score', { p1: match.engine.p1.score, p2: match.engine.p2.score });
     }
   }
 
@@ -67,8 +70,9 @@ export function createMatchManager(io: SocketIOServer): MatchManager {
 
     const p1Id = match.engine.p1.socketId;
     const p2Id = match.engine.p2.socketId;
-    io.to(p1Id).emit('pong:ended', { reason, finalScore });
-    io.to(p2Id).emit('pong:ended', { reason, finalScore });
+    io.to(match.room).emit('pong:ended', { reason, finalScore });
+    io.sockets.sockets.get(p1Id)?.leave(match.room);
+    io.sockets.sockets.get(p2Id)?.leave(match.room);
 
     matches.delete(matchId);
     socketToMatchId.delete(p1Id);
@@ -90,7 +94,7 @@ export function createMatchManager(io: SocketIOServer): MatchManager {
     socketToSlot.delete(socketId);
 
     const timer = setTimeout(() => {
-      endMatch(matchId, 'disconnect', match.engine.snapshot().score);
+      endMatch(matchId, 'disconnect', { p1: match.engine.p1.score, p2: match.engine.p2.score });
     }, RECONNECT_GRACE_MS);
 
     match.paused = { slot, timer, username: player.username };
@@ -120,12 +124,13 @@ export function createMatchManager(io: SocketIOServer): MatchManager {
     pendingReconnects.delete(username);
     socketToMatchId.set(socketId, matchId);
     socketToSlot.set(socketId, slot);
+    io.sockets.sockets.get(socketId)?.join(match.room);
 
     io.to(socketId).emit('pong:resumed', {
       matchId,
       youAre: slot,
       opponent: opponent.username,
-      score: match.engine.snapshot().score,
+      score: { p1: match.engine.p1.score, p2: match.engine.p2.score },
     });
     io.to(opponent.socketId).emit('pong:opponent_returned');
     return true;
@@ -145,10 +150,13 @@ export function createMatchManager(io: SocketIOServer): MatchManager {
 
     const p1 = new Player(waiting.socketId, waiting.username);
     const p2 = new Player(socketId, username);
+    const matchId = `m${nextMatchId++}`;
     const match: Match = {
-      id: `m${nextMatchId++}`,
+      id: matchId,
+      room: `match:${matchId}`,
       engine: new GameEngine(p1, p2),
       paused: null,
+      tickCount: 0,
     };
 
     matches.set(match.id, match);
@@ -156,6 +164,8 @@ export function createMatchManager(io: SocketIOServer): MatchManager {
     socketToMatchId.set(p2.socketId, match.id);
     socketToSlot.set(p1.socketId, 'p1');
     socketToSlot.set(p2.socketId, 'p2');
+    io.sockets.sockets.get(p1.socketId)?.join(match.room);
+    io.sockets.sockets.get(p2.socketId)?.join(match.room);
 
     io.to(p1.socketId).emit('pong:matched', {
       matchId: match.id,
@@ -198,7 +208,7 @@ export function createMatchManager(io: SocketIOServer): MatchManager {
       return;
     }
 
-    endMatch(matchId, reason, match.engine.snapshot().score);
+    endMatch(matchId, reason, { p1: match.engine.p1.score, p2: match.engine.p2.score });
   }
 
   function shutdown() {
