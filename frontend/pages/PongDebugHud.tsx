@@ -11,10 +11,9 @@ export function usePongDebugHud(engineRef: RefObject<Engine | null>) {
     if (!visible) return;
     const id = setInterval(() => {
       const eng = engineRef.current;
-      setHud({
-        fps: eng ? Math.round(eng.getFps()) : 0,
-        snapMs: Math.round(snapshotIntervalRef.current),
-      });
+      const fps = eng ? Math.round(eng.getFps()) : 0;
+      const snapMs = Math.round(snapshotIntervalRef.current);
+      setHud((prev) => (prev.fps === fps && prev.snapMs === snapMs ? prev : { fps, snapMs }));
     }, 250);
     return () => clearInterval(id);
   }, [visible, engineRef]);
