@@ -12,6 +12,7 @@ import {
 import { REFRESH_COOKIE_NAME, setRefreshCookie, clearRefreshCookie } from '../auth/refresh.js';
 import { asyncHandler } from '../errors/asyncHandler.js';
 import { AuthErrors, RequestErrors } from '../errors/catalog.js';
+import { validatePassword } from '../utils/passwordValidator.js';
 
 export const authRouter = Router();
 
@@ -140,22 +141,38 @@ authRouter.post(
 );
 
 // REGISTER
-const RegisterSchema = z.object({
-  displayname: z
-    .string()
-    .min(1)
-    .max(30)
-    .regex(/^[a-zA-Z0-9._-]+( [a-zA-Z0-9._-]+)*$/),
-  username: z
-    .string()
-    .trim()
-    .toLowerCase()
-    .min(3)
-    .max(30)
-    .regex(/^[a-z0-9._-]+$/),
-  email: z.email().optional(),
-  password: z.string().min(3).max(100),
-});
+const RegisterSchema = z
+  .object({
+    displayname: z
+      .string()
+      .min(1)
+      .max(30)
+      .regex(/^[a-zA-Z0-9._-]+( [a-zA-Z0-9._-]+)*$/),
+    username: z
+      .string()
+      .trim()
+      .toLowerCase()
+      .min(3)
+      .max(30)
+      .regex(/^[a-z0-9._-]+$/),
+    email: z.email().optional(),
+    password: z.string().min(1).max(100),
+  })
+  .strict()
+  .superRefine((val, ctx) => {
+    const pwErr = validatePassword(val.password);
+    if (pwErr) {
+      ctx.addIssue({ code: 'custom', message: pwErr, path: ['password'] });
+    }
+
+    if (val.password.toLowerCase().includes(val.username.toLowerCase())) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Password cannot contain username',
+        path: ['password'],
+      });
+    }
+  });
 
 authRouter.post(
   '/auth/register',
