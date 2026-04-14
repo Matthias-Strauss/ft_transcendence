@@ -13,6 +13,7 @@ const CreatePostForm = forwardRef<HTMLTextAreaElement, CreatePostFormProps>(
     const [imageFile, setImageFile] = useState<File | null>(null);
     const [previewURL, setPreviewURL] = useState<string | null>(null);
     const [gameTag, setGameTag] = useState('');
+    const [visibility, setVisibility] = useState<'PUBLIC' | 'FRIENDS'>('FRIENDS');
 
     const handleContentChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
       const value = e.target.value;
@@ -51,6 +52,7 @@ const CreatePostForm = forwardRef<HTMLTextAreaElement, CreatePostFormProps>(
 
         const formData = new FormData();
         formData.append('content', content);
+        formData.append('visibility', visibility);
         if (imageFile !== null) formData.append('image', imageFile);
         if (gameTag !== '') formData.append('gameTag', gameTag);
 
@@ -122,6 +124,34 @@ const CreatePostForm = forwardRef<HTMLTextAreaElement, CreatePostFormProps>(
                     style={{ display: 'none' }}
                   />
                 </label>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-[#8b98a5]">Visibility:</span>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setVisibility('FRIENDS')}
+                    className={`px-3 py-1 rounded-full text-sm transition-colors ${
+                      visibility === 'FRIENDS'
+                        ? 'bg-[var(--color-1)] text-[#f7f9f9]'
+                        : 'text-[#8b98a5] hover:bg-[#1e293b]'
+                    }`}
+                  >
+                    Friends
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setVisibility('PUBLIC')}
+                    className={`px-3 py-1 rounded-full text-sm transition-colors ${
+                      visibility === 'PUBLIC'
+                        ? 'bg-[var(--color-1)] text-[#f7f9f9]'
+                        : 'text-[#8b98a5] hover:bg-[#1e293b]'
+                    }`}
+                  >
+                    Global
+                  </button>
+                </div>
               </div>
 
               <button

@@ -17,9 +17,10 @@ interface ApiResponse {
 interface PostsFeedProps {
   refreshKey?: number;
   pageSize?: number;
+  scope?: string;
 }
 
-export function PostsFeed({ refreshKey = 0, pageSize = 10 }: PostsFeedProps) {
+export function PostsFeed({ refreshKey = 0, pageSize = 10, scope }: PostsFeedProps) {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -33,7 +34,7 @@ export function PostsFeed({ refreshKey = 0, pageSize = 10 }: PostsFeedProps) {
     try {
       const url = `/api/posts?limit=${pageSize}${
         cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''
-      }`;
+      }${scope ? `&scope=${encodeURIComponent(scope)}` : ''}`;
       const response = await apiFetch(url, { method: 'GET' });
       if (!response.ok) throw new Error('Failed to fetch posts');
       const data: ApiResponse = await response.json();
@@ -57,7 +58,7 @@ export function PostsFeed({ refreshKey = 0, pageSize = 10 }: PostsFeedProps) {
     setNextCursor(null);
     setHasMore(false);
     void fetchPage(null, false);
-  }, [refreshKey, pageSize]);
+  }, [refreshKey, pageSize, scope]);
 
   const loadMore = async () => {
     if (!hasMore || loadingMore || !nextCursor) return;
