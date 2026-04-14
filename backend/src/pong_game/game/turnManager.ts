@@ -13,6 +13,7 @@ type Match = {
   room: string;
   engine: GameEngine;
   paused: { slot: Slot; timer: NodeJS.Timeout; username: string } | null;
+  tickCount: number;
 };
 
 export type MatchManager = {
@@ -38,8 +39,11 @@ export function createMatchManager(io: SocketIOServer): MatchManager {
     for (const [matchId, match] of matches) {
       if (match.paused) continue;
       match.engine.step();
+      match.tickCount++;
       const snap = match.engine.snapshot();
-      io.to(match.room).emit('pong:state', snap);
+      if (match.tickCount % 2 === 0) {
+        io.to(match.room).emit('pong:state', snap);
+      }
       if (snap.score.p1 >= WIN_SCORE || snap.score.p2 >= WIN_SCORE) {
         ended.push(matchId);
       }
@@ -153,6 +157,7 @@ export function createMatchManager(io: SocketIOServer): MatchManager {
       room: `match:${matchId}`,
       engine: new GameEngine(p1, p2),
       paused: null,
+      tickCount: 0,
     };
 
     matches.set(match.id, match);
