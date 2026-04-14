@@ -14,6 +14,7 @@ export default function SocialApp() {
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const shouldFocusComposerRef = useRef(false);
   const [activeTab, setActiveTab] = useState('home');
+  const [composerRequestId, setComposerRequestId] = useState(0);
   const navigate = useNavigate();
   const location = useLocation();
   const viewingUser = location.pathname.startsWith('/users/');
@@ -23,17 +24,21 @@ export default function SocialApp() {
   const handleNewPost = () => {
     shouldFocusComposerRef.current = true;
     setActiveTab('home');
+    setComposerRequestId((n) => n + 1);
+    if (showingNestedRoute) {
+      navigate('/');
+    }
   };
 
   useEffect(() => {
-    if (!shouldFocusComposerRef.current || activeTab !== 'home') {
+    if (!shouldFocusComposerRef.current || activeTab !== 'home' || showingNestedRoute) {
       return;
     }
 
     inputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     inputRef.current?.focus();
     shouldFocusComposerRef.current = false;
-  }, [activeTab]);
+  }, [activeTab, composerRequestId, showingNestedRoute]);
 
   useEffect(() => {
     setLogoutHandler(() => navigate('/login', { replace: true }));
