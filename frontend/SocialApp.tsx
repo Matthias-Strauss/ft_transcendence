@@ -3,6 +3,7 @@ import { useNavigate, Outlet, useLocation } from 'react-router-dom';
 import { MessageCircle } from 'lucide-react';
 import './styles/chat.css';
 import { ChatPanel } from './components/ChatPanel';
+import ConversationsList from './components/ConversationsList';
 import { LeftSidebar } from './components/LeftSidebar';
 import { HomeFeed } from './pages/HomeFeed';
 import { FriendsPage } from './pages/FriendsPage';
@@ -98,12 +99,7 @@ export default function SocialApp() {
           </div>
         );
       case 'messages':
-        return (
-          <div className="p-8 text-center">
-            <h2 className="font-bold text-[20px] text-[#f7f9f9] mb-2">Messages</h2>
-            <p className="text-[#8b98a5]">Your messages will appear here</p>
-          </div>
-        );
+        return <ConversationsList />;
       case 'friends':
         return <FriendsPage />;
       case 'saved':
