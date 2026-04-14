@@ -1,19 +1,19 @@
-_This project has been created as part of the 42 curriculum by [mstrauss], [kruseva], [jmuhlber], [bszikora], [vmamoten]._
+_This project has been created as part of the 42 curriculum by mstrauss, kruseva, jmuhlber, vmamoten._
 
-# ft_transcendence
+# 🪐 ft_transcendence
 
 ## 📖 Description
 
-ft_transcendence is the final project of the 42 Common Core. It is a full-stack web application designed around a social media concept with an integrated multiplayer game layer.
-By early April, the project had moved beyond pure planning: authentication, profiles, friends, posts, chat persistence, and notification-related flows were all part of the active implementation effort, while the browser-game track was continuing in parallel.
+ft_transcendence is the final project of the 42 Common Core. It is a full-stack social web application that combines community features with a real-time multiplayer Pong experience.
+The goal of the project is to build a modern platform where users can create profiles, connect with other users, share content, communicate in real time, and launch live matches directly from the application. The project combines a React frontend, an Express backend, Prisma-managed PostgreSQL data, and WebSocket-powered real-time features into a single containerized application.
 
 **Key Features:**
 
-- **Platform Foundation:** Monorepo structure with separated frontend, backend, database, and proxy setup.
-- **Social Core:** Authentication, user profiles, friendships, posts, and direct user-to-user interaction.
-- **Chat Progress:** Real-time chat flow and database-backed message history were already under active implementation.
-- **Notifications & Social Flow:** The platform was already moving toward a more complete social loop with friends, posts, and user-facing updates.
-- **Game Prototype:** A first simple browser game prototype existed while the team was still deciding how the final multiplayer loop would be integrated.
+- **Social Platform:** User profiles, friendship management, direct messaging, notifications, and a shared social feed with posts, comments, bookmarks, and media uploads.
+- **Real-Time Interaction:** Socket.IO-powered messaging, live updates, typing indicators, unread state, and in-app game invites.
+- **Gameplay:** A browser-playable 3D Pong game with remote multiplayer support and live synchronized match state.
+- **Technical Foundation:** A framework-based full-stack architecture using React, Express, Prisma, PostgreSQL, and a reusable custom design system.
+- **User Experience:** Search, pagination, protected media handling, and integrated file upload flows for avatars, posts, and chat attachments.
 
 ---
 
@@ -23,17 +23,16 @@ By early April, the project had moved beyond pure planning: authentication, prof
 
 - Git
 - Docker Engine or Docker Desktop
-- Docker Compose
-- Node.js and npm for local frontend development
+- Docker Compose v2 (`docker compose`)
 
 ### Installation & Execution
 
-This project is moving toward a single reproducible Docker-based workflow for evaluation, even though some frontend work may still be tested locally during active development.
+This project uses Docker for the full application stack, including the frontend, backend, database, reverse proxy, and optional Adminer instance.
 
 1. **Clone the repository:**
 
    ```bash
-   git clone <repository-url>
+   git clone <your-repository-url>
    cd ft_transcendence
    ```
 
@@ -43,28 +42,43 @@ This project is moving toward a single reproducible Docker-based workflow for ev
    ```bash
    cp .env.example .env
    ```
-   Review the database and JWT values in `.env` before starting the stack. In particular, confirm the PostgreSQL credentials, `JWT_SECRET`, and local host-related values if you are testing from another machine on the network.
+
+   Review the following values before starting the stack:
+   - `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`
+   - `JWT_SECRET`
+   - `PROXY_HTTP_PORT`, `PROXY_HTTPS_PORT`
+   - `TLS_CERT_HOSTS`
+   - `APP_ORIGIN`
+   - `CORS_ALLOWED_ORIGINS`
+
+   If you want to access the app from another machine on your network, append your host IP or domain to `TLS_CERT_HOSTS` and add the matching `https://...` origin to `CORS_ALLOWED_ORIGINS`. If you change the proxy ports or hostnames, update `APP_ORIGIN`, `TLS_CERT_HOSTS`, and `CORS_ALLOWED_ORIGINS` so they stay consistent.
 
 3. **Run the application:**
-   To build and start the main stack:
+   Build and start all services with:
 
    ```bash
-   docker-compose up --build
+   docker compose up --build
    ```
 
-4. **Frontend development (when needed):**
-   In some branches or feature states, the frontend may still be run locally while the backend remains containerized:
+   On first startup, the proxy generates a self-signed TLS certificate automatically. Your browser will likely show a certificate warning for local development / deployment.
+
+4. **Access:**
+   Open your browser and navigate to:
+   - `http://localhost:8080` for the HTTP entrypoint, which redirects to HTTPS.
+
+5. **Stop the application:**
 
    ```bash
-   cd frontend
-   npm install
-   npm run dev
+   docker compose down
    ```
 
-5. **Access:**
-   - Frontend: `http://localhost:3000`
-   - Backend / API: `http://localhost:8080`
-   - This section is expected to move toward a single documented evaluation flow as integration stabilizes.
+   To remove the database volume and start with a fresh local state:
+
+   ```bash
+   docker compose down -v
+   ```
+
+   This deletes persisted database data.
 
 ---
 
@@ -72,28 +86,37 @@ This project is moving toward a single reproducible Docker-based workflow for ev
 
 | Team Member    | Role            | Responsibilities                                                    |
 | :------------- | :-------------- | :------------------------------------------------------------------ |
-| **[mstrauss]** | Product Owner   | Defined vision, prioritized features, and maintained the project direction and module strategy. |
-| **[kruseva]**  | Project Manager | Coordinated team communication, tracked open work, and helped keep the team aligned across meetings and reviews. |
-| **[jmuhlber]** | Tech Lead       | Oversaw backend architecture, infrastructure discussions, and key technical decisions around auth, APIs, and deployment. |
-| **[bszikora]** | Developer       | Joined the team during the implementation phase to support game-related planning and additional feature delivery. |
-| **[vmamoten]** | Developer       | Joined during the late-March implementation phase and contributed to profile, auth-flow, and frontend integration work. |
+| **[mstrauss]** | Product Owner   | Defined vision, prioritized features, maintained backlog.           |
+| **[kruseva]**  | Project Manager | Facilitated coordination, tracked deadlines, managed blockers.      |
+| **[jmuhlber]** | Tech Lead       | Oversaw architecture, code quality, and technology stack decisions. |
+| **[vmamoten]** | Developer       | Implemented features, wrote tests, participated in code reviews.    |
 
 ---
 
 ## 📅 Project Management
 
 **Organization:**
-We organized our work around a shared monorepo and split the project into frontend, backend, infrastructure, and documentation tracks. Work was coordinated through discussions, pull requests, and regular syncs while the project matured from planning into active integration.
+We organized the project as a monorepo with separate frontend, backend, database, and proxy services. Work was split into feature-focused branches and merged through pull requests rather than direct pushes to `main`. Pull Requests require the review of at the minimum one other team member in order to be merged into main.
+
+**Task Distribution:**
+Tasks were divided by feature ownership and subsystem focus:
+
+- `mstrauss`: Pong gameplay, matchmaking/game-invite flow, real-time game integration, and performance tuning.
+- `jmuhlber`: authentication, backend routes, Prisma/database work, uploads, and infrastructure fixes.
+- `kruseva`: frontend UI work, chat UX, feed interactions, responsive styling, and reusable components.
+- `vmamoten`: notifications, chat state handling, friends/profile features, pagination, and protected file access fixes.
+
+**Coordination:**
+We used a lightweight Agile-style workflow with bi-weekly standups and ad hoc syncs when blockers appeared. Day-to-day coordination happened through WhatsApp, and work progress was tracked through GitHub Issues and pull requests.
 
 **Tools Used:**
 
-- **Task Tracking:** GitHub Issues
-- **Communication:** WhatsApp
-- **Version Control:** Git & GitHub
-- **Documentation / Planning:** `QUESTIONS.md`, `INSTRUCTIONS.md`, `Project_Plan.md`
+- Task Tracking: GitHub Issues
+- Version Control / Review: Git, GitHub branches, pull requests, peer review before merge
+- Communication: WhatsApp
 
 **Workflow:**
-We used feature branches, pull requests, and peer review as the normal delivery path. By this point, the team was also explicitly tracking ownership by 42 login names to make contribution reviews, balancing, and later evaluation easier to explain.
+We used `feat/*`, `fix/*`, and `docs/*` branches, descriptive commit messages, and review-driven merges into `main`.
 
 ---
 
