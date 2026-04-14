@@ -40,18 +40,17 @@ export function createMatchManager(io: SocketIOServer): MatchManager {
       if (match.paused) continue;
       match.engine.step();
       match.tickCount++;
-      const snap = match.engine.snapshot();
       if (match.tickCount % 2 === 0) {
-        io.to(match.room).emit('pong:state', snap);
+        io.to(match.room).emit('pong:state', match.engine.snapshot());
       }
-      if (snap.score.p1 >= WIN_SCORE || snap.score.p2 >= WIN_SCORE) {
+      if (match.engine.p1.score >= WIN_SCORE || match.engine.p2.score >= WIN_SCORE) {
         ended.push(matchId);
       }
     }
     for (const matchId of ended) {
       const match = matches.get(matchId);
       if (!match) continue;
-      endMatch(matchId, 'score', match.engine.snapshot().score);
+      endMatch(matchId, 'score', { p1: match.engine.p1.score, p2: match.engine.p2.score });
     }
   }
 
@@ -95,7 +94,7 @@ export function createMatchManager(io: SocketIOServer): MatchManager {
     socketToSlot.delete(socketId);
 
     const timer = setTimeout(() => {
-      endMatch(matchId, 'disconnect', match.engine.snapshot().score);
+      endMatch(matchId, 'disconnect', { p1: match.engine.p1.score, p2: match.engine.p2.score });
     }, RECONNECT_GRACE_MS);
 
     match.paused = { slot, timer, username: player.username };
@@ -131,7 +130,7 @@ export function createMatchManager(io: SocketIOServer): MatchManager {
       matchId,
       youAre: slot,
       opponent: opponent.username,
-      score: match.engine.snapshot().score,
+      score: { p1: match.engine.p1.score, p2: match.engine.p2.score },
     });
     io.to(opponent.socketId).emit('pong:opponent_returned');
     return true;
@@ -209,7 +208,7 @@ export function createMatchManager(io: SocketIOServer): MatchManager {
       return;
     }
 
-    endMatch(matchId, reason, match.engine.snapshot().score);
+    endMatch(matchId, reason, { p1: match.engine.p1.score, p2: match.engine.p2.score });
   }
 
   function shutdown() {
