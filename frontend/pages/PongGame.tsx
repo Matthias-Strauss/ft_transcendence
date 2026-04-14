@@ -53,6 +53,12 @@ export default function PongGame() {
   const cameraRef = useRef<FreeCamera | null>(null);
   const engineRef = useRef<Engine | null>(null);
   const debugHud = usePongDebugHud(engineRef);
+  const {
+    element: debugHudElement,
+    notifySnapshot,
+    reset: resetDebugHud,
+    toggle: toggleDebugHud,
+  } = debugHud;
   const [mode, setMode] = useState<Mode>('idle');
   const [connected, setConnected] = useState(socket.connected);
   const [opponent, setOpponent] = useState<string>('');
@@ -60,7 +66,7 @@ export default function PongGame() {
   const [score, setScore] = useState({ p1: 0, p2: 0 });
   const [endedReason, setEndedReason] = useState<PongEnded['reason'] | null>(null);
   const [opponentGoneUntil, setOpponentGoneUntil] = useState<number | null>(null);
-  const [, forceTick] = useState(0);
+  const [opponentCountdownMs, setOpponentCountdownMs] = useState(0);
   const modeRef = useRef<Mode>('idle');
   const youAreRef = useRef<Slot | null>(null);
   const ignoreNextEndedRef = useRef(false);
@@ -94,7 +100,7 @@ export default function PongGame() {
     const onMatched = (payload: PongMatched) => {
       ignoreNextEndedRef.current = false;
       snapshotBufferRef.current = [];
-      debugHud.reset();
+      resetDebugHud();
       lastSeenScoreP1 = 0;
       lastSeenScoreP2 = 0;
       setOpponent(payload.opponent);
@@ -108,7 +114,7 @@ export default function PongGame() {
       const buf = snapshotBufferRef.current;
       buf.push({ t: now, snap });
       if (buf.length > SNAPSHOT_BUFFER_MAX) buf.shift();
-      debugHud.notifySnapshot(now);
+      notifySnapshot(now);
       if (snap.score.p1 !== lastSeenScoreP1 || snap.score.p2 !== lastSeenScoreP2) {
         lastSeenScoreP1 = snap.score.p1;
         lastSeenScoreP2 = snap.score.p2;
@@ -123,18 +129,21 @@ export default function PongGame() {
       setEndedReason(payload.reason);
       setScore(payload.finalScore);
       setOpponentGoneUntil(null);
+      setOpponentCountdownMs(0);
       setMode('ended');
     };
     const onOpponentDisconnected = (payload: PongOpponentDisconnected) => {
       setOpponentGoneUntil(Date.now() + payload.graceMs);
+      setOpponentCountdownMs(payload.graceMs);
     };
     const onOpponentReturned = () => {
       setOpponentGoneUntil(null);
+      setOpponentCountdownMs(0);
     };
     const onResumed = (payload: PongResumed) => {
       ignoreNextEndedRef.current = false;
       snapshotBufferRef.current = [];
-      debugHud.reset();
+      resetDebugHud();
       lastSeenScoreP1 = payload.score.p1;
       lastSeenScoreP2 = payload.score.p2;
       setOpponent(payload.opponent);
@@ -168,15 +177,17 @@ export default function PongGame() {
       window.removeEventListener('pagehide', emitLeaveIfActive);
       emitLeaveIfActive();
     };
-  }, []);
+  }, [notifySnapshot, resetDebugHud]);
 
   useEffect(() => {
     if (opponentGoneUntil === null) return;
     const interval = setInterval(() => {
-      if (Date.now() >= opponentGoneUntil) {
+      const remainingMs = Math.max(0, opponentGoneUntil - Date.now());
+      if (remainingMs === 0) {
         setOpponentGoneUntil(null);
+        setOpponentCountdownMs(0);
       } else {
-        forceTick((n) => n + 1);
+        setOpponentCountdownMs(remainingMs);
       }
     }, 250);
     return () => clearInterval(interval);
@@ -201,6 +212,7 @@ export default function PongGame() {
     setScore({ p1: 0, p2: 0 });
     setEndedReason(null);
     setOpponentGoneUntil(null);
+    setOpponentCountdownMs(0);
     setMode('idle');
   };
 
@@ -315,7 +327,7 @@ export default function PongGame() {
     const onKeyDown = (e: KeyboardEvent) => {
       const k = e.key.toLowerCase();
       if (k === 'h') {
-        debugHud.toggle();
+        toggleDebugHud();
         return;
       }
       if (k === 'arrowleft') keys.left = true;
@@ -388,7 +400,7 @@ export default function PongGame() {
       engineRef.current = null;
       engine.dispose();
     };
-  }, []);
+  }, [toggleDebugHud]);
 
   useEffect(() => {
     const camera = cameraRef.current;
@@ -423,7 +435,7 @@ export default function PongGame() {
   return (
     <div style={{ width: '100%', height: 'calc(100vh - 2rem)', position: 'relative' }}>
       <canvas ref={canvasRef} style={{ width: '100%', height: '100%' }} />
-      {debugHud.element}
+      {debugHudElement}
       {mode === 'playing' && (
         <div
           style={{
@@ -490,7 +502,7 @@ export default function PongGame() {
             <>
               <div>Opponent disconnected</div>
               <div style={{ fontSize: 16, marginTop: 8, opacity: 0.8 }}>
-                Waiting {Math.max(0, Math.ceil(((opponentGoneUntil ?? 0) - Date.now()) / 1000))}s
+                Waiting {Math.ceil(opponentCountdownMs / 1000)}s
               </div>
             </>
           )}

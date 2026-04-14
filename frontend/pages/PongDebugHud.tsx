@@ -1,5 +1,13 @@
 import type { Engine } from '@babylonjs/core';
-import { type ReactNode, type RefObject, useEffect, useRef, useState } from 'react';
+import {
+  type ReactNode,
+  type RefObject,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
 export function usePongDebugHud(engineRef: RefObject<Engine | null>) {
   const snapshotIntervalRef = useRef<number>(0);
@@ -18,42 +26,49 @@ export function usePongDebugHud(engineRef: RefObject<Engine | null>) {
     return () => clearInterval(id);
   }, [visible, engineRef]);
 
-  const notifySnapshot = (now: number) => {
+  const notifySnapshot = useCallback((now: number) => {
     if (lastSnapshotTRef.current > 0) {
       const dt = now - lastSnapshotTRef.current;
       snapshotIntervalRef.current =
         snapshotIntervalRef.current === 0 ? dt : snapshotIntervalRef.current * 0.8 + dt * 0.2;
     }
     lastSnapshotTRef.current = now;
-  };
+  }, []);
 
-  const reset = () => {
+  const reset = useCallback(() => {
     lastSnapshotTRef.current = 0;
     snapshotIntervalRef.current = 0;
-  };
+  }, []);
 
-  const toggle = () => setVisible((v) => !v);
+  const toggle = useCallback(() => setVisible((v) => !v), []);
 
-  const element: ReactNode = visible ? (
-    <div
-      style={{
-        position: 'absolute',
-        top: 20,
-        left: 20,
-        color: '#f7f9f9',
-        fontFamily: 'monospace',
-        fontSize: 13,
-        background: 'rgba(0,0,0,0.7)',
-        padding: '8px 12px',
-        borderRadius: 6,
-        pointerEvents: 'none',
-        lineHeight: 1.5,
-      }}
-    >
-      <div>FPS: {hud.fps}</div>
-      <div>Snap: {hud.snapMs} ms</div>
-    </div>
-  ) : null;
+  const element: ReactNode = useMemo(
+    () =>
+      visible ? (
+        <div
+          style={{
+            position: 'absolute',
+            top: 20,
+            left: 20,
+            color: '#f7f9f9',
+            fontFamily: 'monospace',
+            fontSize: 13,
+            background: 'rgba(0,0,0,0.7)',
+            padding: '8px 12px',
+            borderRadius: 6,
+            pointerEvents: 'none',
+            lineHeight: 1.5,
+          }}
+        >
+          <div>FPS: {hud.fps}</div>
+          <div>Snap: {hud.snapMs} ms</div>
+        </div>
+      ) : null,
+    [hud.fps, hud.snapMs, visible],
+  );
 
-  return { element, notifySnapshot, reset, toggle };
+  return useMemo(
+    () => ({ element, notifySnapshot, reset, toggle }),
+    [element, notifySnapshot, reset, toggle],
+  );
 }
