@@ -5,7 +5,8 @@ import { apiFetch } from '../utils/api';
 import '../styles/chat.css';
 import { uploadFile } from '../utils/send_file';
 import { FileUp } from 'lucide-react';
-import useChatStore from '../utils/chatState';
+import useChatStore, { type ChatMessage } from '../utils/chatState';
+import useUserStore from '../utils/userStore';
 
 interface Message {
   id: string;
@@ -49,6 +50,17 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
   }, [messages]);
 
   const targetUsername = useChatStore((state) => state.targetUsername);
+  const targetUsernameRef = useRef<string | null>(null);
+
+  const meUsername = useUserStore((s) => s.user?.username ?? null);
+
+  const setMessagesForUser = useChatStore((s) => s.setMessagesForUser);
+  const appendMessageForUser = useChatStore((s) => s.appendMessageForUser);
+  const messagesByUser = useChatStore((s) => s.messagesByUser);
+
+  useEffect(() => {
+    targetUsernameRef.current = targetUsername;
+  }, [targetUsername]);
 
   useEffect(() => {
     const onConnect = () => setConnected(true);
@@ -68,39 +80,145 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
 
     const onChatMessage = (payload: any) => {
       try {
+        const activeTarget = targetUsernameRef.current;
+
         if (payload && typeof payload === 'object' && 'text' in payload && 'sender' in payload) {
+          const senderUsername = payload.sender?.username ?? null;
+          const recipientUsername = payload.recipient?.username ?? null;
+          const isDirect = Boolean(senderUsername && recipientUsername);
+
+          let otherUsername: string | null = null;
+          if (meUsername) {
+            if (senderUsername === meUsername) otherUsername = recipientUsername;
+            else otherUsername = senderUsername;
+          } else {
+            otherUsername = senderUsername ?? recipientUsername;
+          }
+
+          if (activeTarget) {
+            if (!(senderUsername === activeTarget || recipientUsername === activeTarget)) {
+              if (otherUsername) {
+                const mapped: ChatMessage = {
+                  id: payload.id ?? `${Date.now()}-${Math.random()}`,
+                  user:
+                    payload.sender?.displayname ??
+                    payload.sender?.username ??
+                    payload.sender?.username ??
+                    'Player',
+                  message: payload.text,
+                  time: new Date(payload.createdAt ?? Date.now()).toLocaleTimeString([], {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  }),
+                  isOwn: Boolean(payload.isOwn),
+                };
+                appendMessageForUser(otherUsername, mapped);
+              }
+              return;
+            }
+          } else {
+            if (isDirect) {
+              if (otherUsername) {
+                const mapped: ChatMessage = {
+                  id: payload.id ?? `${Date.now()}-${Math.random()}`,
+                  user:
+                    payload.sender?.displayname ??
+                    payload.sender?.username ??
+                    payload.sender?.username ??
+                    'Player',
+                  message: payload.text,
+                  time: new Date(payload.createdAt ?? Date.now()).toLocaleTimeString([], {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  }),
+                  isOwn: Boolean(payload.isOwn),
+                };
+                appendMessageForUser(otherUsername, mapped);
+              }
+              return;
+            }
+          }
+
           const isOwn = Boolean(payload.isOwn);
           const userName = isOwn
             ? 'You'
             : payload.sender.displayname ?? payload.sender.username ?? 'Player';
           const createdAt = payload.createdAt ? new Date(payload.createdAt) : new Date();
 
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: payload.id ?? `${Date.now()}-${Math.random()}`,
-              user: userName,
-              message: payload.text,
-              time: createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-              isOwn,
-            },
-          ]);
+          const mapped: ChatMessage = {
+            id: payload.id ?? `${Date.now()}-${Math.random()}`,
+            user: userName,
+            message: payload.text,
+            time: createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            isOwn,
+          };
+
+          if (otherUsername) appendMessageForUser(otherUsername, mapped);
+          setMessages((prev) => [...prev, mapped]);
           return;
+        }
+
+        const senderName = payload?.username ?? null;
+        const toName = payload?.to ?? null;
+        const isDirectFallback = Boolean(toName);
+
+        let otherUsernameFallback: string | null = null;
+        if (meUsername) {
+          if (senderName === meUsername) otherUsernameFallback = toName;
+          else otherUsernameFallback = senderName;
+        } else {
+          otherUsernameFallback = senderName ?? toName;
+        }
+
+        if (activeTarget) {
+          if (
+            !(
+              senderName === activeTarget ||
+              toName === activeTarget ||
+              (payload?.from === socket.id && toName === activeTarget)
+            )
+          ) {
+            if (otherUsernameFallback) {
+              const mapped: ChatMessage = {
+                id: `${Date.now()}-${Math.random()}`,
+                user: senderName ?? 'Player',
+                message: payload.text ?? '',
+                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                isOwn: payload.from === socket.id,
+              };
+              appendMessageForUser(otherUsernameFallback, mapped);
+            }
+            return;
+          }
+        } else {
+          if (isDirectFallback) {
+            if (otherUsernameFallback) {
+              const mapped: ChatMessage = {
+                id: `${Date.now()}-${Math.random()}`,
+                user: senderName ?? 'Player',
+                message: payload.text ?? '',
+                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                isOwn: payload.from === socket.id,
+              };
+              appendMessageForUser(otherUsernameFallback, mapped);
+            }
+            return;
+          }
         }
 
         const isOwn = payload.from === socket.id;
         const userName = isOwn ? 'You' : payload.username ?? 'Player';
 
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: `${Date.now()}-${Math.random()}`,
-            user: userName,
-            message: payload.text,
-            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            isOwn,
-          },
-        ]);
+        const mappedFallback: ChatMessage = {
+          id: `${Date.now()}-${Math.random()}`,
+          user: userName,
+          message: payload.text,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          isOwn,
+        };
+
+        if (otherUsernameFallback) appendMessageForUser(otherUsernameFallback, mappedFallback);
+        setMessages((prev) => [...prev, mappedFallback]);
       } catch (e) {
         console.error('Error handling chat message', e);
       }
@@ -123,13 +241,12 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
 
     async function loadConversation(username: string) {
       try {
-        setMessages([]);
         const res = await apiFetch(
           `/api/chat/conversations/${encodeURIComponent(username)}/messages`,
         );
         if (!res.ok) return;
         const data = await res.json();
-        const mapped: Message[] = (data.messages || []).map((m: any) => ({
+        const mapped: ChatMessage[] = (data.messages || []).map((m: any) => ({
           id: m.id,
           user: m.isOwn ? 'You' : m.sender.displayname ?? m.sender.username,
           message: m.text ?? '',
@@ -140,7 +257,9 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
           isOwn: Boolean(m.isOwn),
         }));
 
-        if (mounted) setMessages(mapped);
+        setMessagesForUser(username, mapped as ChatMessage[]);
+        if (mounted) setMessages(mapped as Message[]);
+
         try {
           await apiFetch(`/api/chat/conversations/${encodeURIComponent(username)}/read`, {
             method: 'POST',
@@ -153,13 +272,16 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
     }
 
     if (targetUsername) {
+      const cached = messagesByUser[targetUsername];
+      if (cached) setMessages(cached as Message[]);
+      else setMessages([]);
       void loadConversation(targetUsername);
     }
 
     return () => {
       mounted = false;
     };
-  }, [targetUsername]);
+  }, [targetUsername, messagesByUser, setMessagesForUser]);
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
