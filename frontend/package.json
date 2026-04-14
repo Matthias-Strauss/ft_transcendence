@@ -9,6 +9,7 @@
     "lint": "eslint \"**/*.{ts,tsx,js,json,md}\""
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.2.2",
     "@types/react": "^19.2.9",
     "@types/react-dom": "^19.2.0",
     "@typescript-eslint/eslint-plugin": "^8.53.1",
