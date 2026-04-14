@@ -11,7 +11,6 @@ import {
 } from '@babylonjs/core';
 import { type CSSProperties, useEffect, useRef, useState } from 'react';
 
-import type { PongInput, PongSnapshot } from '../game/localPongSim';
 import {
   ARENA_DEPTH,
   ARENA_WIDTH,
@@ -21,9 +20,11 @@ import {
   PADDLE_P2_Z,
   PADDLE_WIDTH,
   WIN_SCORE,
+  type PongInput,
+  type PongSnapshot,
 } from '../game/pongConstants';
 import { socket } from '../socket';
-import { usePongDebugHud } from './PongDebugHud'; //DEBUG
+import { usePongDebugHud } from './PongDebugHud';
 
 type Mode = 'idle' | 'waiting' | 'playing' | 'ended';
 type Slot = 'p1' | 'p2';
@@ -51,7 +52,7 @@ export default function PongGame() {
   const snapshotBufferRef = useRef<TimedSnapshot[]>([]);
   const cameraRef = useRef<FreeCamera | null>(null);
   const engineRef = useRef<Engine | null>(null);
-  const debugHud = usePongDebugHud(engineRef); //DEBUG
+  const debugHud = usePongDebugHud(engineRef);
   const [mode, setMode] = useState<Mode>('idle');
   const [connected, setConnected] = useState(socket.connected);
   const [opponent, setOpponent] = useState<string>('');
@@ -87,7 +88,7 @@ export default function PongGame() {
     const onMatched = (payload: PongMatched) => {
       ignoreNextEndedRef.current = false;
       snapshotBufferRef.current = [];
-      debugHud.reset(); //DEBUG
+      debugHud.reset();
       lastSeenScoreP1 = 0;
       lastSeenScoreP2 = 0;
       setOpponent(payload.opponent);
@@ -101,7 +102,7 @@ export default function PongGame() {
       const buf = snapshotBufferRef.current;
       buf.push({ t: now, snap });
       if (buf.length > SNAPSHOT_BUFFER_MAX) buf.shift();
-      debugHud.notifySnapshot(now); //DEBUG
+      debugHud.notifySnapshot(now);
       if (snap.score.p1 !== lastSeenScoreP1 || snap.score.p2 !== lastSeenScoreP2) {
         lastSeenScoreP1 = snap.score.p1;
         lastSeenScoreP2 = snap.score.p2;
@@ -127,7 +128,7 @@ export default function PongGame() {
     const onResumed = (payload: PongResumed) => {
       ignoreNextEndedRef.current = false;
       snapshotBufferRef.current = [];
-      debugHud.reset(); //DEBUG
+      debugHud.reset();
       lastSeenScoreP1 = payload.score.p1;
       lastSeenScoreP2 = payload.score.p2;
       setOpponent(payload.opponent);
@@ -324,10 +325,9 @@ export default function PongGame() {
     const onKeyDown = (e: KeyboardEvent) => {
       const k = e.key.toLowerCase();
       if (k === 'h') {
-        //DEBUG
-        debugHud.toggle(); //DEBUG
-        return; //DEBUG
-      } //DEBUG
+        debugHud.toggle();
+        return;
+      }
       if (k === 'arrowleft') keys.left = true;
       else if (k === 'arrowright') keys.right = true;
       else return;
@@ -433,7 +433,7 @@ export default function PongGame() {
   return (
     <div style={{ width: '100%', height: 'calc(100vh - 2rem)', position: 'relative' }}>
       <canvas ref={canvasRef} style={{ width: '100%', height: '100%' }} />
-      {debugHud.element /*DEBUG*/}
+      {debugHud.element}
       {mode === 'playing' && (
         <div
           style={{

@@ -22,3 +22,13 @@ export const BALL_START_VZ_ABS = 0.3;
 export const BALL_MAX_SPEED = 1.2;
 export const BALL_BOUNCE_MULT = 1.1;
 export const BALL_PADDLE_OFFSET_MULT = 0.1;
+
+export type PongInput = { left: boolean; right: boolean };
+
+export type PongSnapshot = {
+  ball: { x: number; z: number };
+  p1: { x: number };
+  p2: { x: number };
+  score: { p1: number; p2: number };
+  t: number;
+};
