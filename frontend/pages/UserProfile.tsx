@@ -401,7 +401,18 @@ export default function UserProfile() {
         {posts.length === 0 ? (
           <div className="p-8 text-[#8b98a5]">No posts yet</div>
         ) : (
-          posts.map((post) => <PostCard post={post} key={post.id} />)
+          posts.map((post) => (
+            <PostCard
+              post={post}
+              key={post.id}
+              onDeleted={(id) => {
+                setPosts((prev) => prev.filter((p) => p.id !== id));
+                setUser((prev) =>
+                  prev ? { ...(prev as any), postsCount: Math.max(0, (prev.postsCount ?? 0) - 1) } : prev,
+                );
+              }}
+            />
+          ))
         )}
       </div>
     </div>
