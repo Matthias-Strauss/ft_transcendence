@@ -7,16 +7,6 @@ import { uploadFile } from '../utils/send_file';
 import useChatStore, { type ChatMessage } from '../utils/chatState';
 import useUserStore from '../utils/userStore';
 
-interface Message {
-  id: string;
-  user: string;
-  message: string;
-  time: string;
-  isOwn?: boolean;
-}
-
-const MOCK_MESSAGES: Message[] = [];
-
 interface ChatPanelProps {
   onClose?: () => void;
 }
@@ -44,18 +34,12 @@ function mapApiMessageToChatMessage(m: any): ChatMessage {
   };
 }
 
-function normalizeIncomingPayload(payload: any, meUsername: string | null): NormalizedIncomingMessage | null {
+function normalizeIncomingPayload(
+  payload: any,
+  meUsername: string | null,
+): NormalizedIncomingMessage | null {
   if (!payload || typeof payload !== 'object') return null;
 
-  // New format:
-  // {
-  //   id,
-  //   text,
-  //   createdAt,
-  //   isOwn,
-  //   sender: { username, displayname },
-  //   recipient: { username }
-  // }
   if ('text' in payload && 'sender' in payload) {
     const senderUsername = payload.sender?.username ?? null;
     const recipientUsername = payload.recipient?.username ?? null;
@@ -84,13 +68,6 @@ function normalizeIncomingPayload(payload: any, meUsername: string | null): Norm
     };
   }
 
-  // Fallback old format:
-  // {
-  //   text,
-  //   username,
-  //   to,
-  //   from
-  // }
   const senderUsername = payload.username ?? null;
   const recipientUsername = payload.to ?? null;
   const isOwn = payload.from === socket.id;
@@ -129,22 +106,23 @@ function shouldShowMessageInActiveChat(
 }
 
 export function ChatPanel({ onClose }: ChatPanelProps) {
-  const [messages, setMessages] = useState<Message[]>(MOCK_MESSAGES);
   const [inputValue, setInputValue] = useState('');
   const [connected, setConnected] = useState(socket.connected);
-  const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [progress, setProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
 
-  const targetUsername = useChatStore((state) => state.targetUsername);
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const targetUsernameRef = useRef<string | null>(null);
+
+  const targetUsername = useChatStore((state) => state.targetUsername);
+  const messagesByUser = useChatStore((s) => s.messagesByUser);
+  const setMessagesForUser = useChatStore((s) => s.setMessagesForUser);
+  const appendMessageForUser = useChatStore((s) => s.appendMessageForUser);
 
   const meUsername = useUserStore((s) => s.user?.username ?? null);
 
-  const setMessagesForUser = useChatStore((s) => s.setMessagesForUser);
-  const appendMessageForUser = useChatStore((s) => s.appendMessageForUser);
-  const messagesByUser = useChatStore((s) => s.messagesByUser);
+  const activeMessages = targetUsername ? (messagesByUser[targetUsername] ?? []) : [];
 
   const shortenFileName = (name: string, maxLength = 20) => {
     if (name.length <= maxLength) return name;
@@ -153,7 +131,7 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [activeMessages]);
 
   useEffect(() => {
     targetUsernameRef.current = targetUsername;
@@ -162,19 +140,6 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
   useEffect(() => {
     const onConnect = () => setConnected(true);
     const onDisconnect = () => setConnected(false);
-
-    const onWelcome = (message: string) => {
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: `${Date.now()}-welcome`,
-          user: 'System',
-          message,
-          time: formatTime(),
-          isOwn: false,
-        },
-      ]);
-    };
 
     const onChatMessage = (payload: any) => {
       try {
@@ -203,16 +168,12 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
           );
 
           if (!shouldShow) return;
-
-          setMessages((prev) => [...prev, chatMessage]);
           return;
         }
 
         if (!activeTarget && isDirect) {
           return;
         }
-
-        setMessages((prev) => [...prev, chatMessage]);
       } catch (e) {
         console.error('Error handling chat message', e);
       }
@@ -220,13 +181,11 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
 
     socket.on('connect', onConnect);
     socket.on('disconnect', onDisconnect);
-    socket.on('welcome', onWelcome);
     socket.on('chat:message', onChatMessage);
 
     return () => {
       socket.off('connect', onConnect);
       socket.off('disconnect', onDisconnect);
-      socket.off('welcome', onWelcome);
       socket.off('chat:message', onChatMessage);
     };
   }, [appendMessageForUser, meUsername]);
@@ -244,11 +203,9 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
         const data = await res.json();
         const mapped: ChatMessage[] = (data.messages || []).map(mapApiMessageToChatMessage);
 
-        setMessagesForUser(username, mapped);
+        if (!mounted) return;
 
-        if (mounted) {
-          setMessages(mapped as Message[]);
-        }
+        setMessagesForUser(username, mapped);
 
         try {
           await apiFetch(`/api/chat/conversations/${encodeURIComponent(username)}/read`, {
@@ -264,17 +221,13 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
     }
 
     if (targetUsername) {
-      const cached = messagesByUser[targetUsername];
-      if (cached) setMessages(cached as Message[]);
-      else setMessages([]);
-
       void loadConversation(targetUsername);
     }
 
     return () => {
       mounted = false;
     };
-  }, [targetUsername, messagesByUser, setMessagesForUser]);
+  }, [targetUsername, setMessagesForUser]);
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -330,7 +283,7 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
 
         <div className="chat-messages-wrap">
           <div className="chat-messages">
-            {messages.map((msg) => (
+            {activeMessages.map((msg) => (
               <div key={msg.id} className={`chat-message-row ${msg.isOwn ? 'own' : 'other'}`}>
                 <div className="chat-message-meta">
                   <span className="chat-message-user">{msg.user}</span>
