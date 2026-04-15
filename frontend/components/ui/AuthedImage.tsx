@@ -4,9 +4,10 @@ import { useEffect, useState, type ImgHTMLAttributes } from 'react';
 type AuthedImageProps = ImgHTMLAttributes<HTMLImageElement>;
 
 export function AuthedImage({ src, alt = '', ...props }: AuthedImageProps) {
-  const [resolvedSrc, setResolvedSrc] = useState<string | undefined>(() =>
-    typeof src === 'string' ? src : undefined,
-  );
+  const [resolvedSrc, setResolvedSrc] = useState<string | undefined>(() => {
+    if (typeof src === 'string' && src.startsWith('/files/')) return undefined;
+    return typeof src === 'string' ? src : undefined;
+  });
 
   useEffect(() => {
     if (!src || typeof src !== 'string' || !src.startsWith('/files/')) {

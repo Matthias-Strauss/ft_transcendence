@@ -4,8 +4,7 @@ RUN apk add --no-cache openssl
 
 COPY default.conf.template /etc/nginx/templates/default.conf.template
 
-COPY proxy-setup.sh /proxy-setup.sh
-RUN chmod +x /proxy-setup.sh
+COPY --chmod=755 proxy-setup.sh /proxy-setup.sh
 
 ENTRYPOINT [ "/proxy-setup.sh" ]
 CMD [ "nginx", "-g", "daemon off;" ]

@@ -12,11 +12,20 @@ server {
     listen 80;
     server_name _;
 
-    return 301 https://$host$https_port_suffix$request_uri;
+    location = /nginx-health {
+        access_log off;
+        add_header Content-Type text/plain;
+        return 200 'ok';
+    }
+
+    location / {
+        return 301 https://$host$https_port_suffix$request_uri;
+    }
 }
 
 server {
-    listen 443 ssl http2;
+    listen 443 ssl;
+    http2 on;
     server_name _;
 
     ssl_certificate     /etc/nginx/certs/${TLS_CERT_FILE};
@@ -30,6 +39,12 @@ server {
     add_header Referrer-Policy no-referrer-when-downgrade always;
 
     client_max_body_size 10m;
+
+    location = /nginx-health {
+        access_log off;
+        add_header Content-Type text/plain;
+        return 200 'ok';
+    }
 
     ${ADMINER_LOCATION_BLOCK}
 
@@ -130,4 +145,3 @@ server {
     #    deny  all;
     #}
 #}
-
