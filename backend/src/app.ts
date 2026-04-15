@@ -1,20 +1,22 @@
-import express from 'express';
-import cors from 'cors';
 import cookieParser from 'cookie-parser';
+import cors from 'cors';
+import express from 'express';
 
-import { CORS_ALLOWED_ORIGINS, TRUST_PROXY_HOPS } from './config.js';
-import { healthRouter } from './routes/health.js';
-import { authRouter } from './routes/auth.js';
-import { testRouter } from './routes/test.js';
-import { errorHandler, notFoundHandler } from './errors/error.js';
-import { usersRouter } from './routes/users.js';
-import { getFilesDir } from './files/storage.js';
-import { uploadsRouter } from './routes/upload.js';
-import { postsRouter } from './routes/posts.js';
-import { meRouter } from './routes/me.js';
-import { presenceRouter } from './routes/presence.js';
 import { requireAuth } from './auth/middleware.js';
+import { CORS_ALLOWED_ORIGINS, TRUST_PROXY_HOPS } from './config.js';
+import { errorHandler, notFoundHandler } from './errors/error.js';
 import { requirePostMediaAccess } from './files/postings.js';
+import { getFilesDir } from './files/storage.js';
+import { authRouter } from './routes/auth.js';
+import { chatRouter } from './routes/chat.js';
+import { healthRouter } from './routes/health.js';
+import { meRouter } from './routes/me.js';
+import { postsRouter } from './routes/posts.js';
+import { presenceRouter } from './routes/presence.js';
+import { testRouter } from './routes/test.js';
+import { uploadsRouter } from './routes/upload.js';
+import { usersRouter } from './routes/users.js';
+import { requireChatMediaAccess } from './files/chatPdfs.js';
 
 function createAPI() {
   const api = express.Router();
@@ -25,6 +27,7 @@ function createAPI() {
   api.use(usersRouter);
   api.use(presenceRouter);
   api.use(uploadsRouter);
+  api.use(chatRouter);
   api.use(postsRouter);
   api.use(meRouter);
 
@@ -62,6 +65,7 @@ export function createApp() {
     '/files',
     requireAuth,
     requirePostMediaAccess,
+    requireChatMediaAccess,
     express.static(getFilesDir(), {
       index: false,
       dotfiles: 'deny',

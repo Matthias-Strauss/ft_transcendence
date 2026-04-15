@@ -6,6 +6,7 @@ import { createMatchManager } from './pong_game/game/turnManager.js';
 import { authenticateSocket } from './ws/auth.js';
 import { bindConnectionHandler } from './ws/connection.js';
 import { createUserSocketRegistry } from './ws/registry.js';
+import { setRealtimeRuntime } from './ws/runtime.js';
 
 export function setupWebSocket(httpServer: HttpServer) {
   const io = new SocketIOServer(httpServer, {
@@ -23,6 +24,7 @@ export function setupWebSocket(httpServer: HttpServer) {
 
   io.use(authenticateSocket);
   bindConnectionHandler(io, registry, matchManager);
+  setRealtimeRuntime(io, registry);
 
   return io;
 }

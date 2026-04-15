@@ -130,9 +130,7 @@ export default function SocialApp() {
         </main>
 
         {chatPanelOpen ? (
-          <aside className="fixed right-0 top-0 hidden h-[calc(100vh-2rem)] w-[390px] xl:block">
-            <ChatPanel onClose={() => useChatStore.setState({ panelOpen: false })} />
-          </aside>
+          <ChatPanel onClose={() => useChatStore.setState({ panelOpen: false })} />
         ) : (
           <button
             type="button"
