@@ -72,10 +72,9 @@ const CreatePostForm = forwardRef<HTMLTextAreaElement, CreatePostFormProps>(
         setPreviewURL(null);
         setGameTag('');
         onPostCreated?.();
+        showToast('Post created successfully!', 'success');
       } catch (error) {
         showToast('Error creating post. Please try again.', 'error');
-      } finally {
-        showToast('Post created successfully!', 'success');
       }
     };
 
