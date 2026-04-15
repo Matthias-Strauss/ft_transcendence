@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { apiFetch } from '../utils/api';
 import useChatStore from '../utils/chatState';
 import { AuthedImage } from './ui/AuthedImage';
+import { socket } from '../socket';
+import useUserStore from '../utils/userStore';
 
 type ConversationItem = {
   target: {
@@ -26,6 +28,7 @@ export function ConversationsList() {
   const [loading, setLoading] = useState(true);
   const setTargetUsername = useChatStore((s) => s.setTargetUsername);
   const setPanelOpen = useChatStore((s) => s.setPanelOpen);
+  const meUsername = useUserStore((s) => s.user?.username ?? null);
 
   useEffect(() => {
     let mounted = true;
@@ -53,6 +56,76 @@ export function ConversationsList() {
       mounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    const onChatMessage = (payload: any) => {
+      try {
+        if (!payload) return;
+
+        const senderUsername = payload?.sender?.username ?? null;
+        const recipientUsername = payload?.recipient?.username ?? null;
+
+        if (!senderUsername || !recipientUsername || !meUsername) return;
+
+        let otherUsername: string | null = null;
+        let fromOtherToMe = false;
+
+        if (senderUsername === meUsername) {
+          otherUsername = recipientUsername;
+          fromOtherToMe = false;
+        } else if (recipientUsername === meUsername) {
+          otherUsername = senderUsername;
+          fromOtherToMe = true;
+        } else {
+          return;
+        }
+
+        const newLast = {
+          id: payload.id,
+          text: payload.text,
+          createdAt: payload.createdAt,
+        };
+
+        setItems((prev) => {
+          const idx = prev.findIndex((it) => it.target.username === otherUsername);
+
+          if (idx !== -1) {
+            const updated = [...prev];
+            const existing = updated[idx];
+            const unread = fromOtherToMe ? (existing.unreadCount ?? 0) + 1 : existing.unreadCount;
+
+            updated[idx] = { ...existing, lastMessage: newLast, unreadCount: unread };
+
+            const moved = [updated[idx], ...updated.filter((_, i) => i !== idx)];
+            return moved;
+          }
+
+          const partner = senderUsername === meUsername ? payload.recipient : payload.sender;
+
+          const newItem: ConversationItem = {
+            target: {
+              id: partner?.id,
+              username: partner?.username,
+              displayname: partner?.displayname,
+              avatarUrl: partner?.avatarUrl,
+            },
+            lastMessage: newLast,
+            unreadCount: fromOtherToMe ? 1 : 0,
+            canMessage: true,
+          };
+
+          return [newItem, ...prev];
+        });
+      } catch (e) {
+        console.error('Failed to handle incoming chat message in conversations list', e);
+      }
+    };
+
+    socket.on('chat:message', onChatMessage);
+    return () => {
+      socket.off('chat:message', onChatMessage);
+    };
+  }, [meUsername]);
 
   return (
     <div className="p-8">
