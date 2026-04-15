@@ -1,5 +1,7 @@
-
 import showToast from './toast';
+import { disconnectSocket, connectSocketWithToken } from '../socket';
+import useChatStore from './chatState';
+import useUserStore from './userStore';
 
 
 type LogoutHandler = () => void;
@@ -27,9 +29,20 @@ function handleTokenUpdate(token: string | null) {
   }
 }
 
-function handleLogout() {
+export function clearClientSession() {
   localStorage.removeItem('accessToken');
+  disconnectSocket();
+  useUserStore.getState().clear();
+  useChatStore.setState({
+    targetUsername: null,
+    panelOpen: false,
+    messagesByUser: {},
+  });
   handleTokenUpdate(null);
+}
+
+function handleLogout() {
+  clearClientSession();
 
   if (logoutHandler) {
     try {
@@ -61,6 +74,7 @@ async function doRefresh(): Promise<string | null> {
 
       if (data?.accessToken) {
         localStorage.setItem('accessToken', data.accessToken);
+        connectSocketWithToken(data.accessToken);
         handleTokenUpdate(data.accessToken);
         return data.accessToken;
       }

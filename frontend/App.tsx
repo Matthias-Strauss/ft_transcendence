@@ -8,13 +8,13 @@ import UserProfile from './pages/UserProfile';
 import PongGame from './pages/PongGame';
 import { connectSocketFromStorage, disconnectSocket, socket } from './socket';
 import { Toast } from './components/ui/Toast';
+import { clearClientSession } from './utils/api';
 
 export default function App() {
   useEffect(() => {
     const onConnectError = (err: Error) => {
       if (err.message === 'Unauthorized' || err.message === 'No token provided') {
-        localStorage.removeItem('accessToken');
-        disconnectSocket();
+        clearClientSession();
       }
     };
 
