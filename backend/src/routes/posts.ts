@@ -105,7 +105,7 @@ postsRouter.get(
 
 const CreatePostSchema = z
   .object({
-    content: z.string().trim().min(1).max(500),
+    content: z.string().trim().max(500).optional(),
     gameTag: z.preprocess((value) => {
       if (typeof value === 'string' && value.trim().length === 0) {
         return null;
@@ -136,12 +136,21 @@ postsRouter.post(
       ? path.posix.join('posts', uploadedPostImage.filename)
       : null;
 
+    const contentValue = parsed.data.content?.trim() ?? '';
+    if (contentValue.length === 0 && !uploadedPostImage) {
+      await cleanupUploadedPostImage(req);
+      throw RequestErrors.badRequest([{
+        message: 'Either content or an image is required to create a post',
+        path: ['content'],
+      }]);
+    }
+
     let post;
     try {
       post = await prisma.post.create({
         data: {
           authorId: req.userId,
-          content: parsed.data.content,
+          content: contentValue,
           imagePath,
           gameTag: parsed.data.gameTag ?? null,
           visibility: parsed.data.visibility ?? 'PUBLIC',

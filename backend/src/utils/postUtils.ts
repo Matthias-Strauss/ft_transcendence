@@ -262,9 +262,8 @@ export async function checkPostMediaAccess(imagePath: string, viewerId: string) 
   if (!post) {
     throw FileErrors.fileNotFound();
   }
-
   if (post.authorId === viewerId || post.visibility === 'PUBLIC') {
-    return;
+    return post;
   }
 
   const relation = getFriendRelation(viewerId, post.authorId);

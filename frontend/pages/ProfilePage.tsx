@@ -22,6 +22,10 @@ export function ProfilePage() {
   const storeUser = useUserStore((s: UserStore) => s.user);
 
   useEffect(() => {
+    if (storeUser) setMe(storeUser as MeResponse);
+  }, [storeUser]);
+
+  useEffect(() => {
     if (!me?.username || !me?.avatarUrl) return;
     setPosts((prev) =>
       prev.map((p) =>
@@ -57,9 +61,6 @@ export function ProfilePage() {
       } catch (err) {
         showToast('Failed to load profile. Please try again.', 'error');
       } finally {
-        useEffect(() => {
-          if (storeUser) setMe(storeUser as MeResponse);
-        }, [storeUser]);
         setLoading(false);
       }
     }
