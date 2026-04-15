@@ -12,9 +12,9 @@ export const uploadFile = (
   options: UploadFileOptions = {},
 ): Promise<any> => {
   return new Promise((resolve, reject) => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('accessToken');
     const xhr = new XMLHttpRequest();
-    xhr.open('POST', `/chat/conversations/${username}/files/pdf`, true);
+    xhr.open('POST', `/api/chat/conversations/${encodeURIComponent(username)}/files/pdf`, true);
     if (token) {
       xhr.setRequestHeader('Authorization', `Bearer ${token}`);
     }

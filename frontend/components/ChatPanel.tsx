@@ -3,16 +3,12 @@ import { Send, FileUp } from 'lucide-react';
 import { socket } from '../socket';
 import { apiFetch } from '../utils/api';
 import '../styles/chat.css';
-import { uploadFile as uploadFileRaw } from '../utils/send_file';
-
-const uploadFile = (
-  file: File,
-  opts?: { onProgress?: (percent: number) => void; onComplete?: () => void },
-) => (uploadFileRaw as unknown as (file: File, opts?: any) => any)(file, opts);
+import { uploadFile } from '../utils/send_file';
 import useChatStore, { type ChatMessage } from '../utils/chatState';
 import useUserStore from '../utils/userStore';
 import showToast from '../utils/toast';
-
+import { AuthedImage } from './ui/AuthedImage';
+import { Download } from 'lucide-react';
 interface ChatPanelProps {
   onClose?: () => void;
 }
@@ -145,6 +141,32 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
     return `${name.slice(0, maxLength - 3)}...`;
   };
 
+  const fetchFileBlobUrl = async (fileUrl: string) => {
+    const res = await apiFetch(fileUrl);
+    if (!res.ok) {
+      throw new Error(`Failed with status ${res.status}`);
+    }
+
+    const blob = await res.blob();
+    return URL.createObjectURL(blob);
+  };
+
+
+  const downloadFile = async (fileUrl: string, fileName?: string) => {
+    try {
+      const blobUrl = await fetchFileBlobUrl(fileUrl);
+      const tempLink = document.createElement('a');
+      tempLink.href = blobUrl;
+      tempLink.download = fileName || 'chat-file.pdf';
+      document.body.appendChild(tempLink);
+      tempLink.click();
+      tempLink.remove();
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 30_000);
+    } catch {
+      showToast('Unable to download file', 'error');
+    }
+  };
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [activeMessages]);
@@ -237,7 +259,6 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
             headers: { 'Content-Type': 'application/json' },
           });
         } catch {
-          // ignore read-mark errors
         }
       } catch (e) {
         showToast('Failed to load conversation', 'error');
@@ -256,32 +277,49 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile && targetUsername) {
+      if (meUsername && targetUsername === meUsername) {
+        showToast('You cannot chat with yourself', 'error');
+        e.target.value = '';
+        return;
+      }
+
       setFile(selectedFile);
-      setIsUploading(true);
-      uploadFileRaw(selectedFile, targetUsername, {
-        onProgress: (percent: number) => setProgress(percent),
-        onComplete: () => setIsUploading(false),
-      })
-        .then(() => {
-          // Send a chat message with the file info
-          setFile(null);
-          setProgress(0);
-        })
-        .catch(() => {
-          setIsUploading(false);
-          setFile(null);
-          setProgress(0);
-        });
+      setProgress(0);
+      setIsUploading(false);
     }
     e.target.value = '';
   };
 
-  const handleSend = () => {
+  const handleSend = async () => {
     const text = inputValue.trim();
-    if (!text || !connected || !targetUsername) return;
+    if (!connected || !targetUsername || isUploading) return;
+
+    if (!text && !file) return;
 
     if (meUsername && targetUsername === meUsername) {
       showToast('You cannot chat with yourself', 'error');
+      return;
+    }
+
+    if (file) {
+      try {
+        setIsUploading(true);
+        setProgress(0);
+
+        await uploadFile(file, targetUsername, {
+          onProgress: (percent: number) => setProgress(percent),
+          onComplete: () => setIsUploading(false),
+        });
+
+        setFile(null);
+        setProgress(0);
+      } catch {
+        setIsUploading(false);
+        return;
+      }
+    }
+
+    if (!text) {
       return;
     }
 
@@ -334,9 +372,20 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
                     className={`chat-bubble ${msg.isOwn ? 'chat-bubble-own' : 'chat-bubble-other'}`}
                   >
                     {fileUrl ? (
-                      <a href={fileUrl} target="_blank" rel="noopener noreferrer">
-                        📎 {fileName || 'Download file'}
-                      </a>
+                      <div className="chat-file-card">
+                        <p className="chat-file-title">📎 {fileName || 'Attachment'}</p>
+                        <div className="chat-file-actions">
+                          <AuthedImage
+                            src={fileUrl}
+                            alt={fileName || 'Attachment'}
+                            className="w-full h-full object-contain"
+                          />
+                          <Download
+                            className="chat-file-download"
+                            onClick={() => downloadFile(fileUrl, fileName)}
+                          />
+                        </div>
+                      </div>
                     ) : (
                       msg.message
                     )}
@@ -355,7 +404,7 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
               placeholder="Type a message..."
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+              onKeyDown={(e) => e.key === 'Enter' && void handleSend()}
               className="chat-input"
             />
 
@@ -363,15 +412,15 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
               <FileUp className="size-6 text-[#8b98a5]" />
               <input
                 type="file"
-                accept=".doc,.docx,.pdf,video/*"
+                accept=".pdf"
                 onChange={handleFileChange}
                 style={{ display: 'none' }}
               />
             </label>
 
             <button
-              onClick={handleSend}
-              disabled={!connected}
+              onClick={() => void handleSend()}
+              disabled={!connected || isUploading || (!inputValue.trim() && !file)}
               className="chat-send-btn"
               aria-label="Send message"
             >
@@ -388,7 +437,7 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
             </div>
           )}
 
-          {(isUploading || progress === 100) && (
+          {(file || isUploading) && (
             <progress
               id="uploadProgress"
               value={progress}

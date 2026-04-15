@@ -238,6 +238,49 @@
 	appearance: none;
 }
 
+.chat-file-card {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.chat-file-title {
+	margin: 0;
+	font-size: 13px;
+	font-weight: 600;
+	word-break: break-word;
+}
+
+.chat-file-actions {
+	display: flex;
+	gap: 8px;
+}
+
+.chat-file-btn {
+	border: 1px solid rgba(255, 255, 255, 0.35);
+	border-radius: 999px;
+	padding: 4px 10px;
+	font-size: 12px;
+	font-weight: 600;
+	cursor: pointer;
+	background: rgba(255, 255, 255, 0.18);
+	color: inherit;
+}
+
+.chat-file-btn:hover {
+	background: rgba(255, 255, 255, 0.26);
+}
+
+.chat-bubble-other .chat-file-btn {
+	border-color: #cbd5e1;
+	background: #ffffff;
+	color: #0f172a;
+}
+
+.chat-bubble-other .chat-file-btn:hover {
+	background: #f8fafc;
+}
+
 .chat-toggle-btn {
 	position: fixed;
 	right: 24px;
