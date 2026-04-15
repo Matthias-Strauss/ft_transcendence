@@ -5,6 +5,7 @@ import { APP_ORIGIN, FRONTEND_ORIGIN } from './config.js';
 import { authenticateSocket } from './ws/auth.js';
 import { bindConnectionHandler } from './ws/connection.js';
 import { createUserSocketRegistry } from './ws/registry.js';
+import { setRealtimeRuntime } from './ws/runtime.js';
 
 export function setupWebSocket(httpServer: HttpServer) {
   const io = new SocketIOServer(httpServer, {
@@ -19,6 +20,7 @@ export function setupWebSocket(httpServer: HttpServer) {
 
   io.use(authenticateSocket);
   bindConnectionHandler(io, registry);
+  setRealtimeRuntime(io, registry);
 
   return io;
 }

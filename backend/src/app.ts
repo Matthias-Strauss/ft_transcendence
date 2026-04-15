@@ -16,6 +16,7 @@ import { presenceRouter } from './routes/presence.js';
 import { testRouter } from './routes/test.js';
 import { uploadsRouter } from './routes/upload.js';
 import { usersRouter } from './routes/users.js';
+import { requireChatMediaAccess } from './files/chatPdfs.js';
 
 function createAPI() {
   const api = express.Router();
@@ -64,6 +65,7 @@ export function createApp() {
     '/files',
     requireAuth,
     requirePostMediaAccess,
+    requireChatMediaAccess,
     express.static(getFilesDir(), {
       index: false,
       dotfiles: 'deny',

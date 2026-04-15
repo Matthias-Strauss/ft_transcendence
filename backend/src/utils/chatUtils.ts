@@ -3,6 +3,7 @@ import z from 'zod';
 import { prisma } from '../db.js';
 import { UserErrors } from '../errors/catalog.js';
 import { getAvatarUrlFromPath } from '../files/avatars.js';
+import fs from 'node:fs/promises';
 
 export const chatUserSelect = {
   id: true,
@@ -122,4 +123,36 @@ export async function markConversationAsRead(viewerId: string, otherUserId: stri
     count: updateResult.count,
     readAt,
   };
+}
+
+export const UploadChatPdfSchema = z
+  .object({
+    text: z.preprocess((value) => {
+      if (typeof value === 'string' && value.trim().length === 0) {
+        return null;
+      }
+      return value;
+    }, z.union([z.string().trim().max(500), z.null()]).optional()),
+  })
+  .strict();
+
+export async function moveUploadedChatPdf(params: {
+  sourcePath: string;
+  targetPath: string;
+}) {
+  try {
+    await fs.rename(params.sourcePath, params.targetPath);
+  } catch (error) {
+    const code =
+      typeof error === 'object' && error && 'code' in error && typeof (error as { code?: unknown }).code === 'string'
+        ? (error as { code: string }).code
+        : null;
+
+    if (code !== 'EXDEV' && code !== 'EPERM') {
+      throw error;
+    }
+
+    await fs.copyFile(params.sourcePath, params.targetPath);
+    await fs.unlink(params.sourcePath).catch(() => undefined);
+  }
 }

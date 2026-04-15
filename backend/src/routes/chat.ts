@@ -1,19 +1,27 @@
+import fs from 'node:fs/promises';
 import { Router } from 'express';
 import { AuthedRequest, requireAuth } from '../auth/middleware.js';
 import { prisma } from '../db.js';
 import { asyncHandler } from '../errors/asyncHandler.js';
-import { AuthErrors, ChatErrors, RequestErrors } from '../errors/catalog.js';
+import { AuthErrors, ChatErrors, FileErrors, RequestErrors } from '../errors/catalog.js';
 import {
   ChatMessagesQuerySchema,
   directMessageInclude,
   findChatTargetByUsername,
   getUserBlockRelation,
   markConversationAsRead,
+  moveUploadedChatPdf,
   serializeChatUser,
   serializeDirectMessage,
+  UploadChatPdfSchema,
   type DirectMessageWithUsers,
 } from '../utils/chatUtils.js';
 import { UsernameSchema } from '../utils/userUtils.js';
+import { buildChatPdfMetadata, buildChatPdfStoragePath, chatPdfUploadHandler, cleanupUploadedChatPdf, ensureChatPdfStorageDir, getUploadedChatPdfFromReq } from '../files/chatPdfs.js';
+import { createDirectMessage } from '../ws/chatHelper.js';
+import { resolveInFilesDir } from '../files/storage.js';
+import { getRealtimeRuntime } from '../ws/runtime.js';
+import { emitDirectMessage } from '../ws/chat.js';
 
 export const chatRouter = Router();
 
@@ -174,6 +182,119 @@ chatRouter.get(
         .reverse()
         .map((message: DirectMessageWithUsers) => serializeDirectMessage(message, viewerId)),
     });
+  }),
+);
+
+// pdf upload for conversation
+chatRouter.post(
+  '/chat/conversations/:username/files/pdf',
+  requireAuth,
+  chatPdfUploadHandler,
+  asyncHandler(async (req: AuthedRequest, res) => {
+    if (!req.userId) {
+      throw AuthErrors.invalidToken();
+    }
+
+    const parsedUsernameSchema = UsernameSchema.safeParse(req.params);
+    if (!parsedUsernameSchema.success) {
+      await cleanupUploadedChatPdf(req);
+      throw RequestErrors.badRequest(parsedUsernameSchema.error.issues);
+    }
+
+    const parsedBody = UploadChatPdfSchema.safeParse(req.body);
+    if (!parsedBody.success) {
+      await cleanupUploadedChatPdf(req);
+      throw RequestErrors.badRequest(parsedBody.error.issues);
+    }
+
+    const uploadedPdf = getUploadedChatPdfFromReq(req);
+    if (!uploadedPdf) {
+      throw FileErrors.missingFile();
+    }
+
+    const viewerId = req.userId;
+    const targetUser = await findChatTargetByUsername(parsedUsernameSchema.data.username);
+    const relation = await getUserBlockRelation(viewerId, targetUser.id);
+
+    if (!relation.canMessage) {
+      await cleanupUploadedChatPdf(req);
+      throw relation.blockedByMe ? ChatErrors.blockedByMe() : ChatErrors.blockedByTarget();
+    }
+
+    const messageText = parsedBody.data.text ?? uploadedPdf.originalname;
+
+    let message;
+    let storedPdfPath: string | null = null;
+
+    try {
+      message = await createDirectMessage({
+        senderId: viewerId,
+        recipientId: targetUser.id,
+        text: messageText,
+        type: 'FILE',
+      });
+
+      storedPdfPath = buildChatPdfStoragePath(message.id);
+      await ensureChatPdfStorageDir();
+      await moveUploadedChatPdf({
+        sourcePath: uploadedPdf.path,
+        targetPath: resolveInFilesDir(storedPdfPath),
+      });
+
+      message = await prisma.directMessage.update({
+        where: {
+          id: message.id,
+        },
+        data: {
+          metadata: buildChatPdfMetadata({
+            originalName: uploadedPdf.originalname,
+            sizeBytes: uploadedPdf.size,
+            storagePath: storedPdfPath,
+          }),
+        },
+        include: directMessageInclude,
+      });
+    } catch (error) {
+      console.error('[chat-pdf-upload] failed', {
+        viewerId,
+        targetUsername: parsedUsernameSchema.data.username,
+        uploadedFilename: uploadedPdf.originalname,
+        uploadedMimeType: uploadedPdf.mimetype,
+        storedPdfPath,
+        messageId: message?.id ?? null,
+        error,
+      });
+
+      if (storedPdfPath) {
+        await fs.unlink(resolveInFilesDir(storedPdfPath)).catch(() => undefined);
+      } else {
+        await fs.unlink(uploadedPdf.path).catch(() => undefined);
+      }
+
+      if (message?.id) {
+        await prisma.directMessage.delete({
+          where: {
+            id: message.id,
+          },
+        }).catch(() => undefined);
+      }
+
+      throw error;
+    }
+
+    const realtimeRuntime = getRealtimeRuntime();
+    if (realtimeRuntime) {
+      try {
+        emitDirectMessage(realtimeRuntime.io, realtimeRuntime.registry, message);
+      } catch (error) {
+        console.error('[chat-pdf-upload] realtime emit failed', {
+          messageId: message.id,
+          error,
+        });
+      }
+    }
+
+    return res.status(201).json(serializeDirectMessage(message, viewerId));
   }),
 );
 

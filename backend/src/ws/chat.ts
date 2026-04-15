@@ -1,6 +1,7 @@
 import type { Prisma } from '@prisma/client';
 import type { Socket, Server as SocketIOServer } from 'socket.io';
 import {
+  DirectMessageWithUsers,
   findChatTargetByUsername,
   getUserBlockRelation,
   markConversationAsRead,
@@ -77,23 +78,11 @@ export function bindChatMessageHandler(
         metadata: normalizeMetadata(payload.metadata),
       });
 
-      const senderEvent = serializeDirectMessage(message, user.id);
-      const recipientEvent = serializeDirectMessage(message, recipient.id);
-      const recipientSockets = registry.getSocketsByUsername(recipient.username);
+      emitDirectMessage(io, registry, message);
+
       const senderSockets = registry.getSocketsByUsername(user.username);
-
-      if (recipientSockets && recipientSockets.size > 0) {
-        for (const recipientSocketId of recipientSockets) {
-          io.to(recipientSocketId).emit('chat:message', recipientEvent);
-        }
-      }
-
-      if (senderSockets && senderSockets.size > 0) {
-        for (const senderSocketId of senderSockets) {
-          io.to(senderSocketId).emit('chat:message', senderEvent);
-        }
-      } else {
-        socket.emit('chat:message', senderEvent);
+      if (!senderSockets || senderSockets.size === 0) {
+        socket.emit('chat:message', serializeDirectMessage(message, user.id));
       }
     } catch (error) {
       console.error('chat:message failed', error);
@@ -164,4 +153,23 @@ export function bindChatMessageHandler(
       console.error('chat:read failed', error);
     }
   });
+}
+
+export function emitDirectMessage(io: SocketIOServer, registry: UserSocketRegistry, message: DirectMessageWithUsers) {
+  const senderEvent = serializeDirectMessage(message, message.senderId);
+  const recipientEvent = serializeDirectMessage(message, message.recipientId);
+  const senderSockets = registry.getSocketsByUsername(message.sender.username);
+  const recipientSockets = registry.getSocketsByUsername(message.recipient.username);
+
+  if (senderSockets && senderSockets.size > 0) {
+    for (const senderSocketId of senderSockets) {
+      io.to(senderSocketId).emit('chat:message', senderEvent);
+    }
+  }
+
+  if (recipientSockets && recipientSockets.size > 0) {
+    for (const recipientSocketId of recipientSockets) {
+      io.to(recipientSocketId).emit('chat:message', recipientEvent);
+    }
+  }
 }
