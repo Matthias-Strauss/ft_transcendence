@@ -2,9 +2,16 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-COPY . ./
+ENV CI=true \
+    npm_config_audit=false \
+    npm_config_fund=false \
+    npm_config_update_notifier=false
 
-RUN npm install
+COPY package.json ./
+COPY package-lock.json ./
+RUN npm install --no-audit --no-fund
+
+COPY . ./
 
 EXPOSE 3000
 
