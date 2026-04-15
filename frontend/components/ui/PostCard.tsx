@@ -9,6 +9,7 @@ import { apiFetch } from '../../utils/api';
 import Dropdown from './Dropdown';
 import CommentSection from './CommentSection';
 import { AuthedImage } from './AuthedImage';
+import showToast from '../../utils/toast';
 
 interface PostCardProps {
   post: Post;
@@ -54,9 +55,23 @@ export function PostCard({ post, onDeleted }: PostCardProps) {
     setCommentCount((prev) => prev + 1);
   };
 
-  const handleDropdownActionSuccess = (action: string) => {
+  const handleDropdownActionSuccess = (
+    action: string,
+    data?: {
+      shareCount?: number;
+      incremented?: boolean;
+    },
+  ) => {
     if (action === 'Share') {
-      setShared((prev) => prev + 1);
+      if (typeof data?.shareCount === 'number') {
+        setShared(data.shareCount);
+      }
+
+      if (data?.incremented) {
+        showToast('Post shared successfully.', 'success');
+      } else {
+        showToast('You already shared this post.', 'info');
+      }
     } else if (action === 'Delete') {
       onDeleted?.(post.id);
     }
@@ -68,11 +83,12 @@ export function PostCard({ post, onDeleted }: PostCardProps) {
       const res = await apiFetch(`/api/posts/${post.id}`, { method: 'DELETE' });
       if (res.ok) {
         onDeleted?.(post.id);
+        showToast('Post deleted successfully.', 'success');
       } else {
-        console.error('Failed to delete post', res.status);
+        showToast('Failed to delete post', 'error');
       }
-    } catch (e) {
-      console.error('Failed to delete post', e);
+    } catch {
+      showToast('Failed to delete post', 'error');
     } finally {
       setDeleteLoading(false);
       setPendingDelete(false);
@@ -218,7 +234,10 @@ export function PostCard({ post, onDeleted }: PostCardProps) {
               </span>
             </button>
 
-            <button className="flex items-center gap-2 group transition-colors">
+            <button
+              className="flex items-center gap-2 group transition-colors"
+              onClick={() => setIsOpen(true)}
+            >
               <div className="p-2 rounded-full transition-colors">
                 <Share2 className="size-[18px] text-[#8b98a5]" />
               </div>

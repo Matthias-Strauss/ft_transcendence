@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { apiFetch } from '../../utils/api';
 import { PostCard } from './PostCard';
 import type { Post } from '../../types/posts';
+import showToast from '../../utils/toast';
 
 interface ApiResponse {
   items: Post[];
@@ -45,7 +46,7 @@ export function PostsFeed({ refreshKey = 0, pageSize = 10, scope }: PostsFeedPro
       setHasMore(Boolean(data.meta?.hasMore));
       setNextCursor(data.meta?.nextCursor ?? null);
     } catch (err) {
-      console.error(err);
+      showToast('Error loading posts. Please try again.', 'error');
     } finally {
       if (append) setLoadingMore(false);
       else setLoading(false);

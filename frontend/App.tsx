@@ -7,6 +7,7 @@ import RegistrationPage from './pages/RegistrationPage';
 import UserProfile from './pages/UserProfile';
 import PongGame from './pages/PongGame';
 import { connectSocketFromStorage, disconnectSocket, socket } from './socket';
+import { Toast } from './components/ui/Toast';
 
 export default function App() {
   useEffect(() => {
@@ -27,20 +28,23 @@ export default function App() {
   }, []);
 
   return (
-    <Routes>
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/register" element={<RegistrationPage />} />
-      <Route
-        path="/"
-        element={
-          <ProtectedRoute>
-            <SocialApp />
-          </ProtectedRoute>
-        }
-      >
-        <Route path="game" element={<PongGame />} />
-        <Route path="users/:username" element={<UserProfile />} />
-      </Route>
-    </Routes>
+    <>
+      <Toast />
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegistrationPage />} />
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute>
+              <SocialApp />
+            </ProtectedRoute>
+          }
+        >
+          <Route path="game" element={<PongGame />} />
+          <Route path="users/:username" element={<UserProfile />} />
+        </Route>
+      </Routes>
+    </>
   );
 }
