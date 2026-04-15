@@ -18,6 +18,7 @@ import '../styles/UserProfile.css';
 import { AuthedImage } from '../components/ui/AuthedImage';
 import { useUserStore } from '../utils/userStore';
 import type { UserStore } from '../utils/userStore';
+import showToast from '../utils/toast';
 
 interface UserResponse {
   username?: string;

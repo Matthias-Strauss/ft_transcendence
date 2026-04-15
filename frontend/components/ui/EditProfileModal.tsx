@@ -6,6 +6,7 @@ import { validatePassword } from '../../utils/password';
 import { useUserStore } from '../../utils/userStore';
 import { Eye, EyeOff } from 'lucide-react';
 import type { UserStore, User } from '../../utils/userStore';
+import showToast from '../../utils/toast';
 
 interface Props {
   user?: User | null;
@@ -48,7 +49,7 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
   const showNotification = (
     text: string,
     type: 'error' | 'success' | 'info' = 'error',
-    duration = 5000,
+    duration = 1000,
   ) => {
     setNotification({ type, text, duration });
     if (notifTimeoutRef.current) window.clearTimeout(notifTimeoutRef.current);
@@ -124,6 +125,7 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
         updateUser({ avatarUrl: newUrl });
         onUpdated?.({ avatarUrl: newUrl });
         setSelectedFile(null);
+        showToast('Profile picture updated successfully!', 'success');
       } else {
         showNotification('Failed to upload avatar. Please try again.');
       }
@@ -255,7 +257,7 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
         return;
       }
 
-      showNotification('Password changed successfully. You will be logged out.', 'success');
+      showToast('Password changed successfully. You will be logged out.', 'success');
       await logout();
     } catch (e) {
       console.error('Failed to change password', e);
