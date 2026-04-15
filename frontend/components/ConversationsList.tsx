@@ -67,6 +67,7 @@ export function ConversationsList() {
         const recipientUsername = payload?.recipient?.username ?? null;
 
         if (!senderUsername || !recipientUsername || !meUsername) return;
+        if (senderUsername === recipientUsername) return;
 
         let otherUsername: string | null = null;
         let fromOtherToMe = false;
@@ -93,6 +94,9 @@ export function ConversationsList() {
           if (idx !== -1) {
             const updated = [...prev];
             const existing = updated[idx];
+            if (existing.lastMessage?.id === newLast.id) {
+              return prev;
+            }
             const unread = fromOtherToMe ? (existing.unreadCount ?? 0) + 1 : existing.unreadCount;
 
             updated[idx] = { ...existing, lastMessage: newLast, unreadCount: unread };

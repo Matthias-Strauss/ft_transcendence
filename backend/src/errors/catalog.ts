@@ -134,6 +134,11 @@ export const ERROR_CATALOG = {
     message: 'You cannot block yourself',
     errCode: 'CHAT_BLOCK_TO_SELF_FORBIDDEN',
   },
+  CHAT_MESSAGE_TO_SELF_FORBIDDEN: {
+    statusCode: 400,
+    message: 'You cannot message yourself',
+    errCode: 'CHAT_MESSAGE_TO_SELF_FORBIDDEN',
+  },
   CHAT_BLOCKED_BY_ME: {
     statusCode: 403,
     message: 'You blocked this user',
@@ -209,6 +214,7 @@ export const FriendErrors = {
 
 export const ChatErrors = {
   blockToSelfForbidden: () => appError('CHAT_BLOCK_TO_SELF_FORBIDDEN'),
+  messageToSelfForbidden: () => appError('CHAT_MESSAGE_TO_SELF_FORBIDDEN'),
   blockedByMe: () => appError('CHAT_BLOCKED_BY_ME'),
   blockedByTarget: () => appError('CHAT_BLOCKED_BY_TARGET'),
 };

@@ -48,10 +48,16 @@ function normalizeIncomingPayload(
     const isDirect = Boolean(senderUsername && recipientUsername);
 
     let otherUsername: string | null = null;
-    if (meUsername) {
+    if (senderUsername && recipientUsername) {
+      otherUsername = isOwn ? recipientUsername : senderUsername;
+    } else if (meUsername) {
       otherUsername = senderUsername === meUsername ? recipientUsername : senderUsername;
     } else {
       otherUsername = senderUsername ?? recipientUsername;
+    }
+
+    if (senderUsername && recipientUsername && senderUsername === recipientUsername) {
+      return null;
     }
 
     return {
@@ -120,6 +126,7 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
   const messagesByUser = useChatStore((s) => s.messagesByUser);
   const setMessagesForUser = useChatStore((s) => s.setMessagesForUser);
   const appendMessageForUser = useChatStore((s) => s.appendMessageForUser);
+  const clearTargetUsername = useChatStore((s) => s.clearTargetUsername);
 
   const meUsername = useUserStore((s) => s.user?.username ?? null);
 
@@ -137,6 +144,19 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
   useEffect(() => {
     targetUsernameRef.current = targetUsername;
   }, [targetUsername]);
+
+  useEffect(() => {
+    if (!targetUsername || !meUsername) {
+      return;
+    }
+
+    if (targetUsername !== meUsername) {
+      return;
+    }
+
+    clearTargetUsername();
+    showToast('You cannot chat with yourself', 'error');
+  }, [clearTargetUsername, meUsername, targetUsername]);
 
   useEffect(() => {
     const onConnect = () => setConnected(true);
@@ -221,14 +241,14 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
       }
     }
 
-    if (targetUsername) {
+    if (targetUsername && targetUsername !== meUsername) {
       void loadConversation(targetUsername);
     }
 
     return () => {
       mounted = false;
     };
-  }, [targetUsername, setMessagesForUser]);
+  }, [meUsername, targetUsername, setMessagesForUser]);
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -247,11 +267,16 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
 
   const handleSend = () => {
     const text = inputValue.trim();
-    if (!text || !connected) return;
+    if (!text || !connected || !targetUsername) return;
+
+    if (meUsername && targetUsername === meUsername) {
+      showToast('You cannot chat with yourself', 'error');
+      return;
+    }
 
     socket.emit('chat:message', {
       text,
-      to: targetUsername ?? undefined,
+      to: targetUsername,
     });
 
     setInputValue('');

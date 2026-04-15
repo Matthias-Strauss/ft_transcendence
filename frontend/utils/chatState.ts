@@ -8,6 +8,22 @@ export type ChatMessage = {
   isOwn?: boolean;
 };
 
+function dedupeMessages(messages: ChatMessage[]) {
+  const seen = new Set<string>();
+  const next: ChatMessage[] = [];
+
+  for (const message of messages) {
+    if (seen.has(message.id)) {
+      continue;
+    }
+
+    seen.add(message.id);
+    next.push(message);
+  }
+
+  return next;
+}
+
 interface ChatState {
   targetUsername: string | null;
   panelOpen: boolean;
@@ -28,14 +44,24 @@ const useChatStore = create<ChatState>()((set) => ({
   clearTargetUsername: () => set({ targetUsername: null }),
   setPanelOpen: (isOpen) => set({ panelOpen: isOpen }),
   setMessagesForUser: (username, msgs) =>
-    set((state) => ({ messagesByUser: { ...state.messagesByUser, [username]: msgs } })),
-  appendMessageForUser: (username, msg) =>
     set((state) => ({
-      messagesByUser: {
-        ...state.messagesByUser,
-        [username]: [...(state.messagesByUser[username] || []), msg],
-      },
+      messagesByUser: { ...state.messagesByUser, [username]: dedupeMessages(msgs) },
     })),
+  appendMessageForUser: (username, msg) =>
+    set((state) => {
+      const currentMessages = state.messagesByUser[username] || [];
+
+      if (currentMessages.some((existing) => existing.id === msg.id)) {
+        return state;
+      }
+
+      return {
+        messagesByUser: {
+          ...state.messagesByUser,
+          [username]: [...currentMessages, msg],
+        },
+      };
+    }),
   clearMessagesForUser: (username) =>
     set((state) => {
       const next = { ...state.messagesByUser };

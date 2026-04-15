@@ -47,6 +47,10 @@ chatRouter.get(
       prisma.directMessage.findMany({
         where: {
           OR: [{ senderId: viewerId }, { recipientId: viewerId }],
+          NOT: {
+            senderId: viewerId,
+            recipientId: viewerId,
+          },
         },
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         take: 250,
@@ -162,6 +166,11 @@ chatRouter.get(
 
     const viewerId = req.userId;
     const targetUser = await findChatTargetByUsername(parsedUsernameSchema.data.username);
+
+    if (viewerId === targetUser.id) {
+      throw ChatErrors.messageToSelfForbidden();
+    }
+
     const relation = await getUserBlockRelation(viewerId, targetUser.id);
 
     const messages = await prisma.directMessage.findMany({
@@ -221,6 +230,12 @@ chatRouter.post(
 
     const viewerId = req.userId;
     const targetUser = await findChatTargetByUsername(parsedUsernameSchema.data.username);
+
+    if (viewerId === targetUser.id) {
+      await cleanupUploadedChatPdf(req);
+      throw ChatErrors.messageToSelfForbidden();
+    }
+
     const relation = await getUserBlockRelation(viewerId, targetUser.id);
 
     if (!relation.canMessage) {
@@ -323,6 +338,11 @@ chatRouter.post(
 
     const viewerId = req.userId;
     const targetUser = await findChatTargetByUsername(parsedUsernameSchema.data.username);
+
+    if (viewerId === targetUser.id) {
+      throw ChatErrors.messageToSelfForbidden();
+    }
+
     const result = await markConversationAsRead(viewerId, targetUser.id);
 
     return res.json({
