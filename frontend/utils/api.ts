@@ -3,7 +3,6 @@ import { disconnectSocket, connectSocketWithToken } from '../socket';
 import useChatStore from './chatState';
 import useUserStore from './userStore';
 
-
 type LogoutHandler = () => void;
 
 let logoutHandler: LogoutHandler | null = null;

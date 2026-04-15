@@ -122,6 +122,7 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
   const [file, setFile] = useState<File | null>(null);
   const [progress, setProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadedFileMeta, setUploadedFileMeta] = useState<any | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const targetUsernameRef = useRef<string | null>(null);
@@ -150,7 +151,6 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
     const blob = await res.blob();
     return URL.createObjectURL(blob);
   };
-
 
   const downloadFile = async (fileUrl: string, fileName?: string) => {
     try {
@@ -258,8 +258,7 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
           });
-        } catch {
-        }
+        } catch {}
       } catch (e) {
         showToast('Failed to load conversation', 'error');
       }
@@ -274,61 +273,69 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
     };
   }, [meUsername, targetUsername, setMessagesForUser]);
 
-  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
-    if (selectedFile && targetUsername) {
-      if (meUsername && targetUsername === meUsername) {
-        showToast('You cannot chat with yourself', 'error');
-        e.target.value = '';
-        return;
-      }
+    if (!selectedFile) return;
 
-      setFile(selectedFile);
-      setProgress(0);
+    if (meUsername && targetUsername === meUsername) {
+      showToast('You cannot chat with yourself', 'error');
+      e.target.value = '';
+      return;
+    }
+
+    setFile(selectedFile);
+    setProgress(0);
+    setIsUploading(true);
+    setUploadedFileMeta(null);
+
+    try {
+      const meta = await uploadFile(selectedFile, targetUsername!, {
+        onProgress: (percent: number) => setProgress(percent),
+        onComplete: () => setIsUploading(false),
+      });
+      setUploadedFileMeta(meta);
       setIsUploading(false);
+      setProgress(100);
+    } catch (err) {
+      setIsUploading(false);
+      setProgress(0);
+      setUploadedFileMeta(null);
+      setFile(null);
     }
     e.target.value = '';
   };
 
   const handleSend = async () => {
     const text = inputValue.trim();
-    if (!connected || !targetUsername || isUploading) return;
 
-    if (!text && !file) return;
+    if (!connected || !targetUsername || isUploading) return;
+    if (!text && !uploadedFileMeta) return;
 
     if (meUsername && targetUsername === meUsername) {
       showToast('You cannot chat with yourself', 'error');
       return;
     }
 
-    if (file) {
-      try {
-        setIsUploading(true);
-        setProgress(0);
+    try {
+      socket.emit('chat:message', {
+        text,
+        to: targetUsername,
+        metadata: uploadedFileMeta
+          ? {
+              fileUrl: uploadedFileMeta.fileUrl || uploadedFileMeta.url || uploadedFileMeta.path,
+              originalName: file?.name || uploadedFileMeta.originalName,
+              ...uploadedFileMeta,
+            }
+          : undefined,
+      });
 
-        await uploadFile(file, targetUsername, {
-          onProgress: (percent: number) => setProgress(percent),
-          onComplete: () => setIsUploading(false),
-        });
-
-        setFile(null);
-        setProgress(0);
-      } catch {
-        setIsUploading(false);
-        return;
-      }
+      setInputValue('');
+      setFile(null);
+      setUploadedFileMeta(null);
+      setProgress(0);
+    } catch {
+      setIsUploading(false);
     }
-
-    if (!text) {
-      return;
-    }
-
-    socket.emit('chat:message', {
-      text,
-      to: targetUsername,
-    });
-
-    setInputValue('');
   };
 
   return (
@@ -428,7 +435,7 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
             </button>
           </div>
 
-          {file && (
+          {file && progress < 100 && (
             <div className="chat-upload-meta">
               <span className="chat-upload-name" title={file.name}>
                 {shortenFileName(file.name)}
@@ -437,7 +444,7 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
             </div>
           )}
 
-          {(file || isUploading) && (
+          {isUploading && progress < 100 && (
             <progress
               id="uploadProgress"
               value={progress}
