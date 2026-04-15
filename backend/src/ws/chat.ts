@@ -57,6 +57,12 @@ export function bindChatMessageHandler(
       }
 
       const recipient = await findChatTargetByUsername(targetKey);
+
+      if (recipient.id === user.id) {
+        emitChatError(socket, 'You cannot message yourself', 'CHAT_MESSAGE_TO_SELF_FORBIDDEN');
+        return;
+      }
+
       const relation = await getUserBlockRelation(user.id, recipient.id);
 
       if (!relation.canMessage) {
@@ -100,6 +106,9 @@ export function bindChatMessageHandler(
       }
 
       const recipient = await findChatTargetByUsername(targetKey);
+      if (recipient.id === user.id) {
+        return;
+      }
       const relation = await getUserBlockRelation(user.id, recipient.id);
 
       if (!relation.canMessage) {
@@ -164,6 +173,16 @@ export function emitDirectMessage(
   const recipientEvent = serializeDirectMessage(message, message.recipientId);
   const senderSockets = registry.getSocketsByUsername(message.sender.username);
   const recipientSockets = registry.getSocketsByUsername(message.recipient.username);
+
+  if (message.senderId === message.recipientId) {
+    if (senderSockets && senderSockets.size > 0) {
+      for (const senderSocketId of senderSockets) {
+        io.to(senderSocketId).emit('chat:message', senderEvent);
+      }
+    }
+
+    return;
+  }
 
   if (senderSockets && senderSockets.size > 0) {
     for (const senderSocketId of senderSockets) {

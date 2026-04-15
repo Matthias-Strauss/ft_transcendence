@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { apiFetch } from '../utils/api';
 import { validatePassword } from '../utils/password';
 import '../styles/auth.css';
+import showToast from '../utils/toast';
 
 const Registration: React.FC = () => {
   const [username, setUsername] = useState('');
@@ -48,7 +49,7 @@ const Registration: React.FC = () => {
       const payload = await res.json().catch(() => null);
       setError(payload?.message || 'Registration failed');
     } catch (err) {
-      console.error('Registration failed', err);
+      showToast('Registration failed', 'error');
       setError('Network error — try again');
     } finally {
       setSubmitting(false);

@@ -1,3 +1,9 @@
+import showToast from './toast';
+import { disconnectSocket, connectSocketWithToken } from '../socket';
+import useChatStore from './chatState';
+import useUserStore from './userStore';
+
+
 type LogoutHandler = () => void;
 
 let logoutHandler: LogoutHandler | null = null;
@@ -18,20 +24,31 @@ function handleTokenUpdate(token: string | null) {
     try {
       accessTokenListener(token);
     } catch (e) {
-      console.error('[apiFetch] accessTokenListener error', e);
+      showToast('[apiFetch] accessTokenListener error', 'error');
     }
   }
 }
 
-function handleLogout() {
+export function clearClientSession() {
   localStorage.removeItem('accessToken');
+  disconnectSocket();
+  useUserStore.getState().clear();
+  useChatStore.setState({
+    targetUsername: null,
+    panelOpen: false,
+    messagesByUser: {},
+  });
   handleTokenUpdate(null);
+}
+
+function handleLogout() {
+  clearClientSession();
 
   if (logoutHandler) {
     try {
       logoutHandler();
     } catch (e) {
-      console.error('[apiFetch] logoutHandler error', e);
+      showToast('[apiFetch] logoutHandler error', 'error');
     }
   } else {
     window.location.replace('/login');
@@ -57,13 +74,14 @@ async function doRefresh(): Promise<string | null> {
 
       if (data?.accessToken) {
         localStorage.setItem('accessToken', data.accessToken);
+        connectSocketWithToken(data.accessToken);
         handleTokenUpdate(data.accessToken);
         return data.accessToken;
       }
 
       return null;
     } catch (e) {
-      console.error('[apiFetch] Error while refreshing token', e);
+      showToast('[apiFetch] Error while refreshing token', 'error');
       return null;
     }
   })();
@@ -88,7 +106,7 @@ export async function apiFetch(input: RequestInfo | URL, init?: RequestInit): Pr
   try {
     response = await fetch(input, { ...init, headers });
   } catch (e) {
-    console.error('[apiFetch] Network error', e);
+    showToast('[apiFetch] Network error', 'error');
     throw e;
   }
 
@@ -111,7 +129,7 @@ export async function apiFetch(input: RequestInfo | URL, init?: RequestInit): Pr
   try {
     retryResponse = await fetch(input, { ...init, headers: retryHeaders });
   } catch (e) {
-    console.error('[apiFetch] Network error on retry', e);
+    showToast('[apiFetch] Network error on retry', 'error');
     throw e;
   }
 
@@ -129,9 +147,9 @@ export async function logout(): Promise<void> {
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
     });
-    console.log('[api] logout response', res.status);
+    showToast(`[api] logout response ${res.status}`, 'info');
   } catch (e) {
-    console.error('[api] logout request failed', e);
+    showToast('[api] logout request failed', 'error');
   }
   handleLogout();
 }
@@ -180,7 +198,7 @@ export async function fetchAuthedImageURL(src: string): Promise<string> {
   const apiRes = await apiFetch(src);
 
   if (!apiRes.ok) {
-    console.error(`[fetchImage] Failed to fetch image: ${apiRes.status} ${apiRes.statusText}`);
+    showToast(`[fetchImage] Failed to fetch image: ${apiRes.status} ${apiRes.statusText}`, 'error');
     throw new Error(`Failed to fetch image: ${apiRes.status} ${apiRes.statusText}`);
   }
 

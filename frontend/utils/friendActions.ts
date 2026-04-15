@@ -1,3 +1,5 @@
+import showToast from './toast';
+
 export async function runFriendAction(
   username: string,
   apiCall: (username: string) => Promise<Response>,
@@ -16,10 +18,10 @@ export async function runFriendAction(
       }
     } else {
       const text = await res.text().catch(() => '<no body>');
-      console.error('[runFriendAction] request failed', res.status, text);
+      showToast(`[runFriendAction] request failed ${res.status} ${text}`, 'error');
     }
   } catch (e) {
-    console.error('[runFriendAction] error', e);
+    showToast('[runFriendAction] error', 'error');
   } finally {
     setBusy(false);
   }

@@ -3,6 +3,7 @@ import { useNavigate, Outlet, useLocation } from 'react-router-dom';
 import { MessageCircle } from 'lucide-react';
 import './styles/chat.css';
 import { ChatPanel } from './components/ChatPanel';
+import ConversationsList from './components/ConversationsList';
 import { LeftSidebar } from './components/LeftSidebar';
 import { HomeFeed } from './pages/HomeFeed';
 import { FriendsPage } from './pages/FriendsPage';
@@ -10,6 +11,8 @@ import { ProfilePage } from './pages/ProfilePage';
 import { setLogoutHandler, setAccessTokenListener } from './utils/api';
 import useChatStore from './utils/chatState';
 import { Bookmarked } from './pages/Bookmarked';
+import showToast from './utils/toast';
+import { clearClientSession } from './utils/api';
 
 export default function SocialApp() {
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
@@ -70,15 +73,15 @@ export default function SocialApp() {
         const now = Date.now();
         const msLeft = expMs - now;
         if (msLeft <= 0) {
-          console.log('[tokenWatcher] token already expired — logging out');
-          localStorage.removeItem('accessToken');
+          showToast('[tokenWatcher] token already expired — logging out', 'info');
+          clearClientSession();
           navigate('/login', { replace: true });
           return;
         }
-        console.log(`[tokenWatcher] scheduling logout in ${msLeft}ms`);
+        showToast(`[tokenWatcher] scheduling logout in ${msLeft}ms`, 'info');
         timer = setTimeout(() => {
-          console.log('[tokenWatcher] token expired — logging out');
-          localStorage.removeItem('accessToken');
+          showToast('[tokenWatcher] token expired — logging out', 'info');
+          clearClientSession();
           navigate('/login', { replace: true });
         }, msLeft + 500);
       } catch {}
@@ -103,12 +106,7 @@ export default function SocialApp() {
           </div>
         );
       case 'messages':
-        return (
-          <div className="p-8 text-center">
-            <h2 className="font-bold text-[20px] text-[#f7f9f9] mb-2">Messages</h2>
-            <p className="text-[#8b98a5]">Your messages will appear here</p>
-          </div>
-        );
+        return <ConversationsList />;
       case 'friends':
         return <FriendsPage />;
       case 'saved':

@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, PostVisibility } from '@prisma/client';
 import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
 
@@ -51,7 +51,7 @@ async function seedPost(post: {
   likeCount?: number;
   commentCount?: number;
   shareCount?: number;
-  visibility?: 'PUBLIC' | 'FRIENDS' | 'PRIVATE';
+  visibility?: PostVisibility;
   createdAt: Date;
 }) {
   await prisma.post.upsert({

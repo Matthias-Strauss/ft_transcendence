@@ -12,12 +12,22 @@ export const socket = io(socketBaseUrl, {
   autoConnect: false,
 });
 
+let currentSocketToken: string | null = null;
+
 export function connectSocketWithToken(token: string): void {
+  const tokenChanged = currentSocketToken !== token;
+  currentSocketToken = token;
   socket.auth = { token };
 
-  if (!socket.connected) {
-    socket.connect();
+  if (socket.connected) {
+    if (tokenChanged) {
+      socket.disconnect();
+      socket.connect();
+    }
+    return;
   }
+
+  socket.connect();
 }
 
 export function connectSocketFromStorage(): boolean {
@@ -33,7 +43,7 @@ export function connectSocketFromStorage(): boolean {
 }
 
 export function disconnectSocket(): void {
-  if (socket.connected) {
-    socket.disconnect();
-  }
+  currentSocketToken = null;
+  socket.auth = {};
+  socket.disconnect();
 }

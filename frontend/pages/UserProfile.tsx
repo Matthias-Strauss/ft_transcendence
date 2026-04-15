@@ -90,7 +90,7 @@ export default function UserProfile() {
           if (!cancelled) setPosts([]);
         }
       } catch (e) {
-        console.error('Failed to load user profile', e);
+        showToast('Failed to load user profile', 'error');
         if (!cancelled) {
           setUser(null);
           setPosts([]);
@@ -122,7 +122,7 @@ export default function UserProfile() {
       setPostsHasMore(Boolean(payload.meta?.hasMore));
       setPostsNextCursor(payload.meta?.nextCursor ?? null);
     } catch (e) {
-      console.error('Failed to load more posts', e);
+      showToast('Failed to load more posts', 'error');
     } finally {
       setPostsLoadingMore(false);
     }
@@ -138,7 +138,7 @@ export default function UserProfile() {
           useUserStore.getState().setUser(data);
         }
       } catch (e) {
-        console.error('Failed to load current user', e);
+          showToast('Failed to load current user', 'error');
       }
     }
 
@@ -168,7 +168,7 @@ export default function UserProfile() {
           setSearchResults([]);
         }
       } catch (e) {
-        console.error('Search failed', e);
+        showToast('Search failed', 'error');
         setSearchResults([]);
       } finally {
         setSearchLoading(false);
@@ -353,7 +353,7 @@ export default function UserProfile() {
                       try {
                         await logout();
                       } catch (e) {
-                        console.error('Logout failed', e);
+                        showToast('Logout failed', 'error');
                       }
                     }}
                     className="bg-transparent border border-[#39444d] text-[#f7f9f9] rounded-full py-2 px-4 transition-colors"

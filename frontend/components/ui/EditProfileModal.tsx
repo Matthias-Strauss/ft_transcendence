@@ -215,7 +215,7 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
       onUpdated?.(updatePatch as any);
       showNotification('Profile saved successfully.', 'success');
     } catch (e) {
-      console.error('Failed to update profile', e);
+      showToast('Failed to update profile', 'error');
       showNotification('An unexpected error occurred while saving your profile. Please try again.');
     } finally {
       setLoading(false);
@@ -260,7 +260,7 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
       showToast('Password changed successfully. You will be logged out.', 'success');
       await logout();
     } catch (e) {
-      console.error('Failed to change password', e);
+      showToast('Failed to change password', 'error');
       showNotification(
         'An unexpected error occurred while changing your password. Please try again.',
       );
