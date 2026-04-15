@@ -1,11 +1,21 @@
 import { create } from 'zustand';
 
+export type ChatFileMetadata = {
+  kind: 'chat_pdf';
+  originalName: string;
+  mimeType: string;
+  sizeBytes: number;
+  storagePath: string;
+  fileUrl: string;
+};
+
 export type ChatMessage = {
   id: string;
   user: string;
   message: string;
   time: string;
   isOwn?: boolean;
+  metadata?: ChatFileMetadata | Record<string, any>;
 };
 
 function dedupeMessages(messages: ChatMessage[]) {

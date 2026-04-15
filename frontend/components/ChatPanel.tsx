@@ -3,7 +3,12 @@ import { Send, FileUp } from 'lucide-react';
 import { socket } from '../socket';
 import { apiFetch } from '../utils/api';
 import '../styles/chat.css';
-import { uploadFile } from '../utils/send_file';
+import { uploadFile as uploadFileRaw } from '../utils/send_file';
+
+const uploadFile = (
+  file: File,
+  opts?: { onProgress?: (percent: number) => void; onComplete?: () => void },
+) => (uploadFileRaw as unknown as (file: File, opts?: any) => any)(file, opts);
 import useChatStore, { type ChatMessage } from '../utils/chatState';
 import useUserStore from '../utils/userStore';
 import showToast from '../utils/toast';
@@ -32,6 +37,7 @@ function mapApiMessageToChatMessage(m: any): ChatMessage {
     message: m.text ?? '',
     time: formatTime(m.createdAt),
     isOwn: Boolean(m.isOwn),
+    metadata: m.metadata ?? undefined,
   };
 }
 
@@ -67,6 +73,7 @@ function normalizeIncomingPayload(
         message: payload.text ?? '',
         time: formatTime(payload.createdAt),
         isOwn,
+        metadata: payload.metadata ?? undefined,
       },
       otherUsername,
       senderUsername,
@@ -94,6 +101,7 @@ function normalizeIncomingPayload(
       message: payload.text ?? '',
       time: formatTime(),
       isOwn,
+      metadata: payload.metadata ?? undefined,
     },
     otherUsername,
     senderUsername,
@@ -130,7 +138,7 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
 
   const meUsername = useUserStore((s) => s.user?.username ?? null);
 
-  const activeMessages = targetUsername ? (messagesByUser[targetUsername] ?? []) : [];
+  const activeMessages = targetUsername ? messagesByUser[targetUsername] ?? [] : [];
 
   const shortenFileName = (name: string, maxLength = 20) => {
     if (name.length <= maxLength) return name;
@@ -169,13 +177,8 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
 
         if (!normalized) return;
 
-        const {
-          chatMessage,
-          otherUsername,
-          senderUsername,
-          recipientUsername,
-          isDirect,
-        } = normalized;
+        const { chatMessage, otherUsername, senderUsername, recipientUsername, isDirect } =
+          normalized;
 
         if (otherUsername) {
           appendMessageForUser(otherUsername, chatMessage);
@@ -252,15 +255,23 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
-    if (selectedFile) {
+    if (selectedFile && targetUsername) {
       setFile(selectedFile);
-      setProgress(0);
       setIsUploading(true);
-
-      uploadFile(selectedFile, {
-        onProgress: (percent) => setProgress(percent),
+      uploadFileRaw(selectedFile, targetUsername, {
+        onProgress: (percent: number) => setProgress(percent),
         onComplete: () => setIsUploading(false),
-      });
+      })
+        .then(() => {
+          // Send a chat message with the file info
+          setFile(null);
+          setProgress(0);
+        })
+        .catch(() => {
+          setIsUploading(false);
+          setFile(null);
+          setProgress(0);
+        });
     }
     e.target.value = '';
   };
@@ -309,20 +320,30 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
 
         <div className="chat-messages-wrap">
           <div className="chat-messages">
-            {activeMessages.map((msg) => (
-              <div key={msg.id} className={`chat-message-row ${msg.isOwn ? 'own' : 'other'}`}>
-                <div className="chat-message-meta">
-                  <span className="chat-message-user">{msg.user}</span>
-                  <span className="chat-message-time">{msg.time}</span>
-                </div>
+            {activeMessages.map((msg) => {
+              const fileUrl = msg.metadata?.fileUrl;
+              const fileName = msg.metadata?.originalName;
+              return (
+                <div key={msg.id} className={`chat-message-row ${msg.isOwn ? 'own' : 'other'}`}>
+                  <div className="chat-message-meta">
+                    <span className="chat-message-user">{msg.user}</span>
+                    <span className="chat-message-time">{msg.time}</span>
+                  </div>
 
-                <div
-                  className={`chat-bubble ${msg.isOwn ? 'chat-bubble-own' : 'chat-bubble-other'}`}
-                >
-                  {msg.message}
+                  <div
+                    className={`chat-bubble ${msg.isOwn ? 'chat-bubble-own' : 'chat-bubble-other'}`}
+                  >
+                    {fileUrl ? (
+                      <a href={fileUrl} target="_blank" rel="noopener noreferrer">
+                        📎 {fileName || 'Download file'}
+                      </a>
+                    ) : (
+                      msg.message
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
             <div ref={messagesEndRef} />
           </div>
         </div>
