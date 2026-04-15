@@ -8,7 +8,7 @@ ENV CI=true \
     npm_config_update_notifier=false
 
 COPY package.json ./
-COPY package-lock.json ./
+
 RUN npm install --no-audit --no-fund
 
 COPY . ./
