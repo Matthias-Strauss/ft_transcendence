@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { apiFetch } from '../utils/api';
 import {
   Home,
   Gamepad2,
-  Trophy,
   Users,
   Bell,
   MessageSquare,
@@ -15,6 +14,8 @@ import {
 
 import { SidebarItem } from './ui/SidebarItem';
 import { AuthedImage } from './ui/AuthedImage';
+import { useUserStore } from '../utils/userStore';
+import type { UserStore } from '../utils/userStore';
 
 function Logo() {
   return (
@@ -34,12 +35,23 @@ export function LeftSidebar({ activeTab, onTabChange, onNewPost }: LeftSidebarPr
   interface MeResponse {
     id?: string;
     username?: string;
-    displayname?: string;
+    displayname?: string | null;
     avatarUrl?: string | null;
   }
 
   const [me, setMe] = useState<MeResponse | null>(null);
   const navigate = useNavigate();
+  const location = useLocation();
+  const setUser = useUserStore((s: UserStore) => s.setUser);
+  const storeUser = useUserStore((s: UserStore) => s.user);
+  const onRootRoute = location.pathname === '/';
+  const onGameRoute = location.pathname === '/game';
+  const onProfileRoute = location.pathname.startsWith('/users/');
+
+  // keep local `me` in sync with global store
+  useEffect(() => {
+    if (storeUser) setMe(storeUser as MeResponse);
+  }, [storeUser]);
 
   const handleProfileNavigate = async () => {
     onTabChange('profile');
@@ -53,6 +65,7 @@ export function LeftSidebar({ activeTab, onTabChange, onNewPost }: LeftSidebarPr
       if (res.ok) {
         const data = await res.json();
         if (data?.username) navigate(`/users/${data.username}`);
+        setUser(data);
       }
     } catch (e) {}
   };
@@ -64,6 +77,7 @@ export function LeftSidebar({ activeTab, onTabChange, onNewPost }: LeftSidebarPr
         if (res.ok) {
           const data = await res.json();
           setMe(data);
+          setUser(data);
         }
       } catch (err) {}
     }
@@ -79,55 +93,55 @@ export function LeftSidebar({ activeTab, onTabChange, onNewPost }: LeftSidebarPr
         <SidebarItem
           icon={<Home className="size-6" />}
           label="Home"
-          active={activeTab === 'home'}
+          active={onRootRoute && activeTab === 'home'}
           to="/"
           onClick={() => onTabChange('home')}
         />
         <SidebarItem
-          icon={<Trophy className="size-6" />}
-          label="Leaderboard"
-          active={activeTab === 'leaderboard'}
-          to="/"
-          onClick={() => onTabChange('leaderboard')}
+          icon={<Gamepad2 className="size-6" />}
+          label="Game"
+          active={onGameRoute}
+          to="/game"
+          onClick={() => onTabChange('home')}
         />
         <SidebarItem
           icon={<Bell className="size-6" />}
           label="Notifications"
-          active={activeTab === 'notifications'}
+          active={onRootRoute && activeTab === 'notifications'}
           to="/"
           onClick={() => onTabChange('notifications')}
         />
         <SidebarItem
           icon={<MessageSquare className="size-6" />}
           label="Messages"
-          active={activeTab === 'messages'}
+          active={onRootRoute && activeTab === 'messages'}
           to="/"
           onClick={() => onTabChange('messages')}
         />
         <SidebarItem
           icon={<Users className="size-6" />}
           label="Friends"
-          active={activeTab === 'friends'}
+          active={onRootRoute && activeTab === 'friends'}
           to="/"
           onClick={() => onTabChange('friends')}
         />
         <SidebarItem
           icon={<Bookmark className="size-6" />}
           label="Saved"
-          active={activeTab === 'saved'}
+          active={onRootRoute && activeTab === 'saved'}
           to="/"
           onClick={() => onTabChange('saved')}
         />
         <SidebarItem
           icon={<UserIcon className="size-6" />}
           label="Profile"
-          active={activeTab === 'profile'}
+          active={onProfileRoute}
           onClick={handleProfileNavigate}
         />
         <SidebarItem
           icon={<MoreHorizontal className="size-6" />}
           label="More"
-          active={activeTab === 'more'}
+          active={onRootRoute && activeTab === 'more'}
           to="/"
           onClick={() => onTabChange('more')}
         />

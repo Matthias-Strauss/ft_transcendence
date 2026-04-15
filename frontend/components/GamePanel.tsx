@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Play, Users, Zap, Trophy } from 'lucide-react';
 
 interface GameSession {
@@ -8,9 +9,19 @@ interface GameSession {
   players: number;
   maxPlayers: number;
   difficulty: string;
+  route?: string;
 }
 
 export const ACTIVE_GAMES: GameSession[] = [
+  {
+    id: 'pong',
+    name: 'Pong',
+    image: 'https://cdn.pixabay.com/photo/2013/07/12/19/24/ping-pong-138135_960_720.png',
+    players: 0,
+    maxPlayers: 2,
+    difficulty: 'Easy',
+    route: '/game',
+  },
   {
     id: '1',
     name: 'Hangman',
@@ -30,8 +41,18 @@ export const ACTIVE_GAMES: GameSession[] = [
 ];
 
 export function GamePanel() {
+  const navigate = useNavigate();
   const [selectedGame, setSelectedGame] = useState<GameSession | null>(ACTIVE_GAMES[0]);
   const [isPlaying, setIsPlaying] = useState(false);
+
+  const startGame = () => {
+    if (!selectedGame) return;
+    if (selectedGame.route) {
+      navigate(selectedGame.route);
+      return;
+    }
+    setIsPlaying(true);
+  };
 
   return (
     <div className="flex flex-col h-full space-y-4">
@@ -179,7 +200,7 @@ export function GamePanel() {
               </div>
               <div className="p-4 border-t border-[#39444d]">
                 <button
-                  onClick={() => setIsPlaying(true)}
+                  onClick={startGame}
                   className="w-full py-3 rounded-full font-bold text-[17px] transition-all flex items-center justify-center gap-2"
                   style={{
                     background: 'linear-gradient(135deg, var(--color-1), var(--color-2))',

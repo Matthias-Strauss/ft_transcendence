@@ -3,11 +3,13 @@ import { apiFetch, logout } from '../utils/api';
 import { PostCard } from '../components/ui/PostCard';
 import type { Post } from '../types/posts';
 import { AuthedImage } from '../components/ui/AuthedImage';
+import { useUserStore } from '../utils/userStore';
+import type { UserStore } from '../utils/userStore';
 
 interface MeResponse {
   id?: string;
   username?: string;
-  displayname?: string;
+  displayname?: string | null;
   avatarUrl?: string | null;
 }
 
@@ -15,6 +17,19 @@ export function ProfilePage() {
   const [me, setMe] = useState<MeResponse | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
+  const setUser = useUserStore((s: UserStore) => s.setUser);
+  const storeUser = useUserStore((s: UserStore) => s.user);
+
+  useEffect(() => {
+    if (!me?.username || !me?.avatarUrl) return;
+    setPosts((prev) =>
+      prev.map((p) =>
+        p.author?.username === me.username
+          ? { ...p, author: { ...p.author, avatarUrl: me.avatarUrl } }
+          : p,
+      ),
+    );
+  }, [me?.avatarUrl, me?.username]);
 
   useEffect(() => {
     const token = localStorage.getItem('accessToken');
@@ -30,6 +45,7 @@ export function ProfilePage() {
         if (meRes.ok) {
           const data = await meRes.json();
           setMe(data);
+          setUser(data);
         }
 
         const postRes = await apiFetch('/api/me/posts');
@@ -39,6 +55,9 @@ export function ProfilePage() {
         }
       } catch (err) {
       } finally {
+        useEffect(() => {
+          if (storeUser) setMe(storeUser as MeResponse);
+        }, [storeUser]);
         setLoading(false);
       }
     }
@@ -112,7 +131,15 @@ export function ProfilePage() {
         {posts.length === 0 ? (
           <div className="p-8 text-[#8b98a5]">No posts yet</div>
         ) : (
-          posts.map((post) => <PostCard post={post} key={post.id} />)
+          posts.map((post) => (
+            <PostCard
+              post={post}
+              key={post.id}
+              onDeleted={(id) => {
+                setPosts((prev) => prev.filter((p) => p.id !== id));
+              }}
+            />
+          ))
         )}
       </div>
     </div>

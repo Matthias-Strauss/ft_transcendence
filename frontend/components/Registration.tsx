@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { apiFetch } from '../utils/api';
+import { validatePassword } from '../utils/password';
 import '../styles/auth.css';
 
 const Registration: React.FC = () => {
@@ -12,19 +13,13 @@ const Registration: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
 
-  const specialCharacters = '!@#$%^&*()_+=-{}[]:;"|/.,<>?`~';
-  const numberChars = '0123456789';
-
   function validate() {
     if (!username.trim()) return 'Choose a username';
     if (!email.trim()) return 'Enter a valid email';
-    if (password.length < 8) return 'Password must be at least 8 characters';
+    const pwdErr = validatePassword(password);
+    if (pwdErr) return pwdErr;
     if (password.toLowerCase().includes(username.toLowerCase()))
       return 'Password cannot contain username';
-    if (!specialCharacters.split('').some((char) => password.includes(char)))
-      return 'Password must include a special character';
-    if (!numberChars.split('').some((char) => password.includes(char)))
-      return 'Password must include a number';
     return null;
   }
 

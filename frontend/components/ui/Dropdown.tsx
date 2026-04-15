@@ -4,6 +4,7 @@ import { apiFetch } from '../../utils/api';
 interface DropdownProps {
   items: DropdownItem[];
   onActionSuccess?: (action: string) => void;
+  onRequestAction?: (action: string) => void;
 }
 
 async function handleAction({
@@ -55,6 +56,7 @@ export default function Dropdown({
   postId,
   authorId,
   onActionSuccess,
+  onRequestAction,
 }: DropdownProps & {
   isOpen: boolean;
   setIsOpen: (v: boolean) => void;
@@ -72,6 +74,12 @@ export default function Dropdown({
                 className="flex items-center justify-between px-3 py-2 bg-[#1b1f23] hover:bg-[#272d33]"
                 onClick={async () => {
                   setIsOpen(false);
+
+                  if (item.text === 'Delete') {
+                    onRequestAction?.(item.text);
+                    return;
+                  }
+
                   const success = await handleAction({ action: item.text, postId, authorId });
 
                   if (success) {
