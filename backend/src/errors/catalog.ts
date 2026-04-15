@@ -128,6 +128,22 @@ export const ERROR_CATALOG = {
     message: 'You cannot send a friend request to yourself',
     errCode: 'FRIEND_REQUEST_TO_SELF_FORBIDDEN',
   },
+
+  CHAT_BLOCK_TO_SELF_FORBIDDEN: {
+    statusCode: 400,
+    message: 'You cannot block yourself',
+    errCode: 'CHAT_BLOCK_TO_SELF_FORBIDDEN',
+  },
+  CHAT_BLOCKED_BY_ME: {
+    statusCode: 403,
+    message: 'You blocked this user',
+    errCode: 'CHAT_BLOCKED_BY_ME',
+  },
+  CHAT_BLOCKED_BY_TARGET: {
+    statusCode: 403,
+    message: 'This user has blocked you',
+    errCode: 'CHAT_BLOCKED_BY_TARGET',
+  },
 } as const;
 
 export type ErrorKey = keyof typeof ERROR_CATALOG;
@@ -189,4 +205,10 @@ export const FriendErrors = {
   requestAlreadyIncoming: () => appError('FRIEND_REQUEST_ALREADY_INCOMING'),
   requestNotFound: () => appError('FRIEND_REQUEST_NOT_FOUND'),
   requestToSelfForbidden: () => appError('FRIEND_REQUEST_TO_SELF_FORBIDDEN'),
+};
+
+export const ChatErrors = {
+  blockToSelfForbidden: () => appError('CHAT_BLOCK_TO_SELF_FORBIDDEN'),
+  blockedByMe: () => appError('CHAT_BLOCKED_BY_ME'),
+  blockedByTarget: () => appError('CHAT_BLOCKED_BY_TARGET'),
 };

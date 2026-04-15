@@ -6,6 +6,14 @@ datasource db {
   provider = "postgresql"
 }
 
+enum ChatMessageType {
+  TEXT
+  GAME_INVITE
+  GAME_NOTIFICATION
+  FILE
+}
+
+
 enum FriendshipStatus {
   PENDING
   ACCEPTED
@@ -25,6 +33,10 @@ model User {
   avatarPath  String?   //relative paht within FILES_DIR
 
   refreshTokens           RefreshToken[]
+  sentMessages DirectMessage[] @relation("DirectMessageSender")
+  receivedMessages DirectMessage[] @relation("DirectMessageRecipient")
+  blockedUsers            UserBlock[] @relation("UserBlockBlocker")
+  blockedByUsers          UserBlock[] @relation("UserBlockBlocked")
   posts                   Post[]
   comments                Comment[]
   postLikes               PostLike[]
@@ -48,6 +60,36 @@ model RefreshToken {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+model DirectMessage {
+  id          String          @id @default(cuid())
+  senderId    String
+  recipientId String
+  text        String
+  type        ChatMessageType @default(TEXT)
+  createdAt   DateTime        @default(now())
+  readAt      DateTime?
+  metadata    Json?
+
+  sender    User @relation("DirectMessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  recipient User @relation("DirectMessageRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+
+  @@index([senderId, recipientId, createdAt])
+  @@index([recipientId, senderId, createdAt])
+  @@index([recipientId, readAt, createdAt])
+}
+
+model UserBlock {
+  blockerUserId String
+  blockedUserId String
+  createdAt DateTime @default(now())
+
+  blocker User @relation("UserBlockBlocker", fields: [blockerUserId], references: [id], onDelete: Cascade)
+  blocked User @relation("UserBlockBlocked", fields: [blockedUserId], references: [id], onDelete: Cascade)
+
+  @@id([blockerUserId, blockedUserId])
+  @@index([blockedUserId])
 }
 
 model Post {
