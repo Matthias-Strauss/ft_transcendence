@@ -155,7 +155,11 @@ export function bindChatMessageHandler(
   });
 }
 
-export function emitDirectMessage(io: SocketIOServer, registry: UserSocketRegistry, message: DirectMessageWithUsers) {
+export function emitDirectMessage(
+  io: SocketIOServer,
+  registry: UserSocketRegistry,
+  message: DirectMessageWithUsers,
+) {
   const senderEvent = serializeDirectMessage(message, message.senderId);
   const recipientEvent = serializeDirectMessage(message, message.recipientId);
   const senderSockets = registry.getSocketsByUsername(message.sender.username);

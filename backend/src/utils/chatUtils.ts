@@ -136,15 +136,15 @@ export const UploadChatPdfSchema = z
   })
   .strict();
 
-export async function moveUploadedChatPdf(params: {
-  sourcePath: string;
-  targetPath: string;
-}) {
+export async function moveUploadedChatPdf(params: { sourcePath: string; targetPath: string }) {
   try {
     await fs.rename(params.sourcePath, params.targetPath);
   } catch (error) {
     const code =
-      typeof error === 'object' && error && 'code' in error && typeof (error as { code?: unknown }).code === 'string'
+      typeof error === 'object' &&
+      error &&
+      'code' in error &&
+      typeof (error as { code?: unknown }).code === 'string'
         ? (error as { code: string }).code
         : null;
 

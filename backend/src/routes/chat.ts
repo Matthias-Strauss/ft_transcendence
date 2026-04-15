@@ -17,7 +17,14 @@ import {
   type DirectMessageWithUsers,
 } from '../utils/chatUtils.js';
 import { UsernameSchema } from '../utils/userUtils.js';
-import { buildChatPdfMetadata, buildChatPdfStoragePath, chatPdfUploadHandler, cleanupUploadedChatPdf, ensureChatPdfStorageDir, getUploadedChatPdfFromReq } from '../files/chatPdfs.js';
+import {
+  buildChatPdfMetadata,
+  buildChatPdfStoragePath,
+  chatPdfUploadHandler,
+  cleanupUploadedChatPdf,
+  ensureChatPdfStorageDir,
+  getUploadedChatPdfFromReq,
+} from '../files/chatPdfs.js';
 import { createDirectMessage } from '../ws/chatHelper.js';
 import { resolveInFilesDir } from '../files/storage.js';
 import { getRealtimeRuntime } from '../ws/runtime.js';
@@ -272,11 +279,13 @@ chatRouter.post(
       }
 
       if (message?.id) {
-        await prisma.directMessage.delete({
-          where: {
-            id: message.id,
-          },
-        }).catch(() => undefined);
+        await prisma.directMessage
+          .delete({
+            where: {
+              id: message.id,
+            },
+          })
+          .catch(() => undefined);
       }
 
       throw error;

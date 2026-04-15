@@ -10,6 +10,7 @@ enum ChatMessageType {
   TEXT
   GAME_INVITE
   GAME_NOTIFICATION
+  FILE
 }
 
 
