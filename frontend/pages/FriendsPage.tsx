@@ -12,6 +12,7 @@ import {
 } from '../utils/api';
 import { runFriendAction } from '../utils/friendActions';
 import { AuthedImage } from '../components/ui/AuthedImage';
+import showToast from '../utils/toast';
 
 export function FriendsPage() {
   const [activeTab, setActiveTab] = useState<'friends' | 'requests'>('friends');
@@ -239,6 +240,7 @@ function RequestsList() {
       (v) => setProcessingFlag(username, v),
       () => setRequests((prev) => prev.filter((r) => r.username !== username)),
     );
+    showToast('Friend request accepted!', 'success');
   };
 
   const handleDecline = async (username: string) => {
@@ -248,6 +250,7 @@ function RequestsList() {
       (v) => setProcessingFlag(username, v),
       () => setRequests((prev) => prev.filter((r) => r.username !== username)),
     );
+    showToast('Friend request declined.', 'info');
   };
 
   const handleWithdraw = async (username: string) => {
