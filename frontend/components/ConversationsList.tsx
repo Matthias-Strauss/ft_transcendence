@@ -4,6 +4,7 @@ import useChatStore from '../utils/chatState';
 import { AuthedImage } from './ui/AuthedImage';
 import { socket } from '../socket';
 import useUserStore from '../utils/userStore';
+import showToast from '../utils/toast';
 
 type ConversationItem = {
   target: {
@@ -44,7 +45,7 @@ export function ConversationsList() {
           if (mounted) setItems(data.items || []);
         }
       } catch (e) {
-        console.error('Failed to load conversations', e);
+        showToast('Failed to load conversations', 'error');
         if (mounted) setItems([]);
       } finally {
         if (mounted) setLoading(false);
@@ -117,7 +118,7 @@ export function ConversationsList() {
           return [newItem, ...prev];
         });
       } catch (e) {
-        console.error('Failed to handle incoming chat message in conversations list', e);
+        showToast('Failed to handle incoming chat message', 'error');
       }
     };
 

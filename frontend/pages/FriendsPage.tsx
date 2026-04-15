@@ -48,7 +48,7 @@ export function FriendsPage() {
           setSearchResults([]);
         }
       } catch (e) {
-        console.error('Search failed', e);
+        showToast('Search failed', 'error');
         setSearchResults([]);
       } finally {
         setSearchLoading(false);
@@ -159,7 +159,7 @@ function FriendsList() {
           if (mounted) setFriends([]);
         }
       } catch (e) {
-        console.error('Failed to load friends', e);
+        showToast('Failed to load friends', 'error');
         if (mounted) setFriends([]);
       } finally {
         if (mounted) setLoading(false);
@@ -217,7 +217,7 @@ function RequestsList() {
           if (mounted) setRequests([]);
         }
       } catch (e) {
-        console.error('Failed to load requests', e);
+        showToast('Failed to load requests', 'error');
         if (mounted) setRequests([]);
       } finally {
         if (mounted) setLoading(false);

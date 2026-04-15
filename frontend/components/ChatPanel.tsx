@@ -6,6 +6,7 @@ import '../styles/chat.css';
 import { uploadFile } from '../utils/send_file';
 import useChatStore, { type ChatMessage } from '../utils/chatState';
 import useUserStore from '../utils/userStore';
+import showToast from '../utils/toast';
 
 interface ChatPanelProps {
   onClose?: () => void;
@@ -175,7 +176,7 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
           return;
         }
       } catch (e) {
-        console.error('Error handling chat message', e);
+        showToast('Error handling chat message', 'error');
       }
     };
 
@@ -216,7 +217,7 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
           // ignore read-mark errors
         }
       } catch (e) {
-        console.error('Failed to load conversation', e);
+        showToast('Failed to load conversation', 'error');
       }
     }
 

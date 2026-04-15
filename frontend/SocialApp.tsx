@@ -11,6 +11,7 @@ import { ProfilePage } from './pages/ProfilePage';
 import { setLogoutHandler, setAccessTokenListener } from './utils/api';
 import useChatStore from './utils/chatState';
 import { Bookmarked } from './pages/Bookmarked';
+import showToast from './utils/toast';
 
 export default function SocialApp() {
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
@@ -71,14 +72,14 @@ export default function SocialApp() {
         const now = Date.now();
         const msLeft = expMs - now;
         if (msLeft <= 0) {
-          console.log('[tokenWatcher] token already expired — logging out');
+          showToast('[tokenWatcher] token already expired — logging out', 'info');
           localStorage.removeItem('accessToken');
           navigate('/login', { replace: true });
           return;
         }
-        console.log(`[tokenWatcher] scheduling logout in ${msLeft}ms`);
+        showToast(`[tokenWatcher] scheduling logout in ${msLeft}ms`, 'info');
         timer = setTimeout(() => {
-          console.log('[tokenWatcher] token expired — logging out');
+          showToast('[tokenWatcher] token expired — logging out', 'info');
           localStorage.removeItem('accessToken');
           navigate('/login', { replace: true });
         }, msLeft + 500);

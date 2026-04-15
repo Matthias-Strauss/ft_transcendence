@@ -5,6 +5,7 @@ import { apiFetch } from '../../utils/api';
 import { AuthedImage } from './AuthedImage';
 import { useUserStore } from '../../utils/userStore';
 import type { UserStore } from '../../utils/userStore';
+import showToast from '../../utils/toast';
 
 interface PostProp {
   post: Post;
@@ -41,7 +42,7 @@ export default function CommentSection({ post, onCommentCreated }: PostProp) {
 
     const token = localStorage.getItem('accessToken');
     if (!token) {
-      console.error('Access token is invalid');
+      showToast('Access token is invalid', 'error');
       return;
     }
 
@@ -55,7 +56,7 @@ export default function CommentSection({ post, onCommentCreated }: PostProp) {
 
     if (!res.ok) {
       const errorText = await res.text();
-      console.error('Failed to submit comment:', res.status, errorText);
+      showToast(`Failed to submit comment: ${res.status} ${errorText}`, 'error');
       return;
     }
 
@@ -91,7 +92,7 @@ export default function CommentSection({ post, onCommentCreated }: PostProp) {
         const data = await getComment({ postId: post.id });
         setComments(data);
       } catch (error) {
-        console.error('Failed to load comments:', error);
+        showToast('Failed to load comments', 'error');
       }
     }
 
