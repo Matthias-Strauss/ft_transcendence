@@ -119,6 +119,7 @@ function shouldShowMessageInActiveChat(
 export function ChatPanel({ onClose }: ChatPanelProps) {
   const [inputValue, setInputValue] = useState('');
   const [connected, setConnected] = useState(socket.connected);
+  const [isTargetTyping, setIsTargetTyping] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [progress, setProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
@@ -126,6 +127,9 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const targetUsernameRef = useRef<string | null>(null);
+  const typingTimeoutRef = useRef<number | null>(null);
+  const isTypingRef = useRef(false);
+  const typingTargetRef = useRef<string | null>(null);
 
   const targetUsername = useChatStore((state) => state.targetUsername);
   const messagesByUser = useChatStore((s) => s.messagesByUser);
@@ -136,6 +140,39 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
   const meUsername = useUserStore((s) => s.user?.username ?? null);
 
   const activeMessages = targetUsername ? messagesByUser[targetUsername] ?? [] : [];
+
+  const emitTypingEvent = (target: string, isTyping: boolean) => {
+    if (!connected) {
+      return;
+    }
+
+    if (!target || (meUsername && target === meUsername)) {
+      return;
+    }
+
+    socket.emit('chat:typing', {
+      to: target,
+      isTyping,
+    });
+  };
+
+  const stopTypingForTarget = (target: string | null) => {
+    if (!target) {
+      return;
+    }
+
+    if (isTypingRef.current) {
+      emitTypingEvent(target, false);
+    }
+
+    isTypingRef.current = false;
+    typingTargetRef.current = null;
+
+    if (typingTimeoutRef.current) {
+      window.clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = null;
+    }
+  };
 
   const shortenFileName = (name: string, maxLength = 20) => {
     if (name.length <= maxLength) return name;
@@ -176,6 +213,21 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
   }, [targetUsername]);
 
   useEffect(() => {
+    const previousTarget = typingTargetRef.current;
+    if (previousTarget && previousTarget !== targetUsername) {
+      stopTypingForTarget(previousTarget);
+    }
+
+    setIsTargetTyping(false);
+  }, [targetUsername]);
+
+  useEffect(() => {
+    return () => {
+      stopTypingForTarget(typingTargetRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!targetUsername || !meUsername) {
       return;
     }
@@ -202,6 +254,10 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
         const { chatMessage, otherUsername, senderUsername, recipientUsername, isDirect } =
           normalized;
 
+        if (activeTarget && senderUsername === activeTarget) {
+          setIsTargetTyping(false);
+        }
+
         if (otherUsername) {
           appendMessageForUser(otherUsername, chatMessage);
         }
@@ -225,14 +281,28 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
       }
     };
 
+    const onChatTyping = (payload: any) => {
+      const activeTarget = targetUsernameRef.current;
+      const typingUsername =
+        typeof payload?.username === 'string' ? payload.username : null;
+
+      if (!activeTarget || !typingUsername || typingUsername !== activeTarget) {
+        return;
+      }
+
+      setIsTargetTyping(Boolean(payload?.isTyping));
+    };
+
     socket.on('connect', onConnect);
     socket.on('disconnect', onDisconnect);
     socket.on('chat:message', onChatMessage);
+    socket.on('chat:typing', onChatTyping);
 
     return () => {
       socket.off('connect', onConnect);
       socket.off('disconnect', onDisconnect);
       socket.off('chat:message', onChatMessage);
+      socket.off('chat:typing', onChatTyping);
     };
   }, [appendMessageForUser, meUsername]);
 
@@ -316,6 +386,8 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
       return;
     }
 
+    stopTypingForTarget(targetUsername);
+
     try {
       socket.emit('chat:message', {
         text,
@@ -336,6 +408,41 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
     } catch {
       setIsUploading(false);
     }
+  };
+
+  const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setInputValue(value);
+
+    if (!targetUsername || (meUsername && targetUsername === meUsername) || !connected) {
+      return;
+    }
+
+    const trimmed = value.trim();
+    if (!trimmed) {
+      stopTypingForTarget(targetUsername);
+      return;
+    }
+
+    const currentTypingTarget = typingTargetRef.current;
+
+    if (currentTypingTarget && currentTypingTarget !== targetUsername) {
+      stopTypingForTarget(currentTypingTarget);
+    }
+
+    if (!isTypingRef.current || typingTargetRef.current !== targetUsername) {
+      emitTypingEvent(targetUsername, true);
+      isTypingRef.current = true;
+      typingTargetRef.current = targetUsername;
+    }
+
+    if (typingTimeoutRef.current) {
+      window.clearTimeout(typingTimeoutRef.current);
+    }
+
+    typingTimeoutRef.current = window.setTimeout(() => {
+      stopTypingForTarget(targetUsername);
+    }, 1200);
   };
 
   return (
@@ -410,7 +517,7 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
               type="text"
               placeholder="Type a message..."
               value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
+              onChange={handleInputChange}
               onKeyDown={(e) => e.key === 'Enter' && void handleSend()}
               className="chat-input"
             />
@@ -453,6 +560,10 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
             >
               {progress}%
             </progress>
+          )}
+
+          {targetUsername && isTargetTyping && (
+            <div className="chat-typing-indicator">@{targetUsername} is typing…</div>
           )}
         </div>
       </div>

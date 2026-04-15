@@ -238,6 +238,13 @@
 	appearance: none;
 }
 
+.chat-typing-indicator {
+	margin-top: 8px;
+	font-size: 12px;
+	color: #64748b;
+	font-style: italic;
+}
+
 .chat-file-card {
 	display: flex;
 	flex-direction: column;
