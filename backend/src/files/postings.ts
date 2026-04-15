@@ -179,17 +179,13 @@ export async function cleanupUploadedPostImage(req: AuthedRequest) {
 
 export const requirePostMediaAccess = asyncHandler(
   async (req: AuthedRequest, _res: Response, next: NextFunction) => {
-    if (!req.userId) {
-      throw AuthErrors.invalidToken();
-    }
-
     const requestedFilePath = normalizeRequestedFilePath(req.path);
 
     if (!requestedFilePath.startsWith('posts/')) {
       return next();
     }
 
-    await checkPostMediaAccess(requestedFilePath, req.userId);
+    await checkPostMediaAccess(requestedFilePath, req.userId!);
 
     return next();
   },
