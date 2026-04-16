@@ -3,7 +3,7 @@ import type { Response, CookieOptions, Request } from 'express';
 import { REFRESH_TOKEN_DAYS, COOKIE_SAME_SITE, COOKIE_SECURE_MODE } from '../config.js';
 
 export const REFRESH_COOKIE_NAME = 'refresh_token';
-export const REFRESH_COOKIE_PATH = '/api/auth/';
+export const REFRESH_COOKIE_PATH = '/';
 
 function resolveCookieSecure(req: Request): boolean {
   if (COOKIE_SECURE_MODE === 'always') {
