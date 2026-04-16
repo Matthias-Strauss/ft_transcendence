@@ -124,154 +124,164 @@ We used `feat/*`, `fix/*`, and `docs/*` branches, descriptive commit messages, a
 
 ### Frontend
 
-- **Framework:** React with TypeScript and Vite
-- **Reasoning:** Chosen to support a component-based frontend architecture and fast iteration on the social platform UI.
+- **Framework:** React 19 with TypeScript and Vite
+- _**Reasoning:** React provides a component-based UI architecture that fits the social feed, profile, chat, and game-shell structure of the application. TypeScript improves maintainability across shared frontend state and API-driven views, while Vite keeps the development and build pipeline fast and lightweight._
+
+- **Routing:** React Router
+- _**Reasoning:** The application mixes authenticated social views, legal pages, and a dedicated game route, so client-side routing keeps navigation predictable without adding unnecessary full-page reloads._
+
+- **Styling / UI:** Tailwind CSS, custom reusable UI components, Lucide icons
+- _**Reasoning:** Tailwind speeds up iteration on a component-heavy interface, while the custom design system keeps sidebars, dialogs, cards, forms, and status elements visually consistent across the app._
+
+- **State / Data Access:** Zustand, Axios
+- _**Reasoning:** Zustand is used for lightweight shared state such as auth, chat, notifications, and active Pong match state without introducing heavier state-management overhead. Axios provides a clear wrapper for authenticated API requests._
+
+- **3D Rendering / Game View:** Babylon.js
+- _**Reasoning:** Babylon.js was chosen to support the claimed 3D graphics module and provides a more advanced / complete feature set than three.js for the browser-based Pong experience._
 
 ### Backend
 
 - **Framework:** Express with TypeScript
-- **Reasoning:** Chosen to keep the backend explicit and lightweight while building the core API and authentication system.
+- _**Reasoning:** Express keeps the backend small and explicit while still supporting the project’s API surface for auth, posts, profiles, friends, chat, uploads, and notifications. TypeScript keeps route logic, payload handling, and shared data structures easier to maintain._
+
+- **Real-Time Layer:** Socket.IO
+- _**Reasoning:** Socket.IO supports the project’s real-time requirements for direct messaging, typing indicators, notifications, chat-related game invites, and synchronized Pong gameplay, while also helping with reconnection handling._
+
+- **Validation / Security:** Zod, JOSE, Argon2, cookie-parser, CORS
+- _**Reasoning:** Zod is used for request validation, JOSE for JWT handling, and Argon2 for password hashing. Cookie-based session handling and CORS configuration support the authenticated browser flow behind the reverse proxy._
+
+- **File Handling:** Multer, file-type
+- _**Reasoning:** These libraries support avatar uploads, post media, and chat attachments with server-side validation and controlled storage handling._
 
 ### Database
 
-- **Database:** PostgreSQL
-- **Reasoning:** Chosen because the project requires a relational data model for users, sessions, and future social/game entities.
+- **Database:** PostgreSQL 16
+- _**Reasoning:** PostgreSQL fits the relational structure of the project well, including users, friendships, direct messages, posts, comments, notifications, and game-invite-related records._
 
 - **ORM:** Prisma
-- **Reasoning:** Chosen to handle schema definition, migrations, and type-safe database access.
+- _**Reasoning:**_ Prisma was chosen to satisfy the ORM requirement while providing schema management, migrations, seeding, and type-safe database access across the backend.
 
-### Infrastructure
+### Infrastructure and Tooling
 
 - **Containerization:** Docker, Docker Compose
-- **Reasoning:** Chosen to provide a consistent local development and evaluation environment.
+- _**Reasoning:**_ The subject requires a containerized deployment that runs with a single command. Docker Compose provides the project’s evaluator-friendly startup path for the frontend, backend, database, and proxy.
 
-- **Reverse Proxy / Web Layer:** Nginx
-- **Reasoning:** Chosen to handle routing, certificate setup, and service entry points once the stack is fully integrated.
+- **Reverse Proxy / TLS:** Nginx
+- _**Reasoning:**_ Nginx fronts the application, handles HTTP-to-HTTPS redirection, serves the built frontend, proxies API and WebSocket traffic, and generates the local self-signed TLS setup used by the project.
+
+- **Database Administration:** Adminer
+- _**Reasoning:**_ Adminer is included as an optional utility service for inspecting and debugging the PostgreSQL database during development.
+
+- **Code Quality:** ESLint, Prettier
+- _**Reasoning:**_ Shared linting and formatting reduce style drift across frontend, backend, and documentation updates.
 
 ---
 
-## 🗄 Database Schema
+## 🧑‍🔬 Database Schema
 
-The database had already moved past the placeholder stage by late March. The current Prisma schema was centered around user accounts and the first social features, with room to grow into the game layer later.
+The project uses a PostgreSQL database modeled with Prisma. The current schema is centered around users, social content, chat, friendships, game invites, and notifications.
+
+```mermaid
+erDiagram
+    User ||--o{ RefreshToken : has
+    User ||--o{ Post : authors
+    User ||--o{ Comment : writes
+    User ||--o{ DirectMessage : sends
+    User ||--o{ DirectMessage : receives
+    User ||--o{ Friendship : participates_in
+    User ||--o{ GameInvite : sends
+    User ||--o{ GameInvite : receives
+    User ||--o{ Notification : receives
+    User ||--o{ Notification : triggers
+
+    Post ||--o{ Comment : has
+    Post ||--o{ PostLike : has
+    Post ||--o{ PostShare : has
+    Post ||--o{ PostBookmark : has
+    Post ||--o{ Notification : references
+
+    Comment ||--o{ CommentLike : has
+    Comment ||--o{ Notification : references
+```
+
+_Note: if your VSCode is not rendering the above mermaid diagram, install following extension [Mermaid Extension for Markdown](https://marketplace.visualstudio.com/items?itemName=bierner.markdown-mermaid)_
+
+### Core Tables
 
 - **User**
-  - Key fields: `id`, `username`, `password`, `displayName`, `email`, `avatarPath`
-  - Purpose: Stores account credentials and profile information.
+  Key fields: `id: String`, `username: String`, `password: String`, `email: String?`, `displayname: String`, `avatarPath: String?`
+  Purpose: Stores account credentials, profile data, and acts as the parent entity for posts, comments, friendships, messages, notifications, and game invites.
+
 - **RefreshToken**
-  - Key fields: `id`, `token`, `userId`, `createdAt`, `expiresAt`
-  - Purpose: Supports session persistence and secure token refresh flows.
-- **Friendship**
-  - Key fields: `id`, `requesterId`, `receiverId`, `status`, `createdAt`
-  - Purpose: Tracks friend requests and accepted social connections between users.
+  Key fields: `id: Int`, `userId: String`, `tokenHash: String`, `createdAt: DateTime`, `expiresAt: DateTime`, `revokedAt: DateTime?`
+  Purpose: Persists refresh-token sessions for cookie-based authentication.
+
 - **DirectMessage**
-  - Key fields: `id`, `senderId`, `receiverId`, `content`, `createdAt`
-  - Purpose: Stores chat history in the database instead of keeping messages only in memory.
+  Key fields: `id: String`, `senderId: String`, `recipientId: String`, `text: String`, `type: ChatMessageType`, `readAt: DateTime?`, `metadata: Json?`
+  Purpose: Stores private chat messages, including plain text, file messages, game invites, and game notifications.
+
+- **UserBlock**
+  Key fields: `blockerUserId: String`, `blockedUserId: String`, `createdAt: DateTime`
+  Purpose: Tracks chat and interaction blocking between users.
+
+### Social Content Tables
+
 - **Post**
-  - Key fields: `id`, `authorId`, `content`, `createdAt`
-  - Purpose: Supports the social feed and user-generated content.
+  Key fields: `id: String`, `authorId: String`, `content: String`, `imagePath: String?`, `visibility: PostVisibility`, `gameTag: String?`, `likeCount: Int`, `commentCount: Int`, `shareCount: Int`, `bookmarkCount: Int`, `createdAt: DateTime`
+  Purpose: Stores feed posts with optional media and visibility rules.
+
 - **Comment**
-  - Key fields: `id`, `authorId`, `postId`, `content`, `createdAt`
-  - Purpose: Supports interaction around posts.
+  Key fields: `id: String`, `postId: String`, `authorId: String`, `content: String`, `likeCount: Int`, `createdAt: DateTime`, `updatedAt: DateTime`
+  Purpose: Stores comments attached to posts.
 
-**Key relationships:**
-- One `User` can have many `RefreshToken`, `Post`, `Comment`, and `DirectMessage` records.
-- `Friendship` links two users and represents the current relationship state between them.
-- A `Post` belongs to one user and can have many `Comment` records.
+- **PostLike**
+  Key fields: `postId: String`, `userId: String`, `createdAt: DateTime`
+  Purpose: Join table for post likes.
 
----
+- **PostShare**
+  Key fields: `postId: String`, `userId: String`, `createdAt: DateTime`
+  Purpose: Join table for post shares.
 
-## ✅ Planned / Active Modules
+- **PostBookmark**
+  Key fields: `postId: String`, `userId: String`, `createdAt: DateTime`
+  Purpose: Join table for bookmarked posts.
 
-At this point in the project, the team is targeting a social-media-first implementation path that reaches the required score with one clear multiplayer game and a strong web foundation. The modules below reflect work that is already active in the codebase or clearly owned by a specific part of the team.
+- **CommentLike**
+  Key fields: `commentId: String`, `userId: String`, `createdAt: DateTime`
+  Purpose: Join table for comment likes.
 
-| Category | Module | Type | Points | Why This Module Fits The Project |
-| :------- | :----- | :--- | :----- | :------------------------------- |
-| Web | Framework for frontend + backend | Major | 2 | The project is being built as a structured full-stack application rather than a loose prototype, with React on the frontend and Express on the backend. |
-| Web | User interaction | Major | 2 | Profiles, friendships, posts, and direct messaging are already central to the app structure, so this module matches the main product identity rather than being an add-on. |
-| Web | Real-time features | Major | 2 | Real-time behavior is being used for chat already and is also the expected backbone for the final multiplayer experience. |
-| Web | ORM | Minor | 1 | Prisma is already shaping the schema and backend data access layer, making this a concrete implementation choice rather than only a planning decision. |
-| Web | File upload and management system | Minor | 1 | Avatar and media-related flows are part of the user/profile experience and fit naturally into the growing social feature set. |
-| User Management | Standard user management and authentication | Major | 2 | Login, registration, token refresh, and editable account data are already active work and unlock every other protected feature in the platform. |
-| Gaming and User Experience | Complete web-based game | Major | 2 | The team has already begun implementing a browser-game prototype, so this remains the chosen route for the gaming branch. |
-| Gaming and User Experience | Remote players | Major | 2 | The game direction is explicitly multiplayer, which means remote play is not optional but part of the target implementation. |
-| Gaming and User Experience | Advanced chat features | Minor | 1 | Persistent chat history, friend-aware communication, and invite-oriented flows tie the social side of the product to the game side. |
-| Web | Complete notification system for all creation, update, and deletion actions | Minor | 1 | Notifications now fit the real social interactions being built and help make the platform feel cohesive rather than a collection of isolated pages. |
+### Relationship and Game Tables
 
-**Planned score at this stage: 16 points, with feature ownership and implementation direction now clear enough to defend during review.**
+- **Friendship**
+  Key fields: `id: Int`, `userOneId: String`, `userTwoId: String`, `requesterId: String`, `addresseeId: String`, `status: FriendshipStatus`, `acceptedAt: DateTime?`
+  Purpose: Represents friend requests and accepted friendships between two users.
 
----
+- **GameInvite**
+  Key fields: `id: String`, `gameType: GameType`, `senderId: String`, `recipientId: String`, `status: GameInviteStatus`, `expiresAt: DateTime`, `matchId: String?`
+  Purpose: Stores Pong invitations sent through chat and tracks their lifecycle.
 
-## ✨ Features List & Assignment
+- **Notification**
+  Key fields: `id: String`, `recipientId: String`, `actorId: String?`, `type: NotificationType`, `postId: String?`, `commentId: String?`, `createdAt: DateTime`, `readAt: DateTime?`
+  Purpose: Stores in-app notifications for post and comment activity as well as friendship-related interactions.
 
-| Feature | Owner | Developer(s) | Description |
-| :------ | :---- | :----------- | :---------- |
-| **Authentication Flow** | [jmuhlber] | [jmuhlber], [vmamoten] | Login, registration, token handling, and backend auth endpoints were being integrated into the app flow, with ownership now tracked by login for review purposes. |
-| **Profiles** | [vmamoten] | [vmamoten], [kruseva] | Profile page work was in progress, including styling updates and account-facing UI. |
-| **Friends System** | [jmuhlber] | [jmuhlber] | Friend requests and relationship handling were close to functional by early April. |
-| **Posts / Feed Foundation** | [kruseva] | [kruseva], [jmuhlber] | The project already had the basis for social content and feed-related backend/frontend work. |
-| **Chat With History** | [kruseva] | [kruseva], [jmuhlber] | Real-time messaging was being connected to persistent database storage for chat history. |
-| **Notifications** | [vmamoten] | [vmamoten], [jmuhlber] | Notification-oriented flows were being added around the emerging social interactions in the app. |
-| **Game Prototype** | [bszikora] | [bszikora], [mstrauss] | A first simple browser game prototype existed as an early test bed for the final multiplayer direction. |
-| **Infrastructure & Setup** | [mstrauss] | [mstrauss], [jmuhlber] | Docker, service layout, and local setup flow were already established to support team-wide development. |
+### Main Relationships
 
----
+- One `User` can own many `Post`, `Comment`, `RefreshToken`, `DirectMessage`, `GameInvite`, and `Notification` records.
+- `Post` belongs to one `User` and has many `Comment`, `PostLike`, `PostShare`, `PostBookmark`, and `Notification` records.
+- `Comment` belongs to one `Post` and one `User`, and can have many `CommentLike` and `Notification` records.
+- `Friendship` connects two users and separately records who requested and who received the request.
+- `DirectMessage` links one sender user and one recipient user.
+- `GameInvite` links one sender user and one recipient user and stores the invite state for Pong matches.
+- `Notification` belongs to one recipient user and can optionally reference an actor user, a post, or a comment.
 
-## 👷 Individual Contributions
+### Important Enums
 
-### [mstrauss]
-
-- **Modules:** Product direction, setup coordination, early game planning.
-- **Contribution:** Defined the project scope, kept the module strategy aligned with the subject, and supported the first game-prototype direction.
-- **Challenges:** Keeping the project achievable while still aiming for a strong module score and social-platform identity.
-
-### [kruseva]
-
-- **Modules:** Frontend UI, chat, feed-related interfaces.
-- **Contribution:** Drove frontend implementation work, including chat UX, social-page structure, and the visual direction of the application.
-- **Challenges:** Connecting evolving backend behavior to a frontend that was still changing quickly during active feature development.
-
-### [jmuhlber]
-
-- **Modules:** Backend API, authentication, Prisma schema, friendship logic.
-- **Contribution:** Built core backend foundations, auth flows, database-backed models, and the friends-system groundwork.
-- **Challenges:** Designing backend structures that would support both current social features and the later game integration.
-
-### [bszikora]
-
-- **Modules:** Game prototype, multiplayer planning.
-- **Contribution:** Joined during implementation and began exploring the first browser-game prototype and how game session logic could fit the project.
-- **Challenges:** Starting game work while the final integration and real-time architecture were still being refined.
-
-### [vmamoten]
-
-- **Modules:** Profiles, auth-flow integration, frontend polish.
-- **Contribution:** Contributed to profile-page work, login/register improvements, and frontend-side integration tasks after joining in late March.
-- **Challenges:** Integrating quickly into an already moving codebase and picking up unfinished UI and auth work without slowing feature progress.
+- `ChatMessageType`: `TEXT`, `GAME_INVITE`, `GAME_NOTIFICATION`, `FILE`
+- `GameType`: `PONG`
+- `GameInviteStatus`: `PENDING`, `ACCEPTED`, `DECLINED`, `EXPIRED`, `CANCELED`
+- `FriendshipStatus`: `PENDING`, `ACCEPTED`
+- `PostVisibility`: `PUBLIC`, `FRIENDS`
+- `NotificationType`: `POST_LIKE`, `POST_COMMENT`, `POST_SAVE`, `COMMENT_LIKE`
 
 ---
 
-## 📚 Resources & AI Usage
-
-### Documentation
-
-- [React Documentation](https://react.dev/)
-- [Express Documentation](https://expressjs.com/)
-- [Prisma Documentation](https://www.prisma.io/docs)
-- [Docker Documentation](https://docs.docker.com/)
-- [Socket.IO Documentation](https://socket.io/docs/v4/)
-
-### AI Usage
-
-_As per the subject requirements, we transparently declare our use of AI tools:_
-
-- **Tools Used:** Gemini
-- **Use Cases:**
-  - _Project Planning:_
-    - Extracting key information from the subject.pdf and making it digestible.
-    - Ranking Complexity of Topics.
-    - Checking for module dependency issues.
-    - Quick formatting.
-  - _Debugging:_
-    - Used to explain cryptic error messages in the backend.
-  - _Learning new Tech:_ Used "Guided learning" mode to develop long lastiung understanding about the technologies used that are new to us.
-  - _Tests:_ Tests were generated with AI assistance in order to support rapid development.
