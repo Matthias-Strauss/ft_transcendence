@@ -77,6 +77,30 @@ export async function cancelPendingGameInvites(
   });
 }
 
+export async function expirePendingGameInvites(params: {
+  senderId?: string;
+  recipientId?: string;
+  gameType?: GameType;
+}) {
+  const respondedAt = now();
+
+  return prisma.gameInvite.updateMany({
+    where: {
+      senderId: params.senderId,
+      recipientId: params.recipientId,
+      gameType: params.gameType,
+      status: 'PENDING',
+      expiresAt: {
+        lte: respondedAt,
+      },
+    },
+    data: {
+      status: 'EXPIRED',
+      respondedAt,
+    },
+  });
+}
+
 export async function createPendingGameInvite(params: {
   senderId: string;
   recipientId: string;
@@ -85,6 +109,11 @@ export async function createPendingGameInvite(params: {
 }) {
   const gameType = params.gameType ?? 'PONG';
 
+  await expirePendingGameInvites({
+    senderId: params.senderId,
+    recipientId: params.recipientId,
+    gameType,
+  });
   await cancelPendingGameInvites(params.senderId, params.recipientId, gameType);
 
   return prisma.gameInvite.create({

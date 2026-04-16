@@ -580,11 +580,12 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
               const fileUrl = msg.metadata?.fileUrl;
               const fileName = msg.metadata?.originalName;
               const inviteMetadata = isPongInviteMetadata(msg.metadata) ? msg.metadata : null;
-              const inviteOutcome = inviteMetadata
-                ? inviteOutcomeById[inviteMetadata.inviteId] ?? inviteMetadata.status
-                : null;
               const inviteExpired =
                 inviteMetadata && new Date(inviteMetadata.expiresAt).getTime() <= Date.now();
+              const inviteOutcome = inviteMetadata
+                ? inviteOutcomeById[inviteMetadata.inviteId] ??
+                  (inviteExpired ? 'EXPIRED' : inviteMetadata.status)
+                : null;
               const canRespond =
                 Boolean(inviteMetadata) &&
                 !msg.isOwn &&
