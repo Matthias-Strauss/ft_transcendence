@@ -1,4 +1,4 @@
-import { fetchAuthedImageURL } from '../../utils/api';
+import { fetchAuthedFileURL } from '../../utils/api';
 import { useEffect, useState, type ImgHTMLAttributes } from 'react';
 
 type AuthedImageProps = ImgHTMLAttributes<HTMLImageElement>;
@@ -21,7 +21,7 @@ export function AuthedImage({ src, alt = '', ...props }: AuthedImageProps) {
 
     async function loadImage() {
       try {
-        objectUrl = await fetchAuthedImageURL(srcDef);
+        objectUrl = await fetchAuthedFileURL(srcDef);
 
         if (active) {
           setResolvedSrc(objectUrl);

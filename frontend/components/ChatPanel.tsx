@@ -7,7 +7,7 @@ import { uploadFile } from '../utils/send_file';
 import useChatStore, { type ChatMessage } from '../utils/chatState';
 import useUserStore from '../utils/userStore';
 import showToast from '../utils/toast';
-import { AuthedImage } from './ui/AuthedImage';
+import { AuthedFilePreview } from './ui/AuthedFilePreview';
 import { Download } from 'lucide-react';
 interface ChatPanelProps {
   onClose?: () => void;
@@ -283,8 +283,7 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
 
     const onChatTyping = (payload: any) => {
       const activeTarget = targetUsernameRef.current;
-      const typingUsername =
-        typeof payload?.username === 'string' ? payload.username : null;
+      const typingUsername = typeof payload?.username === 'string' ? payload.username : null;
 
       if (!activeTarget || !typingUsername || typingUsername !== activeTarget) {
         return;
@@ -489,10 +488,11 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
                       <div className="chat-file-card">
                         <p className="chat-file-title">📎 {fileName || 'Attachment'}</p>
                         <div className="chat-file-actions">
-                          <AuthedImage
+                          <AuthedFilePreview
                             src={fileUrl}
-                            alt={fileName || 'Attachment'}
-                            className="w-full h-full object-contain"
+                            fileName={fileName || 'Attachment'}
+                            mimeType={msg.metadata?.mimeType || 'application/pdf'}
+                            className="chat-file-preview"
                           />
                           <Download
                             className="chat-file-download"

@@ -44,7 +44,8 @@ export const uploadFile = (
           reject(new Error('Failed to parse server response'));
         }
       } else {
-        showToast('File upload failed', 'error');
+        const errMsg = xhr.status === 413 ? 'File too large' : 'File upload failed';
+        showToast(errMsg, 'error');
         reject(new Error(`Upload failed with status ${xhr.status}`));
       }
     };
