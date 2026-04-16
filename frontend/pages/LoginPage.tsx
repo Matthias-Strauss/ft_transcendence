@@ -87,11 +87,7 @@ export default function LoginPage() {
                 <div
                   key={i}
                   className={`flex size-14 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-xl font-extrabold shadow-lg backdrop-blur-sm sm:size-16 sm:text-2xl ${
-                    cell === 'X'
-                      ? 'text-pink-400'
-                      : cell === 'O'
-                      ? 'text-sky-400'
-                      : 'text-white'
+                    cell === 'X' ? 'text-pink-400' : cell === 'O' ? 'text-sky-400' : 'text-white'
                   }`}
                   style={{ animationDelay: `${i * 90}ms` } as React.CSSProperties}
                 >
@@ -157,7 +153,10 @@ export default function LoginPage() {
 
             <div className="mt-5 text-sm text-slate-400">
               Don&apos;t have an account?{' '}
-              <Link to="/register" className="font-semibold text-sky-300 transition hover:text-sky-200">
+              <Link
+                to="/register"
+                className="font-semibold text-sky-300 transition hover:text-sky-200"
+              >
                 Create one
               </Link>
             </div>

@@ -82,11 +82,7 @@ const Registration: React.FC = () => {
                 <div
                   key={i}
                   className={`flex size-14 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-xl font-extrabold shadow-lg backdrop-blur-sm sm:size-16 sm:text-2xl ${
-                    cell === 'X'
-                      ? 'text-pink-400'
-                      : cell === 'O'
-                      ? 'text-sky-400'
-                      : 'text-white'
+                    cell === 'X' ? 'text-pink-400' : cell === 'O' ? 'text-sky-400' : 'text-white'
                   }`}
                   style={{ animationDelay: `${i * 90}ms` } as React.CSSProperties}
                 >
@@ -102,7 +98,9 @@ const Registration: React.FC = () => {
 
           <div className="bg-slate-950/70 p-8 sm:p-10 lg:p-12">
             <h3 className="text-2xl font-bold tracking-[-0.02em] text-white">Create account</h3>
-            <p className="mt-2 text-sm text-slate-400 sm:text-base">Set up your profile to start playing</p>
+            <p className="mt-2 text-sm text-slate-400 sm:text-base">
+              Set up your profile to start playing
+            </p>
 
             <form onSubmit={handleSubmit} className="mt-6 space-y-4">
               <div className="space-y-2">
@@ -177,7 +175,10 @@ const Registration: React.FC = () => {
 
             <div className="mt-5 text-sm text-slate-400">
               Already have an account?{' '}
-              <Link to="/login" className="font-semibold text-sky-300 transition hover:text-sky-200">
+              <Link
+                to="/login"
+                className="font-semibold text-sky-300 transition hover:text-sky-200"
+              >
                 Sign in
               </Link>
             </div>

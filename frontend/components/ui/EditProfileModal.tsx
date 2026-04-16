@@ -325,7 +325,9 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
           aria-live="polite"
         >
           <div
-            className={`rounded-2xl border px-4 py-3 shadow-[0_20px_50px_rgba(2,6,23,0.55)] ${notificationTypeClasses[notification.type]}`}
+            className={`rounded-2xl border px-4 py-3 shadow-[0_20px_50px_rgba(2,6,23,0.55)] ${
+              notificationTypeClasses[notification.type]
+            }`}
           >
             <div className="flex items-center justify-between">
               <div className="text-sm font-medium">{notification.text}</div>
@@ -356,11 +358,15 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
         </div>
       )}
 
-      <div className="mt-[30px] w-[640px] rounded-[18px] border border-white/10 bg-slate-950/90 p-6 shadow-[0_24px_80px_rgba(2,6,23,0.7)] backdrop-blur-xl">
+      <div className="mt-[30px] max-h-[calc(100vh-32px)] w-[min(640px,calc(100%-24px))] overflow-y-auto rounded-[18px] border border-white/10 bg-slate-950/90 p-4 shadow-[0_24px_80px_rgba(2,6,23,0.7)] backdrop-blur-xl sm:p-6">
         <div className="flex items-start justify-between">
           <h3 className="font-bold text-[18px] text-[#f7f9f9]">Edit profile</h3>
           <div>
-            <button type="button" onClick={onClose} className="text-slate-400 transition hover:text-white">
+            <button
+              type="button"
+              onClick={onClose}
+              className="text-slate-400 transition hover:text-white"
+            >
               Close
             </button>
           </div>
@@ -375,7 +381,11 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
             <div className="rounded-2xl border border-white/10 bg-slate-950 p-5 shadow-[0_24px_80px_rgba(2,6,23,0.65)]">
               <div className="text-sm text-white">Reset avatar to default?</div>
               <div className="mt-4 flex justify-end gap-2">
-                <button type="button" onClick={() => setConfirmingReset(false)} className={ghostButtonClass}>
+                <button
+                  type="button"
+                  onClick={() => setConfirmingReset(false)}
+                  className={ghostButtonClass}
+                >
                   Cancel
                 </button>
                 <button
@@ -390,7 +400,7 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
           </div>
         )}
 
-        <div className="mt-4 flex items-start gap-6">
+        <div className="mt-4 flex flex-col items-start gap-6 sm:flex-row">
           <div className="size-24 overflow-hidden rounded-full border border-white/10 bg-slate-900 p-1 shadow-[0_16px_40px_rgba(2,6,23,0.55)]">
             <AuthedImage
               src={previewUrl ?? user?.avatarUrl ?? '/uploads/avatars/default.png'}
@@ -400,7 +410,7 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
           </div>
 
           <div className="flex-1">
-            <div className="flex gap-2 items-center">
+            <div className="flex flex-wrap items-center gap-2">
               <input
                 ref={fileRef}
                 type="file"
@@ -420,10 +430,15 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
               >
                 {loading ? 'Uploading...' : 'Upload'}
               </button>
-              <button type="button" onClick={handleDelete} className={ghostButtonClass} disabled={loading}>
+              <button
+                type="button"
+                onClick={handleDelete}
+                className={ghostButtonClass}
+                disabled={loading}
+              >
                 Reset
               </button>
-              <div className="ml-3 text-sm text-[#8b98a5]">
+              <div className="text-sm text-[#8b98a5] sm:ml-3">
                 {selectedFile ? selectedFile.name : ''}
               </div>
             </div>

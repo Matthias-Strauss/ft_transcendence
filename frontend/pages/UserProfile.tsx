@@ -261,7 +261,7 @@ export default function UserProfile() {
         />
       )}
       <div className="sticky top-0 z-20 border-b border-slate-700/80 bg-slate-950/90 backdrop-blur-xl">
-        <div className="flex items-center justify-between gap-4 p-4">
+        <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
           <h1 className="text-[20px] font-bold text-[#f7f9f9]">
             {user.displayname ?? user.username}
           </h1>
@@ -328,7 +328,7 @@ export default function UserProfile() {
         </div>
       </div>
 
-      <div className="p-6 border-b border-[#39444d] flex gap-6 items-center">
+      <div className="flex flex-col items-start gap-4 border-b border-[#39444d] p-4 sm:flex-row sm:items-center sm:gap-6 sm:p-6">
         <div className="size-20 rounded-full overflow-hidden bg-[#0b1220]">
           <AuthedImage
             src={user.avatarUrl ?? '/uploads/avatars/default.png'}
@@ -338,7 +338,7 @@ export default function UserProfile() {
         </div>
 
         <div className="flex-1">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <div>
               <h2 className="text-[18px] font-bold text-[#f7f9f9]">
                 {user.displayname ?? 'Unknown'}
@@ -348,7 +348,7 @@ export default function UserProfile() {
               </div>
             </div>
 
-            <div className="ml-auto flex gap-2">
+            <div className="flex flex-wrap gap-2 sm:ml-auto">
               {isMine ? (
                 <>
                   <button

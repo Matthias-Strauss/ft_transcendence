@@ -277,7 +277,6 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
 
           return;
         }
-
       } catch (e) {
         showToast('Error handling chat message', 'error');
       }
@@ -325,8 +324,7 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
         setMessagesForUser(username, mapped);
         try {
           clearUnreadForUser(username);
-        } catch (err) {
-        }
+        } catch (err) {}
         try {
           await apiFetch(`/api/chat/conversations/${encodeURIComponent(username)}/read`, {
             method: 'POST',
@@ -462,7 +460,9 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
 
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] font-medium text-slate-600">
-              <span className={`size-2 rounded-full ${connected ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+              <span
+                className={`size-2 rounded-full ${connected ? 'bg-emerald-500' : 'bg-rose-500'}`}
+              />
               {connected ? 'Connected' : 'Offline'}
             </div>
 
@@ -486,7 +486,9 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
               return (
                 <div
                   key={msg.id}
-                  className={`flex w-full flex-col gap-1 ${msg.isOwn ? 'items-end' : 'items-start'}`}
+                  className={`flex w-full flex-col gap-1 ${
+                    msg.isOwn ? 'items-end' : 'items-start'
+                  }`}
                 >
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-bold text-slate-900">{msg.user}</span>

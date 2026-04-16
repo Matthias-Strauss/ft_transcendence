@@ -53,6 +53,7 @@ export function LeftSidebar({
   const location = useLocation();
   const setUser = useUserStore((s: UserStore) => s.setUser);
   const storeUser = useUserStore((s: UserStore) => s.user);
+  const effectiveMe = (storeUser as MeResponse | null) ?? me;
   const totalUnread = useChatStore((s) => Object.values(s.unreadByUser).reduce((a, b) => a + b, 0));
   const onRootRoute = location.pathname === '/';
   const onGameRoute = location.pathname === '/game';
@@ -67,15 +68,10 @@ export function LeftSidebar({
     closeMobile();
   };
 
-  // keep local `me` in sync with global store
-  useEffect(() => {
-    if (storeUser) setMe(storeUser as MeResponse);
-  }, [storeUser]);
-
   const handleProfileNavigate = async () => {
     onTabChange('profile');
-    if (me?.username) {
-      navigate(`/users/${me.username}`);
+    if (effectiveMe?.username) {
+      navigate(`/users/${effectiveMe.username}`);
       closeMobile();
       return;
     }
@@ -88,7 +84,7 @@ export function LeftSidebar({
         setUser(data);
         closeMobile();
       }
-    } catch (e) {}
+    } catch {}
   };
 
   useEffect(() => {
@@ -100,15 +96,15 @@ export function LeftSidebar({
           setMe(data);
           setUser(data);
         }
-      } catch (err) {}
+      } catch {}
     }
 
     void load();
-  }, []);
+  }, [setUser]);
 
   return (
     <div
-      className={`fixed left-0 top-0 z-[1200] flex h-screen w-[220px] flex-col gap-3 border-r border-[#39444d] bg-[#0f172a] px-4 pb-4 pt-0 transition-transform duration-300 md:translate-x-0 ${
+      className={`fixed left-0 top-0 z-[1200] flex h-screen w-[220px] flex-col gap-3 overflow-y-auto border-r border-[#39444d] bg-[#0f172a] px-4 pb-4 pt-0 transition-transform duration-300 md:translate-x-0 ${
         mobileOpen ? 'translate-x-0' : '-translate-x-full'
       }`}
     >
@@ -198,8 +194,8 @@ export function LeftSidebar({
           {me?.avatarUrl ? (
             <div className="size-10 rounded-full overflow-hidden shrink-0">
               <AuthedImage
-                src={me.avatarUrl ?? '/uploads/avatars/default.png'}
-                alt={me.displayname ?? me.username ?? ''}
+                src={effectiveMe?.avatarUrl ?? '/uploads/avatars/default.png'}
+                alt={effectiveMe?.displayname ?? effectiveMe?.username ?? ''}
                 className="w-full h-full object-cover"
               />
             </div>
@@ -211,11 +207,11 @@ export function LeftSidebar({
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1">
               <p className="font-bold text-[15px] text-[#f7f9f9] truncate">
-                {me?.displayname ?? 'Player One'}
+                {effectiveMe?.displayname ?? 'Player One'}
               </p>
             </div>
             <p className="text-[13px] text-[#8b98a5] truncate">
-              {me?.username ? `@${me.username}` : '@playerone'}
+              {effectiveMe?.username ? `@${effectiveMe.username}` : '@playerone'}
             </p>
           </div>
         </div>

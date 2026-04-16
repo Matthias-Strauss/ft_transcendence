@@ -276,7 +276,7 @@ export default function SocialApp() {
         onMobileClose={() => setMobileSidebarOpen(false)}
       />
 
-      <div className="ml-0 flex gap-6 px-2 py-2 md:ml-[220px] md:px-4 md:py-4">
+      <div className="ml-0 flex gap-3 px-2 pb-2 pt-14 md:ml-[220px] md:gap-6 md:px-4 md:py-4">
         <main className="min-h-[calc(100vh-1rem)] flex-1 bg-[#0f172a] md:min-h-[calc(100vh-2rem)] md:border-x md:border-[#39444d]">
           {!showingNestedRoute && <HomeFeed ref={inputRef} isVisible={activeTab === 'home'} />}
           {!showingNestedRoute && activeTab !== 'home' && renderContent()}
@@ -288,13 +288,13 @@ export default function SocialApp() {
         ) : (
           <button
             type="button"
-            className="fixed bottom-6 right-6 z-[1100] inline-flex size-14 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-[0_8px_24px_rgba(148,163,184,0.35)] transition hover:-translate-y-0.5 hover:bg-slate-50"
+            className="fixed bottom-4 right-4 z-[1100] inline-flex size-12 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-[0_8px_24px_rgba(148,163,184,0.35)] transition hover:-translate-y-0.5 hover:bg-slate-50 md:bottom-6 md:right-6 md:size-14"
             aria-label="Open chat"
             onClick={() => {
               void resolveDefaultChatTarget();
             }}
           >
-            <MessageCircle className="size-6 text-sky-600" />
+            <MessageCircle className="size-5 text-sky-600 md:size-6" />
           </button>
         )}
       </div>
