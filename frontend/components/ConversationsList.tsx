@@ -29,7 +29,6 @@ export function ConversationsList() {
   const [loading, setLoading] = useState(true);
   const setTargetUsername = useChatStore((s) => s.setTargetUsername);
   const setPanelOpen = useChatStore((s) => s.setPanelOpen);
-  const incrementUnreadForUser = useChatStore((s) => s.incrementUnreadForUser);
   const setUnreadForUser = useChatStore((s) => s.setUnreadForUser);
   const targetUsername = useChatStore((s) => s.targetUsername);
   const meUsername = useUserStore((s) => s.user?.username ?? null);
@@ -131,9 +130,6 @@ export function ConversationsList() {
           return [newItem, ...prev];
         });
 
-        if (fromOtherToMe && otherUsername && otherUsername !== targetUsername) {
-          incrementUnreadForUser(otherUsername, 1);
-        }
       } catch (e) {
         showToast('Failed to handle incoming chat message', 'error');
       }

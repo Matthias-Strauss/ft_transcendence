@@ -127,7 +127,6 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
   const setMessagesForUser = useChatStore((s) => s.setMessagesForUser);
   const appendMessageForUser = useChatStore((s) => s.appendMessageForUser);
   const clearTargetUsername = useChatStore((s) => s.clearTargetUsername);
-  const incrementUnreadForUser = useChatStore((s) => s.incrementUnreadForUser);
   const clearUnreadForUser = useChatStore((s) => s.clearUnreadForUser);
 
   const meUsername = useUserStore((s) => s.user?.username ?? null);
@@ -171,7 +170,7 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
 
         if (!normalized) return;
 
-        const { chatMessage, otherUsername, senderUsername, recipientUsername, isDirect } =
+        const { chatMessage, otherUsername, senderUsername, recipientUsername } =
           normalized;
 
         if (otherUsername) {
@@ -187,7 +186,6 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
           );
 
           if (!shouldShow) {
-            if (otherUsername) incrementUnreadForUser(otherUsername, 1);
           } else {
             if (otherUsername) clearUnreadForUser(otherUsername);
           }
@@ -195,10 +193,6 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
           return;
         }
 
-        	if (!activeTarget && isDirect) {
-          if (otherUsername) incrementUnreadForUser(otherUsername, 1);
-          return;
-        }
       } catch (e) {
         showToast('Error handling chat message', 'error');
       }
