@@ -13,6 +13,7 @@ module.exports = {
     './pages/**/*.{js,ts,jsx,tsx}',
     './types/**/*.{js,ts,jsx,tsx}',
     './utils/**/*.{js,ts,jsx,tsx}',
+    './styles/**/*.{css,scss}',
   ],
   theme: {
     extend: {},
