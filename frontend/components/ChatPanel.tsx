@@ -4,7 +4,7 @@ import { socket } from '../socket';
 import { apiFetch } from '../utils/api';
 import '../styles/chat.css';
 import { uploadFile } from '../utils/send_file';
-import useChatStore, { type ChatMessage } from '../utils/chatState';
+import useChatStore, { type ChatMessage, type PongInviteMetadata } from '../utils/chatState';
 import useUserStore from '../utils/userStore';
 import showToast from '../utils/toast';
 import { AuthedFilePreview } from './ui/AuthedFilePreview';
@@ -114,6 +114,21 @@ function shouldShowMessageInActiveChat(
   if (!activeTarget) return false;
 
   return senderUsername === activeTarget || recipientUsername === activeTarget;
+}
+
+function isPongInviteMetadata(metadata: ChatMessage['metadata']): metadata is PongInviteMetadata {
+  return metadata?.kind === 'pong_invite' && metadata.game === 'pong';
+}
+
+function formatInviteExpiry(expiresAt: string) {
+  const expiry = new Date(expiresAt);
+  const isExpired = expiry.getTime() <= Date.now();
+
+  if (isExpired) {
+    return 'Expired';
+  }
+
+  return `Expires ${expiry.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
 }
 
 export function ChatPanel({ onClose }: ChatPanelProps) {
@@ -480,6 +495,7 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
             {activeMessages.map((msg) => {
               const fileUrl = msg.metadata?.fileUrl;
               const fileName = msg.metadata?.originalName;
+              const inviteMetadata = isPongInviteMetadata(msg.metadata) ? msg.metadata : null;
               return (
                 <div key={msg.id} className={`chat-message-row ${msg.isOwn ? 'own' : 'other'}`}>
                   <div className="chat-message-meta">
@@ -490,7 +506,20 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
                   <div
                     className={`chat-bubble ${msg.isOwn ? 'chat-bubble-own' : 'chat-bubble-other'}`}
                   >
-                    {fileUrl ? (
+                    {inviteMetadata ? (
+                      <div className="chat-game-card">
+                        <div className="chat-game-card-top">
+                          <p className="chat-game-title">Pong Invite</p>
+                          <span className="chat-game-status">{inviteMetadata.status}</span>
+                        </div>
+                        <p className="chat-game-copy">
+                          {msg.isOwn ? 'You challenged this player to a match.' : `${msg.user} challenged you to a match.`}
+                        </p>
+                        <p className="chat-game-expiry">
+                          {formatInviteExpiry(inviteMetadata.expiresAt)}
+                        </p>
+                      </div>
+                    ) : fileUrl ? (
                       <div className="chat-file-card">
                         <p className="chat-file-title">📎 {fileName || 'Attachment'}</p>
                         <div className="chat-file-actions">

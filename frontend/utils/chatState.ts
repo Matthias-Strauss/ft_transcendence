@@ -9,13 +9,21 @@ export type ChatFileMetadata = {
   fileUrl: string;
 };
 
+export type PongInviteMetadata = {
+  kind: 'pong_invite';
+  inviteId: string;
+  status: 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'EXPIRED' | 'CANCELED';
+  expiresAt: string;
+  game: 'pong';
+};
+
 export type ChatMessage = {
   id: string;
   user: string;
   message: string;
   time: string;
   isOwn?: boolean;
-  metadata?: ChatFileMetadata | Record<string, any>;
+  metadata?: ChatFileMetadata | PongInviteMetadata | Record<string, any>;
 };
 
 function dedupeMessages(messages: ChatMessage[]) {
