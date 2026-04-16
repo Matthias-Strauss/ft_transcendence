@@ -19,9 +19,12 @@ export type PongInviteMetadata = {
 
 export type PongNotificationMetadata = {
   kind: 'pong_notification';
-  event: 'invite_accepted' | 'invite_declined';
+  event: 'invite_accepted' | 'invite_declined' | 'match_result';
   inviteId: string;
   game: 'pong';
+  matchId?: string;
+  finalScore?: { p1: number; p2: number };
+  winnerUsername?: string;
 };
 
 export type ChatMessage = {

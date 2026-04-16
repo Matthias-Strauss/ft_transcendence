@@ -141,6 +141,35 @@ function formatInviteExpiry(expiresAt: string) {
   return `Expires ${expiry.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
 }
 
+function buildNotificationLabel(metadata: PongNotificationMetadata) {
+  if (metadata.event === 'invite_accepted') {
+    return 'Invite Accepted';
+  }
+
+  if (metadata.event === 'invite_declined') {
+    return 'Invite Declined';
+  }
+
+  return 'Match Result';
+}
+
+function buildNotificationCopy(metadata: PongNotificationMetadata) {
+  if (metadata.event === 'invite_accepted') {
+    return 'The Pong invite was accepted.';
+  }
+
+  if (metadata.event === 'invite_declined') {
+    return 'The Pong invite was declined.';
+  }
+
+  const finalScore = metadata.finalScore;
+  if (!finalScore || !metadata.winnerUsername) {
+    return 'The Pong match finished.';
+  }
+
+  return `${metadata.winnerUsername} won ${finalScore.p1}-${finalScore.p2}.`;
+}
+
 export function ChatPanel({ onClose }: ChatPanelProps) {
   const [inputValue, setInputValue] = useState('');
   const [connected, setConnected] = useState(socket.connected);
@@ -580,6 +609,9 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
               const fileUrl = msg.metadata?.fileUrl;
               const fileName = msg.metadata?.originalName;
               const inviteMetadata = isPongInviteMetadata(msg.metadata) ? msg.metadata : null;
+              const notificationMetadata = isPongNotificationMetadata(msg.metadata)
+                ? msg.metadata
+                : null;
               const inviteExpired =
                 inviteMetadata && new Date(inviteMetadata.expiresAt).getTime() <= Date.now();
               const inviteOutcome = inviteMetadata
@@ -639,6 +671,27 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
                             </button>
                           </div>
                         )}
+                      </div>
+                    ) : notificationMetadata ? (
+                      <div className="flex min-w-[220px] flex-col gap-2">
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="m-0 text-[13px] font-bold">
+                            {buildNotificationLabel(notificationMetadata)}
+                          </p>
+                          <span className="rounded-full bg-sky-900/10 px-2 py-1 text-[10px] font-bold tracking-[0.04em] text-sky-900">
+                            PONG
+                          </span>
+                        </div>
+                        <p className="m-0 text-[12px] leading-[1.5]">
+                          {buildNotificationCopy(notificationMetadata)}
+                        </p>
+                        {notificationMetadata.event === 'match_result' &&
+                          notificationMetadata.finalScore && (
+                            <p className="m-0 text-[12px] font-semibold leading-[1.5] opacity-80">
+                              Final score: {notificationMetadata.finalScore.p1}-
+                              {notificationMetadata.finalScore.p2}
+                            </p>
+                          )}
                       </div>
                     ) : fileUrl ? (
                       <div className="chat-file-card">
