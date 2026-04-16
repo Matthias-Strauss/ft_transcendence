@@ -33,6 +33,13 @@ export type PongInviteMetadata = {
   game: 'pong';
 };
 
+export type PongNotificationMetadata = {
+  kind: 'pong_notification';
+  event: 'invite_accepted' | 'invite_declined';
+  inviteId: string;
+  game: 'pong';
+};
+
 type InviteStatusUpdate = Exclude<GameInviteStatus, 'PENDING'>;
 
 function now() {
@@ -123,6 +130,10 @@ export async function acceptGameInvite(inviteId: string, matchId?: string) {
   return updateGameInviteStatus(inviteId, 'ACCEPTED', matchId ? { matchId } : {});
 }
 
+export function isGameInviteExpired(invite: Pick<GameInviteWithUsers, 'expiresAt'>) {
+  return invite.expiresAt.getTime() <= Date.now();
+}
+
 export function buildPongInviteMetadata(invite: Pick<GameInviteWithUsers, 'id' | 'status' | 'expiresAt'>) {
   return {
     kind: 'pong_invite',
@@ -131,4 +142,16 @@ export function buildPongInviteMetadata(invite: Pick<GameInviteWithUsers, 'id' |
     expiresAt: invite.expiresAt.toISOString(),
     game: 'pong',
   } satisfies PongInviteMetadata;
+}
+
+export function buildPongNotificationMetadata(
+  invite: Pick<GameInviteWithUsers, 'id'>,
+  event: PongNotificationMetadata['event'],
+) {
+  return {
+    kind: 'pong_notification',
+    event,
+    inviteId: invite.id,
+    game: 'pong',
+  } satisfies PongNotificationMetadata;
 }
