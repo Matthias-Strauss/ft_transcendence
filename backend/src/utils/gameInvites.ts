@@ -1,0 +1,114 @@
+import { GameInviteStatus, GameType, Prisma } from '@prisma/client';
+
+import { prisma } from '../db.js';
+
+const inviteInclude = {
+  sender: {
+    select: {
+      id: true,
+      username: true,
+      displayname: true,
+    },
+  },
+  recipient: {
+    select: {
+      id: true,
+      username: true,
+      displayname: true,
+    },
+  },
+} satisfies Prisma.GameInviteInclude;
+
+export type GameInviteWithUsers = Prisma.GameInviteGetPayload<{
+  include: typeof inviteInclude;
+}>;
+
+type InviteStatusUpdate = Exclude<GameInviteStatus, 'PENDING'>;
+
+function now() {
+  return new Date();
+}
+
+export async function findGameInviteById(inviteId: string) {
+  return prisma.gameInvite.findUnique({
+    where: { id: inviteId },
+    include: inviteInclude,
+  });
+}
+
+export async function cancelPendingGameInvites(
+  senderId: string,
+  recipientId: string,
+  gameType: GameType = 'PONG',
+) {
+  const respondedAt = now();
+
+  return prisma.gameInvite.updateMany({
+    where: {
+      senderId,
+      recipientId,
+      gameType,
+      status: 'PENDING',
+    },
+    data: {
+      status: 'CANCELED',
+      respondedAt,
+    },
+  });
+}
+
+export async function createPendingGameInvite(params: {
+  senderId: string;
+  recipientId: string;
+  expiresAt: Date;
+  gameType?: GameType;
+}) {
+  const gameType = params.gameType ?? 'PONG';
+
+  await cancelPendingGameInvites(params.senderId, params.recipientId, gameType);
+
+  return prisma.gameInvite.create({
+    data: {
+      senderId: params.senderId,
+      recipientId: params.recipientId,
+      gameType,
+      expiresAt: params.expiresAt,
+    },
+    include: inviteInclude,
+  });
+}
+
+export async function updateGameInviteStatus(
+  inviteId: string,
+  status: InviteStatusUpdate,
+  extraData: Prisma.GameInviteUpdateInput = {},
+) {
+  const respondedAt = now();
+
+  return prisma.gameInvite.update({
+    where: { id: inviteId },
+    data: {
+      status,
+      respondedAt,
+      acceptedAt: status === 'ACCEPTED' ? respondedAt : null,
+      ...extraData,
+    },
+    include: inviteInclude,
+  });
+}
+
+export async function expireGameInvite(inviteId: string) {
+  return updateGameInviteStatus(inviteId, 'EXPIRED');
+}
+
+export async function declineGameInvite(inviteId: string) {
+  return updateGameInviteStatus(inviteId, 'DECLINED');
+}
+
+export async function cancelGameInvite(inviteId: string) {
+  return updateGameInviteStatus(inviteId, 'CANCELED');
+}
+
+export async function acceptGameInvite(inviteId: string, matchId?: string) {
+  return updateGameInviteStatus(inviteId, 'ACCEPTED', matchId ? { matchId } : {});
+}
