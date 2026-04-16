@@ -30,9 +30,17 @@ interface LeftSidebarProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
   onNewPost: () => void;
+  mobileOpen?: boolean;
+  onMobileClose?: () => void;
 }
 
-export function LeftSidebar({ activeTab, onTabChange, onNewPost }: LeftSidebarProps) {
+export function LeftSidebar({
+  activeTab,
+  onTabChange,
+  onNewPost,
+  mobileOpen = false,
+  onMobileClose,
+}: LeftSidebarProps) {
   interface MeResponse {
     id?: string;
     username?: string;
@@ -50,6 +58,15 @@ export function LeftSidebar({ activeTab, onTabChange, onNewPost }: LeftSidebarPr
   const onGameRoute = location.pathname === '/game';
   const onProfileRoute = location.pathname.startsWith('/users/');
 
+  const closeMobile = () => {
+    onMobileClose?.();
+  };
+
+  const handleTabClick = (tab: string) => {
+    onTabChange(tab);
+    closeMobile();
+  };
+
   // keep local `me` in sync with global store
   useEffect(() => {
     if (storeUser) setMe(storeUser as MeResponse);
@@ -59,6 +76,7 @@ export function LeftSidebar({ activeTab, onTabChange, onNewPost }: LeftSidebarPr
     onTabChange('profile');
     if (me?.username) {
       navigate(`/users/${me.username}`);
+      closeMobile();
       return;
     }
 
@@ -68,6 +86,7 @@ export function LeftSidebar({ activeTab, onTabChange, onNewPost }: LeftSidebarPr
         const data = await res.json();
         if (data?.username) navigate(`/users/${data.username}`);
         setUser(data);
+        closeMobile();
       }
     } catch (e) {}
   };
@@ -88,7 +107,11 @@ export function LeftSidebar({ activeTab, onTabChange, onNewPost }: LeftSidebarPr
   }, []);
 
   return (
-    <div className="bg-[#0f172a] flex flex-col gap-3 h-screen fixed left-0 top-0 w-[220px] px-4 pt-0 pb-4 border-r border-[#39444d]">
+    <div
+      className={`fixed left-0 top-0 z-[1200] flex h-screen w-[220px] flex-col gap-3 border-r border-[#39444d] bg-[#0f172a] px-4 pb-4 pt-0 transition-transform duration-300 md:translate-x-0 ${
+        mobileOpen ? 'translate-x-0' : '-translate-x-full'
+      }`}
+    >
       <Logo />
 
       <div className="flex flex-col gap-1">
@@ -97,28 +120,28 @@ export function LeftSidebar({ activeTab, onTabChange, onNewPost }: LeftSidebarPr
           label="Home"
           active={onRootRoute && activeTab === 'home'}
           to="/"
-          onClick={() => onTabChange('home')}
+          onClick={() => handleTabClick('home')}
         />
         <SidebarItem
           icon={<Gamepad2 className="size-6" />}
           label="Game"
           active={onGameRoute}
           to="/game"
-          onClick={() => onTabChange('home')}
+          onClick={() => handleTabClick('home')}
         />
         <SidebarItem
           icon={<Bell className="size-6" />}
           label="Notifications"
           active={onRootRoute && activeTab === 'notifications'}
           to="/"
-          onClick={() => onTabChange('notifications')}
+          onClick={() => handleTabClick('notifications')}
         />
         <SidebarItem
           icon={<MessageSquare className="size-6" />}
           label="Messages"
           active={onRootRoute && activeTab === 'messages'}
           to="/"
-          onClick={() => onTabChange('messages')}
+          onClick={() => handleTabClick('messages')}
           badge={
             totalUnread > 0 ? (
               <div className="bg-red-600 text-[#f7f9f9] text-xs px-2 py-0.5 rounded-full min-w-[20px] text-center">
@@ -132,14 +155,14 @@ export function LeftSidebar({ activeTab, onTabChange, onNewPost }: LeftSidebarPr
           label="Friends"
           active={onRootRoute && activeTab === 'friends'}
           to="/"
-          onClick={() => onTabChange('friends')}
+          onClick={() => handleTabClick('friends')}
         />
         <SidebarItem
           icon={<Bookmark className="size-6" />}
           label="Saved"
           active={onRootRoute && activeTab === 'saved'}
           to="/"
-          onClick={() => onTabChange('saved')}
+          onClick={() => handleTabClick('saved')}
         />
         <SidebarItem
           icon={<UserIcon className="size-6" />}
@@ -152,12 +175,15 @@ export function LeftSidebar({ activeTab, onTabChange, onNewPost }: LeftSidebarPr
           label="More"
           active={onRootRoute && activeTab === 'more'}
           to="/"
-          onClick={() => onTabChange('more')}
+          onClick={() => handleTabClick('more')}
         />
       </div>
 
       <button
-        onClick={onNewPost}
+        onClick={() => {
+          onNewPost();
+          closeMobile();
+        }}
         className="bg-[var(--color-1)] hover:bg-[var(--color-1)]/90 text-[#f7f9f9] rounded-full py-3 px-6 transition-colors mt-2"
       >
         <span className="font-bold text-[15px]">Write a post</span>
