@@ -6,7 +6,7 @@ import { uploadFile } from '../utils/send_file';
 import useChatStore, { type ChatMessage } from '../utils/chatState';
 import useUserStore from '../utils/userStore';
 import showToast from '../utils/toast';
-import { AuthedImage } from './ui/AuthedImage';
+import { AuthedFilePreview } from './ui/AuthedFilePreview';
 import { Download } from 'lucide-react';
 interface ChatPanelProps {
   onClose?: () => void;
@@ -251,7 +251,8 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
 
         if (!normalized) return;
 
-        const { chatMessage, otherUsername, senderUsername, recipientUsername } = normalized;
+        const { chatMessage, otherUsername, senderUsername, recipientUsername, isDirect } =
+          normalized;
 
         if (activeTarget && senderUsername === activeTarget) {
           setIsTargetTyping(false);
@@ -284,8 +285,7 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
 
     const onChatTyping = (payload: any) => {
       const activeTarget = targetUsernameRef.current;
-      const typingUsername =
-        typeof payload?.username === 'string' ? payload.username : null;
+      const typingUsername = typeof payload?.username === 'string' ? payload.username : null;
 
       if (!activeTarget || !typingUsername || typingUsername !== activeTarget) {
         return;
@@ -506,9 +506,10 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
                           📎 {fileName || 'Attachment'}
                         </p>
                         <div className="flex items-center gap-3">
-                          <AuthedImage
+                          <AuthedFilePreview
                             src={fileUrl}
-                            alt={fileName || 'Attachment'}
+                            fileName={fileName || 'Attachment'}
+                            mimeType={msg.metadata?.mimeType || 'application/pdf'}
                             className="max-h-40 w-auto max-w-full rounded-lg object-contain"
                           />
                           <Download
