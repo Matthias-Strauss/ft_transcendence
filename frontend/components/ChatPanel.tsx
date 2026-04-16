@@ -2,7 +2,6 @@ import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { Send, FileUp } from 'lucide-react';
 import { socket } from '../socket';
 import { apiFetch } from '../utils/api';
-import '../styles/chat.css';
 import { uploadFile } from '../utils/send_file';
 import useChatStore, { type ChatMessage } from '../utils/chatState';
 import useUserStore from '../utils/userStore';
@@ -252,8 +251,7 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
 
         if (!normalized) return;
 
-        const { chatMessage, otherUsername, senderUsername, recipientUsername, isDirect } =
-          normalized;
+        const { chatMessage, otherUsername, senderUsername, recipientUsername } = normalized;
 
         if (activeTarget && senderUsername === activeTarget) {
           setIsTargetTyping(false);
@@ -452,56 +450,69 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
   };
 
   return (
-    <div className="chat-panel">
-      <div className="chat-panel-inner">
-        <div className="chat-header">
+    <div className="fixed bottom-4 right-4 z-[1000] h-[min(560px,calc(100vh-32px))] w-[min(380px,calc(100vw-32px))] overflow-hidden rounded-[20px] border border-slate-200 bg-white shadow-[0_24px_60px_rgba(15,23,42,0.18)] max-sm:bottom-2 max-sm:right-2 max-sm:h-[min(520px,calc(100vh-16px))] max-sm:w-[calc(100vw-16px)]">
+      <div className="flex h-full flex-col bg-white">
+        <div className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3">
           <div>
-            <p className="chat-title">Live Chat</p>
-            <p className="chat-subtitle">
+            <p className="m-0 text-sm font-bold text-slate-900">Live Chat</p>
+            <p className="m-0 text-xs text-slate-500">
               {targetUsername ? `Chat with @${targetUsername}` : 'Talk with online players'}
             </p>
           </div>
 
-          <div className="chat-header-actions">
-            <div className="chat-status-pill">
-              <span className={`chat-status-dot ${connected ? 'online' : 'offline'}`} />
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] font-medium text-slate-600">
+              <span className={`size-2 rounded-full ${connected ? 'bg-emerald-500' : 'bg-rose-500'}`} />
               {connected ? 'Connected' : 'Offline'}
             </div>
 
             {onClose && (
-              <button type="button" className="chat-close-btn" onClick={onClose}>
+              <button
+                type="button"
+                className="rounded-full border border-slate-300 bg-white px-3 py-1 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-50"
+                onClick={onClose}
+              >
                 Close
               </button>
             )}
           </div>
         </div>
 
-        <div className="chat-messages-wrap">
-          <div className="chat-messages">
+        <div className="flex-1 overflow-y-auto bg-white px-4 py-4">
+          <div className="flex flex-col gap-4">
             {activeMessages.map((msg) => {
               const fileUrl = msg.metadata?.fileUrl;
               const fileName = msg.metadata?.originalName;
               return (
-                <div key={msg.id} className={`chat-message-row ${msg.isOwn ? 'own' : 'other'}`}>
-                  <div className="chat-message-meta">
-                    <span className="chat-message-user">{msg.user}</span>
-                    <span className="chat-message-time">{msg.time}</span>
+                <div
+                  key={msg.id}
+                  className={`flex w-full flex-col gap-1 ${msg.isOwn ? 'items-end' : 'items-start'}`}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-slate-900">{msg.user}</span>
+                    <span className="text-[11px] text-slate-500">{msg.time}</span>
                   </div>
 
                   <div
-                    className={`chat-bubble ${msg.isOwn ? 'chat-bubble-own' : 'chat-bubble-other'}`}
+                    className={`max-w-[82%] rounded-2xl px-3 py-2 text-sm leading-6 ${
+                      msg.isOwn
+                        ? 'rounded-br-md bg-sky-600 text-white'
+                        : 'rounded-bl-md border border-slate-200 bg-slate-100 text-slate-900'
+                    }`}
                   >
                     {fileUrl ? (
-                      <div className="chat-file-card">
-                        <p className="chat-file-title">📎 {fileName || 'Attachment'}</p>
-                        <div className="chat-file-actions">
+                      <div className="flex flex-col gap-2">
+                        <p className="m-0 break-words text-[13px] font-semibold">
+                          📎 {fileName || 'Attachment'}
+                        </p>
+                        <div className="flex items-center gap-3">
                           <AuthedImage
                             src={fileUrl}
                             alt={fileName || 'Attachment'}
-                            className="w-full h-full object-contain"
+                            className="max-h-40 w-auto max-w-full rounded-lg object-contain"
                           />
                           <Download
-                            className="chat-file-download"
+                            className="size-4 shrink-0 cursor-pointer text-slate-500 transition hover:text-slate-900"
                             onClick={() => downloadFile(fileUrl, fileName)}
                           />
                         </div>
@@ -517,19 +528,19 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
           </div>
         </div>
 
-        <div className="chat-input-wrap">
-          <div className="chat-input-row">
+        <div className="mt-auto border-t border-slate-200 bg-white px-3 py-3">
+          <div className="flex h-11 w-full items-center gap-2">
             <input
               type="text"
               placeholder="Type a message..."
               value={inputValue}
               onChange={handleInputChange}
               onKeyDown={(e) => e.key === 'Enter' && void handleSend()}
-              className="chat-input"
+              className="h-full flex-1 rounded-full border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-sky-500"
             />
 
-            <label className="cursor-pointer text-xl hover:opacity-80 transition">
-              <FileUp className="size-6 text-[#8b98a5]" />
+            <label className="inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-full border border-slate-300 text-slate-500 transition hover:bg-slate-50 hover:text-slate-700">
+              <FileUp className="size-5" />
               <input
                 type="file"
                 accept=".pdf"
@@ -541,19 +552,19 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
             <button
               onClick={() => void handleSend()}
               disabled={!connected || isUploading || (!inputValue.trim() && !file)}
-              className="chat-send-btn"
+              className="inline-flex size-11 items-center justify-center rounded-full bg-sky-600 text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:bg-sky-300 disabled:text-slate-100"
               aria-label="Send message"
             >
-              <Send className="chat-send-icon" />
+              <Send className="size-4" />
             </button>
           </div>
 
           {file && progress < 100 && (
-            <div className="chat-upload-meta">
-              <span className="chat-upload-name" title={file.name}>
+            <div className="mt-2 flex items-center justify-between text-xs text-slate-500">
+              <span className="max-w-[80%] truncate font-medium text-slate-600" title={file.name}>
                 {shortenFileName(file.name)}
               </span>
-              <span className="chat-upload-percent">{progress}%</span>
+              <span className="font-mono tabular-nums">{progress}%</span>
             </div>
           )}
 
@@ -562,14 +573,14 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
               id="uploadProgress"
               value={progress}
               max="100"
-              className="chat-upload-progress"
+              className="mt-2 h-2 w-full overflow-hidden rounded-full [appearance:none] [&::-webkit-progress-bar]:rounded-full [&::-webkit-progress-bar]:bg-slate-200 [&::-webkit-progress-value]:rounded-full [&::-webkit-progress-value]:bg-sky-500 [&::-moz-progress-bar]:rounded-full [&::-moz-progress-bar]:bg-sky-500"
             >
               {progress}%
             </progress>
           )}
 
           {targetUsername && isTargetTyping && (
-            <div className="chat-typing-indicator">@{targetUsername} is typing…</div>
+            <div className="mt-2 text-xs italic text-slate-500">@{targetUsername} is typing…</div>
           )}
         </div>
       </div>
