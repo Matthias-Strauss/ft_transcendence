@@ -8,8 +8,10 @@ import { LeftSidebar } from './components/LeftSidebar';
 import { HomeFeed } from './pages/HomeFeed';
 import { FriendsPage } from './pages/FriendsPage';
 import { ProfilePage } from './pages/ProfilePage';
-import { setLogoutHandler, setAccessTokenListener } from './utils/api';
+import { setLogoutHandler, setAccessTokenListener, apiFetch } from './utils/api';
 import useChatStore from './utils/chatState';
+import useUserStore from './utils/userStore';
+import { socket } from './socket';
 import { Bookmarked } from './pages/Bookmarked';
 import showToast from './utils/toast';
 import { clearClientSession } from './utils/api';
@@ -93,6 +95,71 @@ export default function SocialApp() {
   }, [navigate]);
 
   const chatPanelOpen = useChatStore((state) => state.panelOpen);
+
+  useEffect(() => {
+    const onChatMessage = (payload: any) => {
+      try {
+        if (!payload) return;
+
+        const me = useUserStore.getState().user?.username ?? null;
+        if (!me) return;
+
+        const senderUsername = payload?.sender?.username ?? payload?.username ?? null;
+        const recipientUsername = payload?.recipient?.username ?? payload?.to ?? null;
+
+        if (!senderUsername || !recipientUsername) return;
+
+        if (recipientUsername !== me) return;
+
+        const other = senderUsername;
+        const state = useChatStore.getState();
+        const target = state.targetUsername;
+        const panelOpen = state.panelOpen;
+
+        if (panelOpen && target === other) {
+          state.clearUnreadForUser(other);
+        } else {
+          state.incrementUnreadForUser(other, 1);
+        }
+      } catch (err) {
+      }
+    };
+
+    socket.on('chat:message', onChatMessage);
+    return () => {
+      socket.off('chat:message', onChatMessage);
+    };
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function syncUnreadFromServer() {
+      try {
+        const res = await apiFetch('/api/chat/conversations');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!mounted || !data?.items) return;
+        (data.items || []).forEach((it: any) => {
+          const uname = it?.target?.username;
+          if (uname) useChatStore.getState().setUnreadForUser(uname, it.unreadCount ?? 0);
+        });
+      } catch (err) {
+      }
+    }
+
+    void syncUnreadFromServer();
+
+    const onConnect = () => {
+      void syncUnreadFromServer();
+    };
+
+    socket.on('connect', onConnect);
+    return () => {
+      mounted = false;
+      socket.off('connect', onConnect);
+    };
+  }, []);
 
   const renderContent = () => {
     switch (activeTab) {

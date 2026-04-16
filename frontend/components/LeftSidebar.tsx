@@ -16,6 +16,7 @@ import { SidebarItem } from './ui/SidebarItem';
 import { AuthedImage } from './ui/AuthedImage';
 import { useUserStore } from '../utils/userStore';
 import type { UserStore } from '../utils/userStore';
+import useChatStore from '../utils/chatState';
 
 function Logo() {
   return (
@@ -44,6 +45,7 @@ export function LeftSidebar({ activeTab, onTabChange, onNewPost }: LeftSidebarPr
   const location = useLocation();
   const setUser = useUserStore((s: UserStore) => s.setUser);
   const storeUser = useUserStore((s: UserStore) => s.user);
+  const totalUnread = useChatStore((s) => Object.values(s.unreadByUser).reduce((a, b) => a + b, 0));
   const onRootRoute = location.pathname === '/';
   const onGameRoute = location.pathname === '/game';
   const onProfileRoute = location.pathname.startsWith('/users/');
@@ -117,6 +119,13 @@ export function LeftSidebar({ activeTab, onTabChange, onNewPost }: LeftSidebarPr
           active={onRootRoute && activeTab === 'messages'}
           to="/"
           onClick={() => onTabChange('messages')}
+          badge={
+            totalUnread > 0 ? (
+              <div className="bg-red-600 text-[#f7f9f9] text-xs px-2 py-0.5 rounded-full min-w-[20px] text-center">
+                {totalUnread}
+              </div>
+            ) : undefined
+          }
         />
         <SidebarItem
           icon={<Users className="size-6" />}
