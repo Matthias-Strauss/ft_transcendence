@@ -465,6 +465,19 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
     }, 1200);
   };
 
+  const handleInvitePong = () => {
+    if (!connected || !targetUsername) return;
+
+    if (meUsername && targetUsername === meUsername) {
+      showToast('You cannot invite yourself', 'error');
+      return;
+    }
+
+    socket.emit('game:invite:create', {
+      to: targetUsername,
+    });
+  };
+
   return (
     <div className="chat-panel">
       <div className="chat-panel-inner">
@@ -477,6 +490,17 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
           </div>
 
           <div className="chat-header-actions">
+            {targetUsername && (
+              <button
+                type="button"
+                className="rounded-full bg-slate-900 px-[10px] py-1.5 text-[11px] font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+                onClick={handleInvitePong}
+                disabled={!connected}
+              >
+                Play Pong
+              </button>
+            )}
+
             <div className="chat-status-pill">
               <span className={`chat-status-dot ${connected ? 'online' : 'offline'}`} />
               {connected ? 'Connected' : 'Offline'}
@@ -507,15 +531,17 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
                     className={`chat-bubble ${msg.isOwn ? 'chat-bubble-own' : 'chat-bubble-other'}`}
                   >
                     {inviteMetadata ? (
-                      <div className="chat-game-card">
-                        <div className="chat-game-card-top">
-                          <p className="chat-game-title">Pong Invite</p>
-                          <span className="chat-game-status">{inviteMetadata.status}</span>
+                      <div className="flex min-w-[220px] flex-col gap-2">
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="m-0 text-[13px] font-bold">Pong Invite</p>
+                          <span className="rounded-full bg-slate-900/10 px-2 py-1 text-[10px] font-bold tracking-[0.04em]">
+                            {inviteMetadata.status}
+                          </span>
                         </div>
-                        <p className="chat-game-copy">
+                        <p className="m-0 text-[12px] leading-[1.5]">
                           {msg.isOwn ? 'You challenged this player to a match.' : `${msg.user} challenged you to a match.`}
                         </p>
-                        <p className="chat-game-expiry">
+                        <p className="m-0 text-[12px] leading-[1.5] opacity-80">
                           {formatInviteExpiry(inviteMetadata.expiresAt)}
                         </p>
                       </div>
