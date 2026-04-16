@@ -16,6 +16,16 @@ type Match = {
   tickCount: number;
 };
 
+type MatchEndedHook = (params: {
+  matchId: string;
+  reason: MatchEndReason;
+  finalScore: { p1: number; p2: number };
+  players: {
+    p1: { username: string };
+    p2: { username: string };
+  };
+}) => void;
+
 export type MatchManager = {
   join: (socketId: string, username: string) => void;
   createDirectMatch: (
@@ -28,7 +38,7 @@ export type MatchManager = {
   shutdown: () => void;
 };
 
-export function createMatchManager(io: SocketIOServer): MatchManager {
+export function createMatchManager(io: SocketIOServer, onMatchEnded?: MatchEndedHook): MatchManager {
   const matches = new Map<string, Match>();
   const socketToMatchId = new Map<string, string>();
   const socketToSlot = new Map<string, Slot>();
@@ -77,6 +87,18 @@ export function createMatchManager(io: SocketIOServer): MatchManager {
     io.to(match.room).emit('pong:ended', { reason, finalScore });
     io.sockets.sockets.get(p1Id)?.leave(match.room);
     io.sockets.sockets.get(p2Id)?.leave(match.room);
+
+    if (onMatchEnded) {
+      onMatchEnded({
+        matchId,
+        reason,
+        finalScore,
+        players: {
+          p1: { username: match.engine.p1.username },
+          p2: { username: match.engine.p2.username },
+        },
+      });
+    }
 
     matches.delete(matchId);
     socketToMatchId.delete(p1Id);

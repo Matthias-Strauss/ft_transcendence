@@ -35,9 +35,12 @@ export type PongInviteMetadata = {
 
 export type PongNotificationMetadata = {
   kind: 'pong_notification';
-  event: 'invite_accepted' | 'invite_declined';
+  event: 'invite_accepted' | 'invite_declined' | 'match_result';
   inviteId: string;
   game: 'pong';
+  matchId?: string;
+  finalScore?: { p1: number; p2: number };
+  winnerUsername?: string;
 };
 
 type InviteStatusUpdate = Exclude<GameInviteStatus, 'PENDING'>;
@@ -130,6 +133,16 @@ export async function acceptGameInvite(inviteId: string, matchId?: string) {
   return updateGameInviteStatus(inviteId, 'ACCEPTED', matchId ? { matchId } : {});
 }
 
+export async function findAcceptedGameInviteByMatchId(matchId: string) {
+  return prisma.gameInvite.findFirst({
+    where: {
+      matchId,
+      status: 'ACCEPTED',
+    },
+    include: inviteInclude,
+  });
+}
+
 export function isGameInviteExpired(invite: Pick<GameInviteWithUsers, 'expiresAt'>) {
   return invite.expiresAt.getTime() <= Date.now();
 }
@@ -147,11 +160,13 @@ export function buildPongInviteMetadata(invite: Pick<GameInviteWithUsers, 'id' |
 export function buildPongNotificationMetadata(
   invite: Pick<GameInviteWithUsers, 'id'>,
   event: PongNotificationMetadata['event'],
+  extra: Partial<Omit<PongNotificationMetadata, 'kind' | 'event' | 'inviteId' | 'game'>> = {},
 ) {
   return {
     kind: 'pong_notification',
     event,
     inviteId: invite.id,
     game: 'pong',
+    ...extra,
   } satisfies PongNotificationMetadata;
 }
