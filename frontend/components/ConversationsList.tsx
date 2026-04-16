@@ -29,6 +29,9 @@ export function ConversationsList() {
   const [loading, setLoading] = useState(true);
   const setTargetUsername = useChatStore((s) => s.setTargetUsername);
   const setPanelOpen = useChatStore((s) => s.setPanelOpen);
+  const incrementUnreadForUser = useChatStore((s) => s.incrementUnreadForUser);
+  const setUnreadForUser = useChatStore((s) => s.setUnreadForUser);
+  const targetUsername = useChatStore((s) => s.targetUsername);
   const meUsername = useUserStore((s) => s.user?.username ?? null);
 
   useEffect(() => {
@@ -42,7 +45,13 @@ export function ConversationsList() {
           setItems([]);
         } else {
           const data = await res.json();
-          if (mounted) setItems(data.items || []);
+          if (mounted) {
+            setItems(data.items || []);
+            (data.items || []).forEach((it: ConversationItem) => {
+              const uname = it?.target?.username;
+              if (uname) setUnreadForUser(uname, it.unreadCount ?? 0);
+            });
+          }
         }
       } catch (e) {
         showToast('Failed to load conversations', 'error');
@@ -121,6 +130,10 @@ export function ConversationsList() {
 
           return [newItem, ...prev];
         });
+
+        if (fromOtherToMe && otherUsername && otherUsername !== targetUsername) {
+          incrementUnreadForUser(otherUsername, 1);
+        }
       } catch (e) {
         showToast('Failed to handle incoming chat message', 'error');
       }
@@ -131,6 +144,13 @@ export function ConversationsList() {
       socket.off('chat:message', onChatMessage);
     };
   }, [meUsername]);
+
+  useEffect(() => {
+    if (!targetUsername) return;
+    setItems((prev) =>
+      prev.map((it) => (it.target.username === targetUsername ? { ...it, unreadCount: 0 } : it)),
+    );
+  }, [targetUsername]);
 
   return (
     <div className="p-8">
