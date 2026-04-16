@@ -112,12 +112,14 @@ export default function SocialApp() {
         if (recipientUsername !== me) return;
 
         const other = senderUsername;
-        const target = useChatStore.getState().targetUsername;
+        const state = useChatStore.getState();
+        const target = state.targetUsername;
+        const panelOpen = state.panelOpen;
 
-        if (target === other) {
-          useChatStore.getState().clearUnreadForUser(other);
+        if (panelOpen && target === other) {
+          state.clearUnreadForUser(other);
         } else {
-          useChatStore.getState().incrementUnreadForUser(other, 1);
+          state.incrementUnreadForUser(other, 1);
         }
       } catch (err) {
       }
