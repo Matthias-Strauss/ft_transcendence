@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
-import { Send, FileUp } from 'lucide-react';
+import { Send, FileUp, Ban } from 'lucide-react';
 import { socket } from '../socket';
 import { apiFetch } from '../utils/api';
 import { uploadFile } from '../utils/send_file';
@@ -9,6 +9,9 @@ import showToast from '../utils/toast';
 import { AuthedFilePreview } from './ui/AuthedFilePreview';
 import { Download } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import Dropdown from './ui/Dropdown';
+import { DropdownItem } from '../types/posts';
+import { MoreHorizontal } from 'lucide-react';
 interface ChatPanelProps {
   onClose?: () => void;
 }
@@ -130,6 +133,7 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
   const typingTimeoutRef = useRef<number | null>(null);
   const isTypingRef = useRef(false);
   const typingTargetRef = useRef<string | null>(null);
+  const [isOpen, setIsOpen] = useState(false);
 
   const targetUsername = useChatStore((state) => state.targetUsername);
   const messagesByUser = useChatStore((s) => s.messagesByUser);
@@ -448,6 +452,8 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
     }, 1200);
   };
 
+  const items: DropdownItem[] = [{ id: 0, text: 'Block User', icon: <Ban /> }];
+
   return (
     <div className="fixed bottom-4 right-4 z-[1000] h-[min(560px,calc(100vh-32px))] w-[min(380px,calc(100vw-32px))] overflow-hidden rounded-[20px] border border-slate-200 bg-white shadow-[0_24px_60px_rgba(15,23,42,0.18)] max-sm:bottom-2 max-sm:right-2 max-sm:h-[min(520px,calc(100vh-16px))] max-sm:w-[calc(100vw-16px)]">
       <div className="flex h-full flex-col bg-white">
@@ -468,6 +474,23 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
                 className={`size-2 rounded-full ${connected ? 'bg-emerald-500' : 'bg-rose-500'}`}
               />
               {connected ? 'Connected' : 'Offline'}
+            </div>
+            <div className="relative">
+              <button
+                className="p-1 hover:bg-[var(--color-1)]/10 rounded-full transition-colors"
+                onClick={() => setIsOpen((prev) => !prev)}
+              >
+                <MoreHorizontal className="size-5 text-[#8b98a5]" />
+              </button>
+              {isOpen && (
+                <Dropdown
+                  items={items}
+                  isOpen={isOpen}
+                  setIsOpen={setIsOpen}
+                  postId="null"
+                  authorId={targetUsername || 'unknown'}
+                />
+              )}
             </div>
 
             {onClose && (
