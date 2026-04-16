@@ -228,6 +228,8 @@ export default function SocialApp() {
         score: { p1: 0, p2: 0 },
       });
 
+      useChatStore.getState().setPanelOpen(false);
+
       if (location.pathname !== '/game') {
         navigate('/game');
       }
@@ -244,6 +246,8 @@ export default function SocialApp() {
         opponent: payload.opponent,
         score: payload.score,
       });
+
+      useChatStore.getState().setPanelOpen(false);
 
       if (location.pathname !== '/game') {
         navigate('/game');
