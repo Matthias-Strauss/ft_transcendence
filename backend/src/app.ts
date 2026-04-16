@@ -1,3 +1,4 @@
+import path from 'node:path';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import express from 'express';
@@ -72,6 +73,13 @@ export function createApp() {
       maxAge: '1d',
       fallthrough: false,
       redirect: false,
+      setHeaders(res, filePath) {
+        if (path.extname(filePath).toLowerCase() === '.pdf') {
+          res.setHeader('Content-Type', 'application/pdf');
+          res.setHeader('Content-Disposition', 'inline');
+          res.setHeader('X-Content-Type-Options', 'nosniff');
+        }
+      },
     }),
   );
 

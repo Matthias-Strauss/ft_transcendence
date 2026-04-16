@@ -138,7 +138,7 @@ export default function UserProfile() {
           useUserStore.getState().setUser(data);
         }
       } catch (e) {
-          showToast('Failed to load current user', 'error');
+        showToast('Failed to load current user', 'error');
       }
     }
 

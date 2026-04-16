@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigate, Outlet, useLocation } from 'react-router-dom';
 import { MessageCircle } from 'lucide-react';
 import './styles/chat.css';
@@ -19,6 +19,7 @@ import { clearClientSession } from './utils/api';
 export default function SocialApp() {
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const shouldFocusComposerRef = useRef(false);
+  const resolvingDefaultChatRef = useRef(false);
   const [activeTab, setActiveTab] = useState('home');
   const [composerRequestId, setComposerRequestId] = useState(0);
   const navigate = useNavigate();
@@ -95,6 +96,58 @@ export default function SocialApp() {
   }, [navigate]);
 
   const chatPanelOpen = useChatStore((state) => state.panelOpen);
+  const targetUsername = useChatStore((state) => state.targetUsername);
+
+  const resolveDefaultChatTarget = useCallback(async () => {
+    if (resolvingDefaultChatRef.current) {
+      return;
+    }
+
+    const { targetUsername: currentTarget } = useChatStore.getState();
+    if (currentTarget) {
+      useChatStore.setState({ panelOpen: true });
+      return;
+    }
+
+    resolvingDefaultChatRef.current = true;
+
+    try {
+      const res = await apiFetch('/api/chat/conversations');
+
+      if (!res.ok) {
+        setActiveTab('messages');
+        useChatStore.setState({ panelOpen: false });
+        return;
+      }
+
+      const data = await res.json();
+      const latestUsername = data?.items?.[0]?.target?.username;
+
+      if (latestUsername) {
+        useChatStore.setState({
+          targetUsername: latestUsername,
+          panelOpen: true,
+        });
+        return;
+      }
+
+      setActiveTab('messages');
+      useChatStore.setState({ panelOpen: false });
+    } catch {
+      setActiveTab('messages');
+      useChatStore.setState({ panelOpen: false });
+    } finally {
+      resolvingDefaultChatRef.current = false;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!chatPanelOpen || targetUsername || resolvingDefaultChatRef.current) {
+      return;
+    }
+
+    void resolveDefaultChatTarget();
+  }, [chatPanelOpen, targetUsername, resolveDefaultChatTarget]);
 
   useEffect(() => {
     const onChatMessage = (payload: any) => {
@@ -202,7 +255,7 @@ export default function SocialApp() {
             className="chat-toggle-btn"
             aria-label="Open chat"
             onClick={() => {
-              useChatStore.setState({ panelOpen: true });
+              void resolveDefaultChatTarget();
             }}
           >
             <MessageCircle className="chat-toggle-icon" />

@@ -7,7 +7,8 @@ import { uploadFile } from '../utils/send_file';
 import useChatStore, { type ChatMessage } from '../utils/chatState';
 import useUserStore from '../utils/userStore';
 import showToast from '../utils/toast';
-
+import { AuthedFilePreview } from './ui/AuthedFilePreview';
+import { Download } from 'lucide-react';
 interface ChatPanelProps {
   onClose?: () => void;
 }
@@ -32,6 +33,7 @@ function mapApiMessageToChatMessage(m: any): ChatMessage {
     message: m.text ?? '',
     time: formatTime(m.createdAt),
     isOwn: Boolean(m.isOwn),
+    metadata: m.metadata ?? undefined,
   };
 }
 
@@ -67,6 +69,7 @@ function normalizeIncomingPayload(
         message: payload.text ?? '',
         time: formatTime(payload.createdAt),
         isOwn,
+        metadata: payload.metadata ?? undefined,
       },
       otherUsername,
       senderUsername,
@@ -94,6 +97,7 @@ function normalizeIncomingPayload(
       message: payload.text ?? '',
       time: formatTime(),
       isOwn,
+      metadata: payload.metadata ?? undefined,
     },
     otherUsername,
     senderUsername,
@@ -115,12 +119,17 @@ function shouldShowMessageInActiveChat(
 export function ChatPanel({ onClose }: ChatPanelProps) {
   const [inputValue, setInputValue] = useState('');
   const [connected, setConnected] = useState(socket.connected);
+  const [isTargetTyping, setIsTargetTyping] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [progress, setProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadedFileMeta, setUploadedFileMeta] = useState<any | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const targetUsernameRef = useRef<string | null>(null);
+  const typingTimeoutRef = useRef<number | null>(null);
+  const isTypingRef = useRef(false);
+  const typingTargetRef = useRef<string | null>(null);
 
   const targetUsername = useChatStore((state) => state.targetUsername);
   const messagesByUser = useChatStore((s) => s.messagesByUser);
@@ -133,9 +142,67 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
 
   const activeMessages = targetUsername ? messagesByUser[targetUsername] ?? [] : [];
 
+  const emitTypingEvent = (target: string, isTyping: boolean) => {
+    if (!connected) {
+      return;
+    }
+
+    if (!target || (meUsername && target === meUsername)) {
+      return;
+    }
+
+    socket.emit('chat:typing', {
+      to: target,
+      isTyping,
+    });
+  };
+
+  const stopTypingForTarget = (target: string | null) => {
+    if (!target) {
+      return;
+    }
+
+    if (isTypingRef.current) {
+      emitTypingEvent(target, false);
+    }
+
+    isTypingRef.current = false;
+    typingTargetRef.current = null;
+
+    if (typingTimeoutRef.current) {
+      window.clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = null;
+    }
+  };
+
   const shortenFileName = (name: string, maxLength = 20) => {
     if (name.length <= maxLength) return name;
     return `${name.slice(0, maxLength - 3)}...`;
+  };
+
+  const fetchFileBlobUrl = async (fileUrl: string) => {
+    const res = await apiFetch(fileUrl);
+    if (!res.ok) {
+      throw new Error(`Failed with status ${res.status}`);
+    }
+
+    const blob = await res.blob();
+    return URL.createObjectURL(blob);
+  };
+
+  const downloadFile = async (fileUrl: string, fileName?: string) => {
+    try {
+      const blobUrl = await fetchFileBlobUrl(fileUrl);
+      const tempLink = document.createElement('a');
+      tempLink.href = blobUrl;
+      tempLink.download = fileName || 'chat-file.pdf';
+      document.body.appendChild(tempLink);
+      tempLink.click();
+      tempLink.remove();
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 30_000);
+    } catch {
+      showToast('Unable to download file', 'error');
+    }
   };
 
   useEffect(() => {
@@ -145,6 +212,21 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
   useEffect(() => {
     targetUsernameRef.current = targetUsername;
   }, [targetUsername]);
+
+  useEffect(() => {
+    const previousTarget = typingTargetRef.current;
+    if (previousTarget && previousTarget !== targetUsername) {
+      stopTypingForTarget(previousTarget);
+    }
+
+    setIsTargetTyping(false);
+  }, [targetUsername]);
+
+  useEffect(() => {
+    return () => {
+      stopTypingForTarget(typingTargetRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     if (!targetUsername || !meUsername) {
@@ -170,8 +252,12 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
 
         if (!normalized) return;
 
-        const { chatMessage, otherUsername, senderUsername, recipientUsername } =
+        const { chatMessage, otherUsername, senderUsername, recipientUsername, isDirect } =
           normalized;
+
+        if (activeTarget && senderUsername === activeTarget) {
+          setIsTargetTyping(false);
+        }
 
         if (otherUsername) {
           appendMessageForUser(otherUsername, chatMessage);
@@ -198,14 +284,27 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
       }
     };
 
+    const onChatTyping = (payload: any) => {
+      const activeTarget = targetUsernameRef.current;
+      const typingUsername = typeof payload?.username === 'string' ? payload.username : null;
+
+      if (!activeTarget || !typingUsername || typingUsername !== activeTarget) {
+        return;
+      }
+
+      setIsTargetTyping(Boolean(payload?.isTyping));
+    };
+
     socket.on('connect', onConnect);
     socket.on('disconnect', onDisconnect);
     socket.on('chat:message', onChatMessage);
+    socket.on('chat:typing', onChatTyping);
 
     return () => {
       socket.off('connect', onConnect);
       socket.off('disconnect', onDisconnect);
       socket.off('chat:message', onChatMessage);
+      socket.off('chat:typing', onChatTyping);
     };
   }, [appendMessageForUser, meUsername]);
 
@@ -234,9 +333,7 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
           });
-        } catch {
-          // ignore read-mark errors
-        }
+        } catch {}
       } catch (e) {
         showToast('Failed to load conversation', 'error');
       }
@@ -251,36 +348,106 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
     };
   }, [meUsername, targetUsername, setMessagesForUser]);
 
-  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
-    if (selectedFile) {
-      setFile(selectedFile);
-      setProgress(0);
-      setIsUploading(true);
+    if (!selectedFile) return;
 
-      uploadFile(selectedFile, {
-        onProgress: (percent) => setProgress(percent),
+    if (meUsername && targetUsername === meUsername) {
+      showToast('You cannot chat with yourself', 'error');
+      e.target.value = '';
+      return;
+    }
+
+    setFile(selectedFile);
+    setProgress(0);
+    setIsUploading(true);
+    setUploadedFileMeta(null);
+
+    try {
+      const meta = await uploadFile(selectedFile, targetUsername!, {
+        onProgress: (percent: number) => setProgress(percent),
         onComplete: () => setIsUploading(false),
       });
+      setUploadedFileMeta(meta);
+      setIsUploading(false);
+      setProgress(100);
+    } catch (err) {
+      setIsUploading(false);
+      setProgress(0);
+      setUploadedFileMeta(null);
+      setFile(null);
     }
     e.target.value = '';
   };
 
-  const handleSend = () => {
+  const handleSend = async () => {
     const text = inputValue.trim();
-    if (!text || !connected || !targetUsername) return;
+
+    if (!connected || !targetUsername || isUploading) return;
+    if (!text && !uploadedFileMeta) return;
 
     if (meUsername && targetUsername === meUsername) {
       showToast('You cannot chat with yourself', 'error');
       return;
     }
 
-    socket.emit('chat:message', {
-      text,
-      to: targetUsername,
-    });
+    stopTypingForTarget(targetUsername);
 
-    setInputValue('');
+    try {
+      socket.emit('chat:message', {
+        text,
+        to: targetUsername,
+        metadata: uploadedFileMeta
+          ? {
+              fileUrl: uploadedFileMeta.fileUrl || uploadedFileMeta.url || uploadedFileMeta.path,
+              originalName: file?.name || uploadedFileMeta.originalName,
+              ...uploadedFileMeta,
+            }
+          : undefined,
+      });
+
+      setInputValue('');
+      setFile(null);
+      setUploadedFileMeta(null);
+      setProgress(0);
+    } catch {
+      setIsUploading(false);
+    }
+  };
+
+  const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setInputValue(value);
+
+    if (!targetUsername || (meUsername && targetUsername === meUsername) || !connected) {
+      return;
+    }
+
+    const trimmed = value.trim();
+    if (!trimmed) {
+      stopTypingForTarget(targetUsername);
+      return;
+    }
+
+    const currentTypingTarget = typingTargetRef.current;
+
+    if (currentTypingTarget && currentTypingTarget !== targetUsername) {
+      stopTypingForTarget(currentTypingTarget);
+    }
+
+    if (!isTypingRef.current || typingTargetRef.current !== targetUsername) {
+      emitTypingEvent(targetUsername, true);
+      isTypingRef.current = true;
+      typingTargetRef.current = targetUsername;
+    }
+
+    if (typingTimeoutRef.current) {
+      window.clearTimeout(typingTimeoutRef.current);
+    }
+
+    typingTimeoutRef.current = window.setTimeout(() => {
+      stopTypingForTarget(targetUsername);
+    }, 1200);
   };
 
   return (
@@ -310,20 +477,42 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
 
         <div className="chat-messages-wrap">
           <div className="chat-messages">
-            {activeMessages.map((msg) => (
-              <div key={msg.id} className={`chat-message-row ${msg.isOwn ? 'own' : 'other'}`}>
-                <div className="chat-message-meta">
-                  <span className="chat-message-user">{msg.user}</span>
-                  <span className="chat-message-time">{msg.time}</span>
-                </div>
+            {activeMessages.map((msg) => {
+              const fileUrl = msg.metadata?.fileUrl;
+              const fileName = msg.metadata?.originalName;
+              return (
+                <div key={msg.id} className={`chat-message-row ${msg.isOwn ? 'own' : 'other'}`}>
+                  <div className="chat-message-meta">
+                    <span className="chat-message-user">{msg.user}</span>
+                    <span className="chat-message-time">{msg.time}</span>
+                  </div>
 
-                <div
-                  className={`chat-bubble ${msg.isOwn ? 'chat-bubble-own' : 'chat-bubble-other'}`}
-                >
-                  {msg.message}
+                  <div
+                    className={`chat-bubble ${msg.isOwn ? 'chat-bubble-own' : 'chat-bubble-other'}`}
+                  >
+                    {fileUrl ? (
+                      <div className="chat-file-card">
+                        <p className="chat-file-title">📎 {fileName || 'Attachment'}</p>
+                        <div className="chat-file-actions">
+                          <AuthedFilePreview
+                            src={fileUrl}
+                            fileName={fileName || 'Attachment'}
+                            mimeType={msg.metadata?.mimeType || 'application/pdf'}
+                            className="chat-file-preview"
+                          />
+                          <Download
+                            className="chat-file-download"
+                            onClick={() => downloadFile(fileUrl, fileName)}
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      msg.message
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
             <div ref={messagesEndRef} />
           </div>
         </div>
@@ -334,8 +523,8 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
               type="text"
               placeholder="Type a message..."
               value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+              onChange={handleInputChange}
+              onKeyDown={(e) => e.key === 'Enter' && void handleSend()}
               className="chat-input"
             />
 
@@ -343,15 +532,15 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
               <FileUp className="size-6 text-[#8b98a5]" />
               <input
                 type="file"
-                accept=".doc,.docx,.pdf,video/*"
+                accept=".pdf"
                 onChange={handleFileChange}
                 style={{ display: 'none' }}
               />
             </label>
 
             <button
-              onClick={handleSend}
-              disabled={!connected}
+              onClick={() => void handleSend()}
+              disabled={!connected || isUploading || (!inputValue.trim() && !file)}
               className="chat-send-btn"
               aria-label="Send message"
             >
@@ -359,7 +548,7 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
             </button>
           </div>
 
-          {file && (
+          {file && progress < 100 && (
             <div className="chat-upload-meta">
               <span className="chat-upload-name" title={file.name}>
                 {shortenFileName(file.name)}
@@ -368,7 +557,7 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
             </div>
           )}
 
-          {(isUploading || progress === 100) && (
+          {isUploading && progress < 100 && (
             <progress
               id="uploadProgress"
               value={progress}
@@ -377,6 +566,10 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
             >
               {progress}%
             </progress>
+          )}
+
+          {targetUsername && isTargetTyping && (
+            <div className="chat-typing-indicator">@{targetUsername} is typing…</div>
           )}
         </div>
       </div>

@@ -1,3 +1,4 @@
+import showToast from './toast';
 import { socket } from '../socket';
 
 type UploadFileOptions = {
@@ -5,30 +6,58 @@ type UploadFileOptions = {
   onComplete?: () => void;
 };
 
-export const uploadFile = (file: File, options: UploadFileOptions = {}) => {
-  const chunkSize = 64 * 1024;
-  const totalChunks = Math.max(1, Math.ceil(file.size / chunkSize));
-  let chunkIndex = 0;
-
-  const sendChunk = () => {
-    const start = chunkIndex * chunkSize;
-    const end = Math.min(start + chunkSize, file.size);
-    const chunk = file.slice(start, end);
-
-    socket.emit('upload-progress', chunk);
-
-    chunkIndex += 1;
-    const percent = Math.min(100, Math.round((chunkIndex / totalChunks) * 100));
-    options.onProgress?.(percent);
-
-    if (chunkIndex < totalChunks) {
-      setTimeout(sendChunk, 0);
-      return;
+export const uploadFile = (
+  file: File,
+  username: string,
+  options: UploadFileOptions = {},
+): Promise<any> => {
+  return new Promise((resolve, reject) => {
+    const token = localStorage.getItem('accessToken');
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `/api/chat/conversations/${encodeURIComponent(username)}/files/pdf`, true);
+    if (token) {
+      xhr.setRequestHeader('Authorization', `Bearer ${token}`);
     }
 
-    options.onComplete?.();
-  };
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable) {
+        const percent = Math.round((event.loaded / event.total) * 100);
 
-  options.onProgress?.(0);
-  sendChunk();
+        options.onProgress?.(percent);
+
+        socket.emit('upload-progress', {
+          loaded: event.loaded,
+          total: event.total,
+          percent,
+        });
+      }
+    };
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        options.onProgress?.(100);
+        try {
+          const response = JSON.parse(xhr.responseText);
+          resolve(response);
+        } catch (e) {
+          showToast('Failed to parse server response', 'error');
+          reject(new Error('Failed to parse server response'));
+        }
+      } else {
+        const errMsg = xhr.status === 413 ? 'File too large' : 'File upload failed';
+        showToast(errMsg, 'error');
+        reject(new Error(`Upload failed with status ${xhr.status}`));
+      }
+    };
+
+    xhr.onerror = () => {
+      showToast('File upload failed', 'error');
+      reject(new Error('Network error during file upload'));
+    };
+
+    options.onProgress?.(0);
+    const formData = new FormData();
+    formData.append('file', file);
+    xhr.send(formData);
+  });
 };

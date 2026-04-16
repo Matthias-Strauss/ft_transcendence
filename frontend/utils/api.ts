@@ -3,7 +3,6 @@ import { disconnectSocket, connectSocketWithToken } from '../socket';
 import useChatStore from './chatState';
 import useUserStore from './userStore';
 
-
 type LogoutHandler = () => void;
 
 let logoutHandler: LogoutHandler | null = null;
@@ -194,12 +193,11 @@ export async function removeFriend(username: string): Promise<Response> {
   });
 }
 
-export async function fetchAuthedImageURL(src: string): Promise<string> {
+export async function fetchAuthedFileURL(src: string): Promise<string> {
   const apiRes = await apiFetch(src);
 
   if (!apiRes.ok) {
-    showToast(`[fetchImage] Failed to fetch image: ${apiRes.status} ${apiRes.statusText}`, 'error');
-    throw new Error(`Failed to fetch image: ${apiRes.status} ${apiRes.statusText}`);
+    showToast(`[fetchFile] Failed to fetch file: ${apiRes.status} ${apiRes.statusText}`, 'error');
   }
 
   const blob = await apiRes.blob();
@@ -231,4 +229,8 @@ export async function deleteAvatar(): Promise<{ ok: boolean; avatarUrl?: string 
 
   const data = await res.json();
   return { ok: true, avatarUrl: data?.avatarUrl };
+}
+
+export async function fetchAuthedImageURL(src: string): Promise<string> {
+  return fetchAuthedFileURL(src);
 }
