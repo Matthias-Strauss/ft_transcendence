@@ -127,10 +127,12 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
   const setMessagesForUser = useChatStore((s) => s.setMessagesForUser);
   const appendMessageForUser = useChatStore((s) => s.appendMessageForUser);
   const clearTargetUsername = useChatStore((s) => s.clearTargetUsername);
+  const incrementUnreadForUser = useChatStore((s) => s.incrementUnreadForUser);
+  const clearUnreadForUser = useChatStore((s) => s.clearUnreadForUser);
 
   const meUsername = useUserStore((s) => s.user?.username ?? null);
 
-  const activeMessages = targetUsername ? (messagesByUser[targetUsername] ?? []) : [];
+  const activeMessages = targetUsername ? messagesByUser[targetUsername] ?? [] : [];
 
   const shortenFileName = (name: string, maxLength = 20) => {
     if (name.length <= maxLength) return name;
@@ -169,17 +171,13 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
 
         if (!normalized) return;
 
-        const {
-          chatMessage,
-          otherUsername,
-          senderUsername,
-          recipientUsername,
-          isDirect,
-        } = normalized;
+        const { chatMessage, otherUsername, senderUsername, recipientUsername, isDirect } =
+          normalized;
 
         if (otherUsername) {
           appendMessageForUser(otherUsername, chatMessage);
         }
+        if (chatMessage.isOwn) return;
 
         if (activeTarget) {
           const shouldShow = shouldShowMessageInActiveChat(
@@ -188,11 +186,17 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
             recipientUsername,
           );
 
-          if (!shouldShow) return;
+          if (!shouldShow) {
+            if (otherUsername) incrementUnreadForUser(otherUsername, 1);
+          } else {
+            if (otherUsername) clearUnreadForUser(otherUsername);
+          }
+
           return;
         }
 
-        if (!activeTarget && isDirect) {
+        	if (!activeTarget && isDirect) {
+          if (otherUsername) incrementUnreadForUser(otherUsername, 1);
           return;
         }
       } catch (e) {
@@ -227,7 +231,10 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
         if (!mounted) return;
 
         setMessagesForUser(username, mapped);
-
+        try {
+          clearUnreadForUser(username);
+        } catch (err) {
+        }
         try {
           await apiFetch(`/api/chat/conversations/${encodeURIComponent(username)}/read`, {
             method: 'POST',
