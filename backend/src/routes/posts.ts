@@ -139,10 +139,12 @@ postsRouter.post(
     const contentValue = parsed.data.content?.trim() ?? '';
     if (contentValue.length === 0 && !uploadedPostImage) {
       await cleanupUploadedPostImage(req);
-      throw RequestErrors.badRequest([{
-        message: 'Either content or an image is required to create a post',
-        path: ['content'],
-      }]);
+      throw RequestErrors.badRequest([
+        {
+          message: 'Either content or an image is required to create a post',
+          path: ['content'],
+        },
+      ]);
     }
 
     let post;
