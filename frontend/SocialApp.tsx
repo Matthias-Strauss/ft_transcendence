@@ -15,6 +15,7 @@ import { socket } from './socket';
 import { Bookmarked } from './pages/Bookmarked';
 import showToast from './utils/toast';
 import { clearClientSession } from './utils/api';
+import usePongStore from './utils/pongState';
 
 export default function SocialApp() {
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
@@ -213,6 +214,56 @@ export default function SocialApp() {
       socket.off('connect', onConnect);
     };
   }, []);
+
+  useEffect(() => {
+    const onMatched = (payload: any) => {
+      if (!payload?.matchId || !payload?.youAre || !payload?.opponent) {
+        return;
+      }
+
+      usePongStore.getState().setActiveMatch({
+        matchId: payload.matchId,
+        youAre: payload.youAre,
+        opponent: payload.opponent,
+        score: { p1: 0, p2: 0 },
+      });
+
+      if (location.pathname !== '/game') {
+        navigate('/game');
+      }
+    };
+
+    const onResumed = (payload: any) => {
+      if (!payload?.matchId || !payload?.youAre || !payload?.opponent || !payload?.score) {
+        return;
+      }
+
+      usePongStore.getState().setActiveMatch({
+        matchId: payload.matchId,
+        youAre: payload.youAre,
+        opponent: payload.opponent,
+        score: payload.score,
+      });
+
+      if (location.pathname !== '/game') {
+        navigate('/game');
+      }
+    };
+
+    const onEnded = () => {
+      usePongStore.getState().clearActiveMatch();
+    };
+
+    socket.on('pong:matched', onMatched);
+    socket.on('pong:resumed', onResumed);
+    socket.on('pong:ended', onEnded);
+
+    return () => {
+      socket.off('pong:matched', onMatched);
+      socket.off('pong:resumed', onResumed);
+      socket.off('pong:ended', onEnded);
+    };
+  }, [location.pathname, navigate]);
 
   const renderContent = () => {
     switch (activeTab) {

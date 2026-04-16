@@ -25,6 +25,7 @@ import {
   type PongSnapshot,
 } from '../game/pongConstants';
 import { socket } from '../socket';
+import usePongStore from '../utils/pongState';
 import { usePongDebugHud } from './PongDebugHud';
 
 type Mode = 'idle' | 'waiting' | 'playing' | 'ended';
@@ -71,6 +72,9 @@ export default function PongGame() {
   const modeRef = useRef<Mode>('idle');
   const youAreRef = useRef<Slot | null>(null);
   const ignoreNextEndedRef = useRef(false);
+  const activeMatch = usePongStore((state) => state.activeMatch);
+  const setActiveMatch = usePongStore((state) => state.setActiveMatch);
+  const clearActiveMatch = usePongStore((state) => state.clearActiveMatch);
 
   useEffect(() => {
     modeRef.current = mode;
@@ -79,6 +83,21 @@ export default function PongGame() {
   useEffect(() => {
     youAreRef.current = youAre;
   }, [youAre]);
+
+  useEffect(() => {
+    if (!activeMatch) {
+      return;
+    }
+
+    ignoreNextEndedRef.current = false;
+    snapshotBufferRef.current = [];
+    resetDebugHud();
+    setOpponent(activeMatch.opponent);
+    setYouAre(activeMatch.youAre);
+    setScore(activeMatch.score);
+    setEndedReason(null);
+    setMode('playing');
+  }, [activeMatch, resetDebugHud]);
 
   useEffect(() => {
     const emitLeaveIfActive = () => {
@@ -104,6 +123,12 @@ export default function PongGame() {
       resetDebugHud();
       lastSeenScoreP1 = 0;
       lastSeenScoreP2 = 0;
+      setActiveMatch({
+        matchId: payload.matchId,
+        youAre: payload.youAre,
+        opponent: payload.opponent,
+        score: { p1: 0, p2: 0 },
+      });
       setOpponent(payload.opponent);
       setYouAre(payload.youAre);
       setScore({ p1: 0, p2: 0 });
@@ -127,6 +152,7 @@ export default function PongGame() {
         ignoreNextEndedRef.current = false;
         return;
       }
+      clearActiveMatch();
       setEndedReason(payload.reason);
       setScore(payload.finalScore);
       setOpponentGoneUntil(null);
@@ -147,6 +173,12 @@ export default function PongGame() {
       resetDebugHud();
       lastSeenScoreP1 = payload.score.p1;
       lastSeenScoreP2 = payload.score.p2;
+      setActiveMatch({
+        matchId: payload.matchId,
+        youAre: payload.youAre,
+        opponent: payload.opponent,
+        score: payload.score,
+      });
       setOpponent(payload.opponent);
       setYouAre(payload.youAre);
       setScore(payload.score);
@@ -178,7 +210,7 @@ export default function PongGame() {
       window.removeEventListener('pagehide', emitLeaveIfActive);
       emitLeaveIfActive();
     };
-  }, [notifySnapshot, resetDebugHud]);
+  }, [clearActiveMatch, notifySnapshot, resetDebugHud, setActiveMatch]);
 
   useEffect(() => {
     if (opponentGoneUntil === null) return;
@@ -207,6 +239,7 @@ export default function PongGame() {
   const leaveGame = (suppressEndEvent: boolean) => {
     ignoreNextEndedRef.current = suppressEndEvent;
     socket.emit('pong:leave');
+    clearActiveMatch();
     snapshotBufferRef.current = [];
     setOpponent('');
     setYouAre(null);
@@ -218,6 +251,7 @@ export default function PongGame() {
   };
 
   const backToLobby = () => {
+    clearActiveMatch();
     setEndedReason(null);
     setMode('idle');
   };
