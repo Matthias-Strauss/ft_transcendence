@@ -14,7 +14,6 @@ import { runFriendAction } from '../utils/friendActions';
 import { PostCard } from '../components/ui/PostCard';
 import type { Post } from '../types/posts';
 import ChatState from '../utils/chatState';
-import '../styles/UserProfile.css';
 import { AuthedImage } from '../components/ui/AuthedImage';
 import { useUserStore } from '../utils/userStore';
 import type { UserStore } from '../utils/userStore';
@@ -261,65 +260,75 @@ export default function UserProfile() {
           }}
         />
       )}
-      <div className="user-profile-header">
-        <div className="flex items-center justify-between p-4">
+      <div className="sticky top-0 z-20 border-b border-slate-700/80 bg-slate-950/90 backdrop-blur-xl">
+        <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
           <h1 className="text-[20px] font-bold text-[#f7f9f9]">
             {user.displayname ?? user.username}
           </h1>
 
-          <div className="user-search-wrap">
+          <div className="relative w-full max-w-[420px]">
             <input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search by nickname"
-              className="w-full rounded-md border border-[#39444d] bg-[#071026] px-3 py-2 text-sm text-[#f7f9f9] outline-none"
+              className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-sky-400"
             />
 
             {searchLoading && searchQuery.trim().length >= 2 && (
-              <div className="user-search-status">Searching...</div>
+              <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-[9999] rounded-2xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-400 shadow-[0_20px_40px_rgba(0,0,0,0.35)]">
+                Searching...
+              </div>
             )}
 
             {!searchLoading && searchQuery.trim().length >= 2 && searchResults.length > 0 && (
-              <div className="user-search-dropdown">
+              <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-[9999] overflow-hidden rounded-2xl border border-slate-700 bg-slate-950 shadow-[0_20px_40px_rgba(0,0,0,0.35)]">
                 {searchResults.map((r) => (
                   <button
                     key={r.username}
                     type="button"
-                    className="user-search-item"
+                    className="flex w-full items-center gap-3 border-b border-slate-800 px-3 py-3 text-left transition last:border-b-0 hover:bg-slate-900"
                     onClick={() => {
                       setSearchQuery('');
                       setSearchResults([]);
                       navigate(`/users/${r.username}`);
                     }}
                   >
-                    <div className="user-search-avatar">
+                    <div className="size-8 overflow-hidden rounded-full border border-slate-700 bg-slate-900">
                       <AuthedImage
                         src={r.avatarUrl ?? '/uploads/avatars/default.png'}
                         alt={r.displayname ?? r.username}
                       />
                     </div>
 
-                    <div className="user-search-main">
-                      <div className="user-search-name">{r.displayname ?? r.username}</div>
-                      <div className="user-search-username">@{r.username}</div>
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-medium text-white">
+                        {r.displayname ?? r.username}
+                      </div>
+                      <div className="truncate text-xs text-slate-400">@{r.username}</div>
                     </div>
 
-                    <div className="user-search-meta">{r.postsCount ?? 0} posts</div>
+                    <div className="whitespace-nowrap text-xs text-slate-400">
+                      {r.postsCount ?? 0} posts
+                    </div>
 
-                    <div className="user-search-meta">{r.friendsCount ?? 0} friends</div>
+                    <div className="whitespace-nowrap text-xs text-slate-400">
+                      {r.friendsCount ?? 0} friends
+                    </div>
                   </button>
                 ))}
               </div>
             )}
 
             {!searchLoading && searchQuery.trim().length >= 2 && searchResults.length === 0 && (
-              <div className="user-search-status">No users found</div>
+              <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-[9999] rounded-2xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-400 shadow-[0_20px_40px_rgba(0,0,0,0.35)]">
+                No users found
+              </div>
             )}
           </div>
         </div>
       </div>
 
-      <div className="p-6 border-b border-[#39444d] flex gap-6 items-center">
+      <div className="flex flex-col items-start gap-4 border-b border-[#39444d] p-4 sm:flex-row sm:items-center sm:gap-6 sm:p-6">
         <div className="size-20 rounded-full overflow-hidden bg-[#0b1220]">
           <AuthedImage
             src={user.avatarUrl ?? '/uploads/avatars/default.png'}
@@ -329,7 +338,7 @@ export default function UserProfile() {
         </div>
 
         <div className="flex-1">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <div>
               <h2 className="text-[18px] font-bold text-[#f7f9f9]">
                 {user.displayname ?? 'Unknown'}
@@ -339,7 +348,7 @@ export default function UserProfile() {
               </div>
             </div>
 
-            <div className="ml-auto flex gap-2">
+            <div className="flex flex-wrap gap-2 sm:ml-auto">
               {isMine ? (
                 <>
                   <button

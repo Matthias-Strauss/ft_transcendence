@@ -77,6 +77,32 @@ async function handleAction({
 
       return { ok: true, data };
     }
+    case 'Block User': {
+      const response = await apiFetch(`/api/chat/block/${authorId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userId: authorId }),
+      });
+
+      if (response.ok) {
+        showToast('User blocked', 'success');
+      }
+
+      return { ok: response.ok };
+    }
+    case 'Unblock User': {
+      const response = await apiFetch(`/api/chat/block/${authorId}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        showToast('User unblocked', 'success');
+      }
+
+      return { ok: response.ok };
+    }
     default:
       return { ok: false };
   }

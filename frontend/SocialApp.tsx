@@ -1,7 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigate, Outlet, useLocation } from 'react-router-dom';
-import { MessageCircle } from 'lucide-react';
-import './styles/chat.css';
+import { Menu, MessageCircle, X } from 'lucide-react';
 import { ChatPanel } from './components/ChatPanel';
 import ConversationsList from './components/ConversationsList';
 import { LeftSidebar } from './components/LeftSidebar';
@@ -21,6 +20,7 @@ export default function SocialApp() {
   const shouldFocusComposerRef = useRef(false);
   const resolvingDefaultChatRef = useRef(false);
   const [activeTab, setActiveTab] = useState('home');
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [composerRequestId, setComposerRequestId] = useState(0);
   const navigate = useNavigate();
   const location = useLocation();
@@ -150,7 +150,18 @@ export default function SocialApp() {
   }, [chatPanelOpen, targetUsername, resolveDefaultChatTarget]);
 
   useEffect(() => {
-    const onChatMessage = (payload: any) => {
+    setMobileSidebarOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    type ChatMessagePayload = {
+      sender?: { username?: string | null } | null;
+      username?: string | null;
+      recipient?: { username?: string | null } | null;
+      to?: string | null;
+    };
+
+    const onChatMessage = (payload: ChatMessagePayload) => {
       try {
         if (!payload) return;
 
@@ -192,11 +203,13 @@ export default function SocialApp() {
         if (!res.ok) return;
         const data = await res.json();
         if (!mounted || !data?.items) return;
-        (data.items || []).forEach((it: any) => {
-          const uname = it?.target?.username;
-          if (uname) useChatStore.getState().setUnreadForUser(uname, it.unreadCount ?? 0);
-        });
-      } catch (err) {}
+        (data.items || []).forEach(
+          (it: { target?: { username?: string | null }; unreadCount?: number }) => {
+            const uname = it?.target?.username;
+            if (uname) useChatStore.getState().setUnreadForUser(uname, it.unreadCount ?? 0);
+          },
+        );
+      } catch {}
     }
 
     void syncUnreadFromServer();
@@ -236,10 +249,35 @@ export default function SocialApp() {
 
   return (
     <div className="min-h-screen bg-[#0f172a]">
-      <LeftSidebar activeTab={activeTab} onTabChange={setActiveTab} onNewPost={handleNewPost} />
+      <button
+        type="button"
+        className="fixed left-3 top-3 z-[1300] inline-flex size-10 items-center justify-center rounded-full border border-slate-700 bg-slate-900/95 text-slate-100 shadow-lg backdrop-blur md:hidden"
+        aria-label={mobileSidebarOpen ? 'Close menu' : 'Open menu'}
+        aria-expanded={mobileSidebarOpen}
+        onClick={() => setMobileSidebarOpen((v) => !v)}
+      >
+        {mobileSidebarOpen ? <X className="size-5" /> : <Menu className="size-5" />}
+      </button>
 
-      <div className="ml-[220px] gap-6 px-4 py-4 flex">
-        <main className="min-h-[calc(100vh-2rem)] flex-1 border-x border-[#39444d] bg-[#0f172a]">
+      {mobileSidebarOpen && (
+        <button
+          type="button"
+          className="fixed inset-0 z-[1100] bg-black/50 backdrop-blur-[1px] md:hidden"
+          aria-label="Close sidebar backdrop"
+          onClick={() => setMobileSidebarOpen(false)}
+        />
+      )}
+
+      <LeftSidebar
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        onNewPost={handleNewPost}
+        mobileOpen={mobileSidebarOpen}
+        onMobileClose={() => setMobileSidebarOpen(false)}
+      />
+
+      <div className="ml-0 flex gap-3 px-2 pb-2 pt-14 md:ml-[220px] md:gap-6 md:px-4 md:py-4">
+        <main className="min-h-[calc(100vh-1rem)] flex-1 bg-[#0f172a] md:min-h-[calc(100vh-2rem)] md:border-x md:border-[#39444d]">
           {!showingNestedRoute && <HomeFeed ref={inputRef} isVisible={activeTab === 'home'} />}
           {!showingNestedRoute && activeTab !== 'home' && renderContent()}
           {showingNestedRoute && <Outlet />}
@@ -250,13 +288,13 @@ export default function SocialApp() {
         ) : (
           <button
             type="button"
-            className="chat-toggle-btn"
+            className="fixed bottom-4 right-4 z-[1100] inline-flex size-12 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-[0_8px_24px_rgba(148,163,184,0.35)] transition hover:-translate-y-0.5 hover:bg-slate-50 md:bottom-6 md:right-6 md:size-14"
             aria-label="Open chat"
             onClick={() => {
               void resolveDefaultChatTarget();
             }}
           >
-            <MessageCircle className="chat-toggle-icon" />
+            <MessageCircle className="size-5 text-sky-600 md:size-6" />
           </button>
         )}
       </div>
