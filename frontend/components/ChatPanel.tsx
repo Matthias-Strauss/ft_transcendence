@@ -4,7 +4,11 @@ import { socket } from '../socket';
 import { apiFetch } from '../utils/api';
 import '../styles/chat.css';
 import { uploadFile } from '../utils/send_file';
-import useChatStore, { type ChatMessage, type PongInviteMetadata } from '../utils/chatState';
+import useChatStore, {
+  type ChatMessage,
+  type PongInviteMetadata,
+  type PongNotificationMetadata,
+} from '../utils/chatState';
 import useUserStore from '../utils/userStore';
 import showToast from '../utils/toast';
 import { AuthedFilePreview } from './ui/AuthedFilePreview';
@@ -120,6 +124,12 @@ function isPongInviteMetadata(metadata: ChatMessage['metadata']): metadata is Po
   return metadata?.kind === 'pong_invite' && metadata.game === 'pong';
 }
 
+function isPongNotificationMetadata(
+  metadata: ChatMessage['metadata'],
+): metadata is PongNotificationMetadata {
+  return metadata?.kind === 'pong_notification' && metadata.game === 'pong';
+}
+
 function formatInviteExpiry(expiresAt: string) {
   const expiry = new Date(expiresAt);
   const isExpired = expiry.getTime() <= Date.now();
@@ -135,6 +145,7 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
   const [inputValue, setInputValue] = useState('');
   const [connected, setConnected] = useState(socket.connected);
   const [isTargetTyping, setIsTargetTyping] = useState(false);
+  const [respondingInviteIds, setRespondingInviteIds] = useState<string[]>([]);
   const [file, setFile] = useState<File | null>(null);
   const [progress, setProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
@@ -156,6 +167,23 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
   const meUsername = useUserStore((s) => s.user?.username ?? null);
 
   const activeMessages = targetUsername ? messagesByUser[targetUsername] ?? [] : [];
+  const inviteOutcomeById = activeMessages.reduce<Record<string, 'ACCEPTED' | 'DECLINED'>>(
+    (acc, msg) => {
+      const notification = isPongNotificationMetadata(msg.metadata) ? msg.metadata : null;
+      if (!notification) {
+        return acc;
+      }
+
+      if (notification.event === 'invite_accepted') {
+        acc[notification.inviteId] = 'ACCEPTED';
+      } else if (notification.event === 'invite_declined') {
+        acc[notification.inviteId] = 'DECLINED';
+      }
+
+      return acc;
+    },
+    {},
+  );
 
   const emitTypingEvent = (target: string, isTyping: boolean) => {
     if (!connected) {
@@ -478,6 +506,38 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
     });
   };
 
+  const handleInviteResponse = (inviteId: string, action: 'accept' | 'decline') => {
+    setRespondingInviteIds((current) => [...new Set([...current, inviteId])]);
+
+    socket.emit(`game:invite:${action}`, {
+      inviteId,
+    });
+  };
+
+  useEffect(() => {
+    setRespondingInviteIds((current) =>
+      current.filter((inviteId) => !(inviteId in inviteOutcomeById)),
+    );
+  }, [inviteOutcomeById]);
+
+  useEffect(() => {
+    const onChatError = (payload: any) => {
+      const code = typeof payload?.code === 'string' ? payload.code : '';
+
+      if (!code.startsWith('GAME_INVITE_')) {
+        return;
+      }
+
+      setRespondingInviteIds([]);
+      showToast(payload?.message || 'Unable to update invite', 'error');
+    };
+
+    socket.on('chat:error', onChatError);
+    return () => {
+      socket.off('chat:error', onChatError);
+    };
+  }, []);
+
   return (
     <div className="chat-panel">
       <div className="chat-panel-inner">
@@ -520,6 +580,18 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
               const fileUrl = msg.metadata?.fileUrl;
               const fileName = msg.metadata?.originalName;
               const inviteMetadata = isPongInviteMetadata(msg.metadata) ? msg.metadata : null;
+              const inviteOutcome = inviteMetadata
+                ? inviteOutcomeById[inviteMetadata.inviteId] ?? inviteMetadata.status
+                : null;
+              const inviteExpired =
+                inviteMetadata && new Date(inviteMetadata.expiresAt).getTime() <= Date.now();
+              const canRespond =
+                Boolean(inviteMetadata) &&
+                !msg.isOwn &&
+                inviteOutcome === 'PENDING' &&
+                !inviteExpired;
+              const isResponding =
+                inviteMetadata && respondingInviteIds.includes(inviteMetadata.inviteId);
               return (
                 <div key={msg.id} className={`chat-message-row ${msg.isOwn ? 'own' : 'other'}`}>
                   <div className="chat-message-meta">
@@ -535,7 +607,7 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
                         <div className="flex items-center justify-between gap-3">
                           <p className="m-0 text-[13px] font-bold">Pong Invite</p>
                           <span className="rounded-full bg-slate-900/10 px-2 py-1 text-[10px] font-bold tracking-[0.04em]">
-                            {inviteMetadata.status}
+                            {inviteOutcome}
                           </span>
                         </div>
                         <p className="m-0 text-[12px] leading-[1.5]">
@@ -544,6 +616,28 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
                         <p className="m-0 text-[12px] leading-[1.5] opacity-80">
                           {formatInviteExpiry(inviteMetadata.expiresAt)}
                         </p>
+                        {canRespond && (
+                          <div className="mt-1 flex gap-2">
+                            <button
+                              type="button"
+                              className="rounded-full bg-emerald-600 px-3 py-1.5 text-[11px] font-bold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-slate-400"
+                              onClick={() => handleInviteResponse(inviteMetadata.inviteId, 'accept')}
+                              disabled={Boolean(isResponding)}
+                            >
+                              Accept
+                            </button>
+                            <button
+                              type="button"
+                              className="rounded-full border border-slate-300 px-3 py-1.5 text-[11px] font-bold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-400"
+                              onClick={() =>
+                                handleInviteResponse(inviteMetadata.inviteId, 'decline')
+                              }
+                              disabled={Boolean(isResponding)}
+                            >
+                              Decline
+                            </button>
+                          </div>
+                        )}
                       </div>
                     ) : fileUrl ? (
                       <div className="chat-file-card">

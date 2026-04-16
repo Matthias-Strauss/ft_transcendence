@@ -17,13 +17,20 @@ export type PongInviteMetadata = {
   game: 'pong';
 };
 
+export type PongNotificationMetadata = {
+  kind: 'pong_notification';
+  event: 'invite_accepted' | 'invite_declined';
+  inviteId: string;
+  game: 'pong';
+};
+
 export type ChatMessage = {
   id: string;
   user: string;
   message: string;
   time: string;
   isOwn?: boolean;
-  metadata?: ChatFileMetadata | PongInviteMetadata | Record<string, any>;
+  metadata?: ChatFileMetadata | PongInviteMetadata | PongNotificationMetadata | Record<string, any>;
 };
 
 function dedupeMessages(messages: ChatMessage[]) {
