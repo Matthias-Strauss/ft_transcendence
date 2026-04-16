@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState } from 'react';
-import '../../styles/edit-profile-modal.css';
 import { AuthedImage } from './AuthedImage';
 import { uploadAvatar, deleteAvatar, apiFetch, logout } from '../../utils/api';
 import { validatePassword } from '../../utils/password';
@@ -304,37 +303,48 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
     ? 'Invalid username'
     : '';
 
+  const notificationTypeClasses = {
+    error: 'border-rose-500/30 bg-rose-500/90 text-white',
+    success: 'border-emerald-500/30 bg-emerald-600 text-white',
+    info: 'border-sky-500/30 bg-sky-600 text-white',
+  } as const;
+
+  const panelInputClass =
+    'w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-sky-400 focus:bg-white/8';
+  const pillButtonClass =
+    'inline-flex items-center justify-center rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:-translate-y-0.5 hover:bg-white/10 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60';
+  const ghostButtonClass =
+    'inline-flex items-center justify-center rounded-full border border-white/10 bg-transparent px-4 py-2 text-sm font-semibold text-slate-400 transition hover:bg-white/5 hover:text-white disabled:cursor-not-allowed disabled:opacity-50';
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
       {notification && (
-        <div className="notification-centered" role="status" aria-live="polite">
+        <div
+          className="fixed left-1/2 top-1/2 z-[99999] w-[min(900px,calc(100%-48px))] max-w-[92%] -translate-x-1/2 -translate-y-1/2"
+          role="status"
+          aria-live="polite"
+        >
           <div
-            className={`notification-box ${
-              notification.type === 'error'
-                ? 'error'
-                : notification.type === 'success'
-                ? 'success'
-                : 'info'
-            }`}
+            className={`rounded-2xl border px-4 py-3 shadow-[0_20px_50px_rgba(2,6,23,0.55)] ${notificationTypeClasses[notification.type]}`}
           >
             <div className="flex items-center justify-between">
-              <div className="text-sm">{notification.text}</div>
+              <div className="text-sm font-medium">{notification.text}</div>
               <button
                 type="button"
                 onClick={() => {
                   if (notifTimeoutRef.current) window.clearTimeout(notifTimeoutRef.current);
                   setNotification(null);
                 }}
-                className="ml-3 text-white/90"
+                className="ml-3 text-white/90 transition hover:text-white"
                 aria-label="Dismiss notification"
               >
                 ×
               </button>
             </div>
 
-            <div className="notification-progress mt-2 h-1 w-full bg-white/10 rounded overflow-hidden">
+            <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-white/15">
               <div
-                className="notification-bar h-full"
+                className="h-full w-full origin-left bg-white/60"
                 style={{ animationDuration: `${notification.duration ?? 5000}ms` }}
                 onAnimationEnd={() => {
                   if (notifTimeoutRef.current) window.clearTimeout(notifTimeoutRef.current);
@@ -346,32 +356,32 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
         </div>
       )}
 
-      <div className="bg-[#071026] rounded-lg w-[640px] p-6 modal-card" style={{ marginTop: 30 }}>
+      <div className="mt-[30px] w-[640px] rounded-[18px] border border-white/10 bg-slate-950/90 p-6 shadow-[0_24px_80px_rgba(2,6,23,0.7)] backdrop-blur-xl">
         <div className="flex items-start justify-between">
           <h3 className="font-bold text-[18px] text-[#f7f9f9]">Edit profile</h3>
           <div>
-            <button type="button" onClick={onClose} className="text-[#8b98a5] hover:text-[#f7f9f9]">
+            <button type="button" onClick={onClose} className="text-slate-400 transition hover:text-white">
               Close
             </button>
           </div>
         </div>
 
         {confirmingReset && (
-          <div className="confirm-overlay" role="dialog" aria-modal="true">
-            <div className="confirm-box">
-              <div className="text-sm">Reset avatar to default?</div>
-              <div className="confirm-actions mt-4 flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setConfirmingReset(false)}
-                  className="btn btn-ghost"
-                >
+          <div
+            className="fixed left-1/2 top-1/2 z-[100001] w-[min(480px,92%)] -translate-x-1/2 -translate-y-1/2"
+            role="dialog"
+            aria-modal="true"
+          >
+            <div className="rounded-2xl border border-white/10 bg-slate-950 p-5 shadow-[0_24px_80px_rgba(2,6,23,0.65)]">
+              <div className="text-sm text-white">Reset avatar to default?</div>
+              <div className="mt-4 flex justify-end gap-2">
+                <button type="button" onClick={() => setConfirmingReset(false)} className={ghostButtonClass}>
                   Cancel
                 </button>
                 <button
                   type="button"
                   onClick={performDelete}
-                  className="bg-[var(--color-1)] hover:bg-[var(--color-1)]/90 text-[#f7f9f9] rounded-full py-2 px-4"
+                  className="rounded-full bg-[var(--color-1)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--color-1)]/90"
                 >
                   Confirm
                 </button>
@@ -381,7 +391,7 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
         )}
 
         <div className="mt-4 flex items-start gap-6">
-          <div className="size-24 rounded-full overflow-hidden bg-[#0b1220] avatar-frame">
+          <div className="size-24 overflow-hidden rounded-full border border-white/10 bg-slate-900 p-1 shadow-[0_16px_40px_rgba(2,6,23,0.55)]">
             <AuthedImage
               src={previewUrl ?? user?.avatarUrl ?? '/uploads/avatars/default.png'}
               alt={user?.displayname ?? user?.username ?? 'avatar'}
@@ -399,23 +409,18 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
                 className="hidden"
                 style={{ display: 'none' }}
               />
-              <button type="button" onClick={onChooseClick} className="btn">
+              <button type="button" onClick={onChooseClick} className={pillButtonClass}>
                 Choose file
               </button>
               <button
                 type="button"
                 onClick={handleUpload}
-                className="btn"
+                className={pillButtonClass}
                 disabled={!selectedFile || loading}
               >
                 {loading ? 'Uploading...' : 'Upload'}
               </button>
-              <button
-                type="button"
-                onClick={handleDelete}
-                className="btn btn-ghost"
-                disabled={loading}
-              >
+              <button type="button" onClick={handleDelete} className={ghostButtonClass} disabled={loading}>
                 Reset
               </button>
               <div className="ml-3 text-sm text-[#8b98a5]">
@@ -435,7 +440,7 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
                     value={displayname}
                     onChange={(e) => setDisplayname(e.target.value)}
                     placeholder="Display name"
-                    className="w-full bg-transparent border border-[#39444d] px-3 py-2 rounded-md text-[#f7f9f9] placeholder:text-[#8b98a5] focus:outline-none"
+                    className={panelInputClass}
                   />
                 </div>
 
@@ -446,7 +451,7 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
                     value={usernameState}
                     onChange={(e) => setUsernameState(e.target.value)}
                     placeholder="username"
-                    className="w-full bg-transparent border border-[#39444d] px-3 py-2 rounded-md text-[#f7f9f9] placeholder:text-[#8b98a5] focus:outline-none"
+                    className={panelInputClass}
                   />
                 </div>
 
@@ -457,7 +462,7 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="you@example.com"
-                    className="w-full bg-transparent border border-[#39444d] px-3 py-2 rounded-md text-[#f7f9f9] placeholder:text-[#8b98a5] focus:outline-none"
+                    className={panelInputClass}
                   />
                 </div>
 
@@ -467,7 +472,7 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
                       type="button"
                       onClick={handleSaveProfile}
                       disabled={saveDisabled}
-                      className="bg-[var(--color-1)] hover:bg-[var(--color-1)]/90 text-[#f7f9f9] rounded-full py-2 px-4 transition-colors disabled:opacity-40"
+                      className="rounded-full bg-[var(--color-1)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--color-1)]/90 disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       {loading ? 'Saving...' : 'Save'}
                     </button>
@@ -490,12 +495,12 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
                     value={currentPassword}
                     onChange={(e) => setCurrentPassword(e.target.value)}
                     placeholder="Current password"
-                    className="flex-1 bg-transparent border border-[#39444d] px-3 py-2 rounded-md text-[#f7f9f9] placeholder:text-[#8b98a5] focus:outline-none"
+                    className={panelInputClass}
                   />
                   <button
                     type="button"
                     onClick={() => setShowCurrent((s) => !s)}
-                    className="btn btn-ghost px-3 py-1 focus:outline-none focus:ring-2 focus:ring-[var(--color-1)] rounded"
+                    className="inline-flex items-center justify-center rounded-full border border-white/10 bg-transparent px-3 py-2 text-slate-400 transition hover:bg-white/5 hover:text-white focus:outline-none focus:ring-2 focus:ring-sky-400"
                     aria-label={showCurrent ? 'Hide current password' : 'Show current password'}
                     title={showCurrent ? 'Hide current password' : 'Show current password'}
                   >
@@ -513,12 +518,12 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     placeholder="New password"
-                    className="flex-1 bg-transparent border border-[#39444d] px-3 py-2 rounded-md text-[#f7f9f9] placeholder:text-[#8b98a5] focus:outline-none"
+                    className={panelInputClass}
                   />
                   <button
                     type="button"
                     onClick={() => setShowNew((s) => !s)}
-                    className="btn btn-ghost px-3 py-1 focus:outline-none focus:ring-2 focus:ring-[var(--color-1)] rounded"
+                    className="inline-flex items-center justify-center rounded-full border border-white/10 bg-transparent px-3 py-2 text-slate-400 transition hover:bg-white/5 hover:text-white focus:outline-none focus:ring-2 focus:ring-sky-400"
                     aria-label={showNew ? 'Hide new password' : 'Show new password'}
                     title={showNew ? 'Hide new password' : 'Show new password'}
                   >
@@ -536,12 +541,12 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="Confirm new password"
-                    className="flex-1 bg-transparent border border-[#39444d] px-3 py-2 rounded-md text-[#f7f9f9] placeholder:text-[#8b98a5] focus:outline-none"
+                    className={panelInputClass}
                   />
                   <button
                     type="button"
                     onClick={() => setShowConfirm((s) => !s)}
-                    className="btn btn-ghost px-3 py-1 focus:outline-none focus:ring-2 focus:ring-[var(--color-1)] rounded"
+                    className="inline-flex items-center justify-center rounded-full border border-white/10 bg-transparent px-3 py-2 text-slate-400 transition hover:bg-white/5 hover:text-white focus:outline-none focus:ring-2 focus:ring-sky-400"
                     aria-label={showConfirm ? 'Hide confirm password' : 'Show confirm password'}
                     title={showConfirm ? 'Hide confirm password' : 'Show confirm password'}
                   >
@@ -564,7 +569,7 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
                       !confirmPassword ||
                       newPassword !== confirmPassword
                     }
-                    className="bg-[var(--color-1)] hover:bg-[var(--color-1)]/90 text-[#f7f9f9] rounded-full py-2 px-4 transition-colors disabled:opacity-40"
+                    className="rounded-full bg-[var(--color-1)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--color-1)]/90 disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     {passwordLoading ? 'Changing...' : 'Change password'}
                   </button>

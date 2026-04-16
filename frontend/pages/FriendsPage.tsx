@@ -87,48 +87,56 @@ export function FriendsPage() {
             Following Requests
           </button>
         </div>
-        <div className="p-3 border-b border-[#39444d] bg-[#0f172a]/80">
-          <div className="user-search-wrap">
+        <div className="border-b border-slate-700/80 bg-slate-950/80 p-3 backdrop-blur-xl">
+          <div className="relative mx-auto w-full max-w-[420px]">
             <input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search by nickname"
-              className="w-full rounded-md border border-[#39444d] bg-[#071026] px-3 py-2 text-sm text-[#f7f9f9] outline-none"
+              className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-sky-400"
             />
 
             {searchLoading && (searchQuery ?? '').trim().length >= 2 && (
-              <div className="user-search-status">Searching...</div>
+              <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-[9999] rounded-2xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-400 shadow-[0_20px_40px_rgba(0,0,0,0.35)]">
+                Searching...
+              </div>
             )}
 
             {(searchQuery ?? '').trim().length >= 2 && !searchLoading && (
-              <div className="user-search-dropdown">
+              <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-[9999] overflow-hidden rounded-2xl border border-slate-700 bg-slate-950 shadow-[0_20px_40px_rgba(0,0,0,0.35)]">
                 {searchResults.length === 0 ? (
-                  <div className="p-3 text-[#8b98a5]">No users found</div>
+                  <div className="px-3 py-3 text-sm text-slate-400">No users found</div>
                 ) : (
                   searchResults.map((r) => (
                     <button
                       key={r.username}
-                      className="user-search-item"
+                      className="flex w-full items-center gap-3 border-b border-slate-800 px-3 py-3 text-left transition last:border-b-0 hover:bg-slate-900"
                       onClick={() => {
                         setSearchQuery('');
                         setSearchResults([]);
                         navigate(`/users/${r.username}`);
                       }}
                     >
-                      <div className="user-search-avatar">
+                      <div className="size-8 overflow-hidden rounded-full border border-slate-700 bg-slate-900">
                         <AuthedImage
                           src={r.avatarUrl ?? '/uploads/avatars/default.png'}
                           alt={r.displayname ?? r.username}
                         />
                       </div>
 
-                      <div className="user-search-main">
-                        <div className="user-search-name">{r.displayname ?? r.username}</div>
-                        <div className="user-search-username">@{r.username}</div>
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-sm font-medium text-white">
+                          {r.displayname ?? r.username}
+                        </div>
+                        <div className="truncate text-xs text-slate-400">@{r.username}</div>
                       </div>
 
-                      <div className="user-search-meta">{r.postsCount ?? 0} posts</div>
-                      <div className="user-search-meta">{r.friendsCount ?? 0} friends</div>
+                      <div className="whitespace-nowrap text-xs text-slate-400">
+                        {r.postsCount ?? 0} posts
+                      </div>
+                      <div className="whitespace-nowrap text-xs text-slate-400">
+                        {r.friendsCount ?? 0} friends
+                      </div>
                     </button>
                   ))
                 )}
