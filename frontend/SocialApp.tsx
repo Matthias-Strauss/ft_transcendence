@@ -1,7 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigate, Outlet, useLocation } from 'react-router-dom';
 import { MessageCircle } from 'lucide-react';
-import './styles/chat.css';
 import { ChatPanel } from './components/ChatPanel';
 import ConversationsList from './components/ConversationsList';
 import { LeftSidebar } from './components/LeftSidebar';
@@ -150,7 +149,14 @@ export default function SocialApp() {
   }, [chatPanelOpen, targetUsername, resolveDefaultChatTarget]);
 
   useEffect(() => {
-    const onChatMessage = (payload: any) => {
+    type ChatMessagePayload = {
+      sender?: { username?: string | null } | null;
+      username?: string | null;
+      recipient?: { username?: string | null } | null;
+      to?: string | null;
+    };
+
+    const onChatMessage = (payload: ChatMessagePayload) => {
       try {
         if (!payload) return;
 
@@ -174,8 +180,7 @@ export default function SocialApp() {
         } else {
           state.incrementUnreadForUser(other, 1);
         }
-      } catch (err) {
-      }
+      } catch {}
     };
 
     socket.on('chat:message', onChatMessage);
@@ -193,12 +198,13 @@ export default function SocialApp() {
         if (!res.ok) return;
         const data = await res.json();
         if (!mounted || !data?.items) return;
-        (data.items || []).forEach((it: any) => {
-          const uname = it?.target?.username;
-          if (uname) useChatStore.getState().setUnreadForUser(uname, it.unreadCount ?? 0);
-        });
-      } catch (err) {
-      }
+        (data.items || []).forEach(
+          (it: { target?: { username?: string | null }; unreadCount?: number }) => {
+            const uname = it?.target?.username;
+            if (uname) useChatStore.getState().setUnreadForUser(uname, it.unreadCount ?? 0);
+          },
+        );
+      } catch {}
     }
 
     void syncUnreadFromServer();
@@ -252,13 +258,13 @@ export default function SocialApp() {
         ) : (
           <button
             type="button"
-            className="chat-toggle-btn"
+            className="fixed bottom-6 right-6 z-[1100] inline-flex size-14 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-[0_8px_24px_rgba(148,163,184,0.35)] transition hover:-translate-y-0.5 hover:bg-slate-50"
             aria-label="Open chat"
             onClick={() => {
               void resolveDefaultChatTarget();
             }}
           >
-            <MessageCircle className="chat-toggle-icon" />
+            <MessageCircle className="size-6 text-sky-600" />
           </button>
         )}
       </div>
