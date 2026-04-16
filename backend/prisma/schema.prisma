@@ -13,6 +13,17 @@ enum ChatMessageType {
   FILE
 }
 
+enum GameType {
+  PONG
+}
+
+enum GameInviteStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  EXPIRED
+  CANCELED
+}
 
 enum FriendshipStatus {
   PENDING
@@ -47,6 +58,8 @@ model User {
   friendshipsAsUserTwo    Friendship[] @relation("FriendshipUserTwo")
   sentFriendRequests      Friendship[] @relation("FriendshipRequester")
   receivedFriendRequests  Friendship[] @relation("FriendshipAddressee")
+  sentGameInvites         GameInvite[] @relation("GameInviteSender")
+  receivedGameInvites     GameInvite[] @relation("GameInviteRecipient")
 }
 
 model RefreshToken {
@@ -201,4 +214,26 @@ model Friendship {
   @@index([addresseeId, status, createdAt])
   @@index([userOneId, status])
   @@index([userTwoId, status])
+}
+
+model GameInvite {
+  id          String           @id @default(cuid())
+  gameType    GameType         @default(PONG)
+  senderId    String
+  recipientId String
+  status      GameInviteStatus @default(PENDING)
+  expiresAt   DateTime
+  respondedAt DateTime?
+  acceptedAt  DateTime?
+  matchId     String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  sender    User @relation("GameInviteSender", fields: [senderId], references: [id], onDelete: Cascade)
+  recipient User @relation("GameInviteRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+
+  @@index([senderId, recipientId, gameType, status])
+  @@index([recipientId, status, expiresAt])
+  @@index([senderId, status, expiresAt])
+  @@index([matchId])
 }
