@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ChangeEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { Send, FileUp } from 'lucide-react';
 import { socket } from '../socket';
 import { apiFetch } from '../utils/api';
@@ -196,22 +196,23 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
   const meUsername = useUserStore((s) => s.user?.username ?? null);
 
   const activeMessages = targetUsername ? messagesByUser[targetUsername] ?? [] : [];
-  const inviteOutcomeById = activeMessages.reduce<Record<string, 'ACCEPTED' | 'DECLINED'>>(
-    (acc, msg) => {
-      const notification = isPongNotificationMetadata(msg.metadata) ? msg.metadata : null;
-      if (!notification) {
+  const inviteOutcomeById = useMemo(
+    () =>
+      activeMessages.reduce<Record<string, 'ACCEPTED' | 'DECLINED'>>((acc, msg) => {
+        const notification = isPongNotificationMetadata(msg.metadata) ? msg.metadata : null;
+        if (!notification) {
+          return acc;
+        }
+
+        if (notification.event === 'invite_accepted') {
+          acc[notification.inviteId] = 'ACCEPTED';
+        } else if (notification.event === 'invite_declined') {
+          acc[notification.inviteId] = 'DECLINED';
+        }
+
         return acc;
-      }
-
-      if (notification.event === 'invite_accepted') {
-        acc[notification.inviteId] = 'ACCEPTED';
-      } else if (notification.event === 'invite_declined') {
-        acc[notification.inviteId] = 'DECLINED';
-      }
-
-      return acc;
-    },
-    {},
+      }, {}),
+    [activeMessages],
   );
 
   const emitTypingEvent = (target: string, isTyping: boolean) => {
