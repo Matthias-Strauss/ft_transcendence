@@ -20,6 +20,7 @@ import {
 } from '../utils/gameInvites.js';
 import { createDirectMessage } from './chatHelper.js';
 import type { UserSocketRegistry } from './registry.js';
+import type { MatchManager } from '../pong_game/game/turnManager.js';
 import type {
   ChatMessagePayload,
   ChatReadPayload,
@@ -85,6 +86,7 @@ export function bindChatMessageHandler(
   socket: Socket,
   user: SocketUser,
   registry: UserSocketRegistry,
+  matchManager: MatchManager,
 ) {
   socket.on('chat:message', async (payload: ChatMessagePayload) => {
     try {
@@ -252,7 +254,29 @@ export function bindChatMessageHandler(
         return;
       }
 
-      const invite = await acceptGameInvite(result.invite.id);
+      const senderSockets = registry.getSocketsByUsername(result.invite.sender.username);
+      const senderSocketId = senderSockets ? [...senderSockets][0] : null;
+
+      if (!senderSocketId) {
+        emitChatError(socket, 'The other player is not online', 'GAME_INVITE_TARGET_OFFLINE');
+        return;
+      }
+
+      const matchId = matchManager.createDirectMatch(
+        { socketId: senderSocketId, username: result.invite.sender.username },
+        { socketId: socket.id, username: user.username },
+      );
+
+      if (!matchId) {
+        emitChatError(
+          socket,
+          'Unable to start the match because one player is already busy',
+          'GAME_INVITE_MATCH_UNAVAILABLE',
+        );
+        return;
+      }
+
+      const invite = await acceptGameInvite(result.invite.id, matchId);
       const message = await createDirectMessage({
         senderId: user.id,
         recipientId: invite.senderId,

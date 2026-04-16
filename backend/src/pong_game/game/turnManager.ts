@@ -18,6 +18,10 @@ type Match = {
 
 export type MatchManager = {
   join: (socketId: string, username: string) => void;
+  createDirectMatch: (
+    playerOne: { socketId: string; username: string },
+    playerTwo: { socketId: string; username: string },
+  ) => string | null;
   setInput: (socketId: string, input: PongInput) => void;
   leave: (socketId: string, reason: MatchEndReason) => void;
   reconnect: (socketId: string, username: string) => boolean;
@@ -136,20 +140,12 @@ export function createMatchManager(io: SocketIOServer): MatchManager {
     return true;
   }
 
-  function join(socketId: string, username: string) {
-    if (socketToMatchId.has(socketId)) return;
-    if (pendingReconnects.has(username)) return;
-
-    if (!waiting) {
-      waiting = { socketId, username };
-      io.to(socketId).emit('pong:waiting');
-      return;
-    }
-
-    if (waiting.socketId === socketId) return;
-
-    const p1 = new Player(waiting.socketId, waiting.username);
-    const p2 = new Player(socketId, username);
+  function createMatch(
+    playerOne: { socketId: string; username: string },
+    playerTwo: { socketId: string; username: string },
+  ) {
+    const p1 = new Player(playerOne.socketId, playerOne.username);
+    const p2 = new Player(playerTwo.socketId, playerTwo.username);
     const matchId = `m${nextMatchId++}`;
     const match: Match = {
       id: matchId,
@@ -178,6 +174,44 @@ export function createMatchManager(io: SocketIOServer): MatchManager {
       opponent: p1.username,
     });
 
+    return match.id;
+  }
+
+  function createDirectMatch(
+    playerOne: { socketId: string; username: string },
+    playerTwo: { socketId: string; username: string },
+  ) {
+    if (socketToMatchId.has(playerOne.socketId) || socketToMatchId.has(playerTwo.socketId)) {
+      return null;
+    }
+
+    if (
+      pendingReconnects.has(playerOne.username) ||
+      pendingReconnects.has(playerTwo.username) ||
+      waiting?.socketId === playerOne.socketId ||
+      waiting?.socketId === playerTwo.socketId
+    ) {
+      return null;
+    }
+
+    return createMatch(playerOne, playerTwo);
+  }
+
+  function join(socketId: string, username: string) {
+    if (socketToMatchId.has(socketId)) return;
+    if (pendingReconnects.has(username)) return;
+
+    if (!waiting) {
+      waiting = { socketId, username };
+      io.to(socketId).emit('pong:waiting');
+      return;
+    }
+
+    if (waiting.socketId === socketId) return;
+    createMatch(
+      { socketId: waiting.socketId, username: waiting.username },
+      { socketId, username },
+    );
     waiting = null;
   }
 
@@ -223,5 +257,5 @@ export function createMatchManager(io: SocketIOServer): MatchManager {
     waiting = null;
   }
 
-  return { join, setInput, leave, reconnect, shutdown };
+  return { join, createDirectMatch, setInput, leave, reconnect, shutdown };
 }
