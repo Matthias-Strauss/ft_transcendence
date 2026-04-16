@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
-import { Send, FileUp, Ban } from 'lucide-react';
+import { Send, FileUp, Ban, ShieldCheck } from 'lucide-react';
 import { socket } from '../socket';
 import { apiFetch } from '../utils/api';
 import { uploadFile } from '../utils/send_file';
@@ -452,7 +452,7 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
     }, 1200);
   };
 
-  const items: DropdownItem[] = [{ id: 0, text: 'Block User', icon: <Ban /> }];
+  const items: DropdownItem[] = [{ id: 0, text: 'Block User', icon: <Ban /> }, { id: 1, text: 'Unblock User', icon: <ShieldCheck /> }];
 
   return (
     <div className="fixed bottom-4 right-4 z-[1000] h-[min(560px,calc(100vh-32px))] w-[min(380px,calc(100vw-32px))] overflow-hidden rounded-[20px] border border-slate-200 bg-white shadow-[0_24px_60px_rgba(15,23,42,0.18)] max-sm:bottom-2 max-sm:right-2 max-sm:h-[min(520px,calc(100vh-16px))] max-sm:w-[calc(100vw-16px)]">

@@ -36,6 +36,7 @@ export const uploadFile = (
     xhr.onload = () => {
       if (xhr.status >= 200 && xhr.status < 300) {
         options.onProgress?.(100);
+        showToast('File uploaded successfully', 'success');
         try {
           const response = JSON.parse(xhr.responseText);
           resolve(response);
