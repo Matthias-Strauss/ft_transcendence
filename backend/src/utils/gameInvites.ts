@@ -2,6 +2,8 @@ import { GameInviteStatus, GameType, Prisma } from '@prisma/client';
 
 import { prisma } from '../db.js';
 
+export const GAME_INVITE_EXPIRY_MS = 5 * 60 * 1000;
+
 const inviteInclude = {
   sender: {
     select: {
@@ -22,6 +24,14 @@ const inviteInclude = {
 export type GameInviteWithUsers = Prisma.GameInviteGetPayload<{
   include: typeof inviteInclude;
 }>;
+
+export type PongInviteMetadata = {
+  kind: 'pong_invite';
+  inviteId: string;
+  status: GameInviteStatus;
+  expiresAt: string;
+  game: 'pong';
+};
 
 type InviteStatusUpdate = Exclude<GameInviteStatus, 'PENDING'>;
 
@@ -111,4 +121,14 @@ export async function cancelGameInvite(inviteId: string) {
 
 export async function acceptGameInvite(inviteId: string, matchId?: string) {
   return updateGameInviteStatus(inviteId, 'ACCEPTED', matchId ? { matchId } : {});
+}
+
+export function buildPongInviteMetadata(invite: Pick<GameInviteWithUsers, 'id' | 'status' | 'expiresAt'>) {
+  return {
+    kind: 'pong_invite',
+    inviteId: invite.id,
+    status: invite.status,
+    expiresAt: invite.expiresAt.toISOString(),
+    game: 'pong',
+  } satisfies PongInviteMetadata;
 }

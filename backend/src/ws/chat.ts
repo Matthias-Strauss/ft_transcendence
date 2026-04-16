@@ -7,12 +7,18 @@ import {
   markConversationAsRead,
   serializeDirectMessage,
 } from '../utils/chatUtils.js';
+import {
+  buildPongInviteMetadata,
+  createPendingGameInvite,
+  GAME_INVITE_EXPIRY_MS,
+} from '../utils/gameInvites.js';
 import { createDirectMessage } from './chatHelper.js';
 import type { UserSocketRegistry } from './registry.js';
 import type {
   ChatMessagePayload,
   ChatReadPayload,
   ChatTypingPayload,
+  GameInviteCreatePayload,
   SocketUser,
 } from './types.js';
 import { normalizeUsername } from './username.js';
@@ -128,6 +134,57 @@ export function bindChatMessageHandler(
       }
     } catch (error) {
       console.error('chat:typing failed', error);
+    }
+  });
+
+  socket.on('game:invite:create', async (payload: GameInviteCreatePayload) => {
+    try {
+      const rawTarget = typeof payload?.to === 'string' ? payload.to : '';
+      const targetKey = rawTarget ? normalizeUsername(rawTarget) : '';
+
+      if (!targetKey) {
+        emitChatError(socket, 'Please choose a user to invite', 'GAME_INVITE_TARGET_REQUIRED');
+        return;
+      }
+
+      const recipient = await findChatTargetByUsername(targetKey);
+
+      if (recipient.id === user.id) {
+        emitChatError(socket, 'You cannot invite yourself', 'GAME_INVITE_TO_SELF_FORBIDDEN');
+        return;
+      }
+
+      const relation = await getUserBlockRelation(user.id, recipient.id);
+
+      if (!relation.canMessage) {
+        emitChatError(
+          socket,
+          relation.blockedByMe
+            ? `You blocked @${recipient.username}. Unblock them to send invites again.`
+            : `@${recipient.username} has blocked you.`,
+          relation.blockedByMe ? 'CHAT_BLOCKED_BY_ME' : 'CHAT_BLOCKED_BY_TARGET',
+        );
+        return;
+      }
+
+      const invite = await createPendingGameInvite({
+        senderId: user.id,
+        recipientId: recipient.id,
+        expiresAt: new Date(Date.now() + GAME_INVITE_EXPIRY_MS),
+      });
+
+      const message = await createDirectMessage({
+        senderId: user.id,
+        recipientId: recipient.id,
+        text: 'Pong invite',
+        type: 'GAME_INVITE',
+        metadata: buildPongInviteMetadata(invite),
+      });
+
+      emitDirectMessage(io, registry, message);
+    } catch (error) {
+      console.error('game:invite:create failed', error);
+      emitChatError(socket, 'Unable to send pong invite right now', 'GAME_INVITE_CREATE_FAILED');
     }
   });
 
