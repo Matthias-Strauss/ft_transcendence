@@ -8,6 +8,7 @@ import useUserStore from '../utils/userStore';
 import showToast from '../utils/toast';
 import { AuthedFilePreview } from './ui/AuthedFilePreview';
 import { Download } from 'lucide-react';
+import { Link } from 'react-router-dom';
 interface ChatPanelProps {
   onClose?: () => void;
 }
@@ -453,9 +454,12 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
         <div className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3">
           <div>
             <p className="m-0 text-sm font-bold text-slate-900">Live Chat</p>
-            <p className="m-0 text-xs text-slate-500">
+            <Link
+              to={targetUsername ? `/users/${targetUsername}` : '/players'}
+              className="m-0 text-xs text-slate-500"
+            >
               {targetUsername ? `Chat with @${targetUsername}` : 'Talk with online players'}
-            </p>
+            </Link>
           </div>
 
           <div className="flex items-center gap-2">
