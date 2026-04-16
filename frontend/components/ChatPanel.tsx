@@ -8,7 +8,7 @@ import useChatStore, { type ChatMessage } from '../utils/chatState';
 import useUserStore from '../utils/userStore';
 import showToast from '../utils/toast';
 import { AuthedFilePreview } from './ui/AuthedFilePreview';
-import { Download } from 'lucide-react';
+import { Download, Trash2 } from 'lucide-react';
 import { handleSend } from '../chat/send';
 import {
   mapApiMessageToChatMessage,
@@ -181,7 +181,6 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
 
           return;
         }
-
       } catch (e) {
         showToast('Error handling chat message', 'error');
       }
@@ -229,8 +228,7 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
         setMessagesForUser(username, mapped);
         try {
           clearUnreadForUser(username);
-        } catch (err) {
-        }
+        } catch (err) {}
         try {
           await apiFetch(`/api/chat/conversations/${encodeURIComponent(username)}/read`, {
             method: 'POST',
@@ -303,6 +301,42 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
     });
   };
 
+  const markFileDeletedInState = (username: string, messageId: string) => {
+    const current = messagesByUser[username] ?? [];
+
+    const next = current.map((m) => {
+      if (m.id !== messageId) return m;
+      return {
+        ...m,
+        message: m.message?.trim() ? m.message : 'Attachment deleted',
+        metadata: undefined,
+      };
+    });
+
+    setMessagesForUser(username, next);
+  };
+
+  const handleFileDelete = async ({
+    fileId,
+    message,
+  }: {
+    fileId: string;
+    message: ChatMessage;
+  }) => {
+    const res = await apiFetch(`/api/chat/conversations/${targetUsername}/files/${fileId}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    if (!res.ok) {
+      showToast('Failed to delete file', 'error');
+      return;
+    }
+
+    markFileDeletedInState(targetUsername, message.id);
+    showToast('File deleted', 'success');
+  };
+
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setInputValue(value);
@@ -367,6 +401,7 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
           <div className="chat-messages">
             {activeMessages.map((msg) => {
               const fileUrl = msg.metadata?.fileUrl;
+              const fileId = msg.id;
               const fileName = msg.metadata?.originalName;
               return (
                 <div key={msg.id} className={`chat-message-row ${msg.isOwn ? 'own' : 'other'}`}>
@@ -391,6 +426,10 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
                           <Download
                             className="chat-file-download"
                             onClick={() => downloadFile(fileUrl, fileName)}
+                          />
+                          <Trash2
+                            className="chat-file-delete"
+                            onClick={() => handleFileDelete({ fileId, message: msg })}
                           />
                         </div>
                       </div>

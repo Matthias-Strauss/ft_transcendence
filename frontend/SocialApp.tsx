@@ -174,8 +174,7 @@ export default function SocialApp() {
         } else {
           state.incrementUnreadForUser(other, 1);
         }
-      } catch (err) {
-      }
+      } catch (err) {}
     };
 
     socket.on('chat:message', onChatMessage);
@@ -197,8 +196,7 @@ export default function SocialApp() {
           const uname = it?.target?.username;
           if (uname) useChatStore.getState().setUnreadForUser(uname, it.unreadCount ?? 0);
         });
-      } catch (err) {
-      }
+      } catch (err) {}
     }
 
     void syncUnreadFromServer();
