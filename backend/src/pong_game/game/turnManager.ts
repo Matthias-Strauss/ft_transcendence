@@ -24,6 +24,7 @@ type MatchEndedHook = (params: {
     p1: { username: string };
     p2: { username: string };
   };
+  endedBy?: { slot: Slot; username: string };
 }) => void;
 
 export type MatchManager = {
@@ -72,6 +73,7 @@ export function createMatchManager(io: SocketIOServer, onMatchEnded?: MatchEnded
     matchId: string,
     reason: MatchEndReason,
     finalScore: { p1: number; p2: number },
+    endedBy?: { slot: Slot; username: string },
   ) {
     const match = matches.get(matchId);
     if (!match) return;
@@ -97,6 +99,7 @@ export function createMatchManager(io: SocketIOServer, onMatchEnded?: MatchEnded
           p1: { username: match.engine.p1.username },
           p2: { username: match.engine.p2.username },
         },
+        endedBy,
       });
     }
 
@@ -120,7 +123,12 @@ export function createMatchManager(io: SocketIOServer, onMatchEnded?: MatchEnded
     socketToSlot.delete(socketId);
 
     const timer = setTimeout(() => {
-      endMatch(matchId, 'disconnect', { p1: match.engine.p1.score, p2: match.engine.p2.score });
+      endMatch(
+        matchId,
+        'disconnect',
+        { p1: match.engine.p1.score, p2: match.engine.p2.score },
+        { slot, username: player.username },
+      );
     }, RECONNECT_GRACE_MS);
 
     match.paused = { slot, timer, username: player.username };
@@ -264,7 +272,17 @@ export function createMatchManager(io: SocketIOServer, onMatchEnded?: MatchEnded
       return;
     }
 
-    endMatch(matchId, reason, { p1: match.engine.p1.score, p2: match.engine.p2.score });
+    const slot = socketToSlot.get(socketId);
+    const endedBy = slot
+      ? { slot, username: slot === 'p1' ? match.engine.p1.username : match.engine.p2.username }
+      : undefined;
+
+    endMatch(
+      matchId,
+      reason,
+      { p1: match.engine.p1.score, p2: match.engine.p2.score },
+      endedBy,
+    );
   }
 
   function shutdown() {

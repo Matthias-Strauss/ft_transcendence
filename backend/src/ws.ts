@@ -27,28 +27,47 @@ export function setupWebSocket(httpServer: HttpServer) {
 
   const registry = createUserSocketRegistry();
   const matchManager = createMatchManager(io, async (params) => {
-    if (params.reason !== 'score') {
-      return;
-    }
-
     const invite = await findAcceptedGameInviteByMatchId(params.matchId);
     if (!invite) {
       return;
     }
 
-    const winnerUsername =
-      params.finalScore.p1 > params.finalScore.p2 ? params.players.p1.username : params.players.p2.username;
+    let text: string;
+    let metadata;
+
+    if (params.reason === 'score') {
+      const winnerUsername =
+        params.finalScore.p1 > params.finalScore.p2
+          ? params.players.p1.username
+          : params.players.p2.username;
+      text = 'Pong match finished';
+      metadata = buildPongNotificationMetadata(invite, 'match_result', {
+        matchId: params.matchId,
+        finalScore: params.finalScore,
+        winnerUsername,
+      });
+    } else if (params.reason === 'left') {
+      text = 'Pong match ended: opponent left';
+      metadata = buildPongNotificationMetadata(invite, 'opponent_left', {
+        matchId: params.matchId,
+        finalScore: params.finalScore,
+        endedByUsername: params.endedBy?.username,
+      });
+    } else {
+      text = 'Pong match ended: opponent disconnected';
+      metadata = buildPongNotificationMetadata(invite, 'opponent_disconnected', {
+        matchId: params.matchId,
+        finalScore: params.finalScore,
+        endedByUsername: params.endedBy?.username,
+      });
+    }
 
     const message = await createDirectMessage({
       senderId: invite.senderId,
       recipientId: invite.recipientId,
-      text: 'Pong match finished',
+      text,
       type: 'GAME_NOTIFICATION',
-      metadata: buildPongNotificationMetadata(invite, 'match_result', {
-        matchId: params.matchId,
-        finalScore: params.finalScore,
-        winnerUsername,
-      }),
+      metadata,
     });
 
     emitDirectMessage(io, registry, message);

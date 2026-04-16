@@ -35,12 +35,18 @@ export type PongInviteMetadata = {
 
 export type PongNotificationMetadata = {
   kind: 'pong_notification';
-  event: 'invite_accepted' | 'invite_declined' | 'match_result';
+  event:
+    | 'invite_accepted'
+    | 'invite_declined'
+    | 'match_result'
+    | 'opponent_left'
+    | 'opponent_disconnected';
   inviteId: string;
   game: 'pong';
   matchId?: string;
   finalScore?: { p1: number; p2: number };
   winnerUsername?: string;
+  endedByUsername?: string;
 };
 
 type InviteStatusUpdate = Exclude<GameInviteStatus, 'PENDING'>;

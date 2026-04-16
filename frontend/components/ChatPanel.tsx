@@ -150,6 +150,14 @@ function buildNotificationLabel(metadata: PongNotificationMetadata) {
     return 'Invite Declined';
   }
 
+  if (metadata.event === 'opponent_left') {
+    return 'Player Left';
+  }
+
+  if (metadata.event === 'opponent_disconnected') {
+    return 'Match Ended';
+  }
+
   return 'Match Result';
 }
 
@@ -160,6 +168,16 @@ function buildNotificationCopy(metadata: PongNotificationMetadata) {
 
   if (metadata.event === 'invite_declined') {
     return 'The Pong invite was declined.';
+  }
+
+  if (metadata.event === 'opponent_left') {
+    const who = metadata.endedByUsername ?? 'A player';
+    return `${who} left the match.`;
+  }
+
+  if (metadata.event === 'opponent_disconnected') {
+    const who = metadata.endedByUsername ?? 'A player';
+    return `${who} disconnected and did not return in time.`;
   }
 
   const finalScore = metadata.finalScore;
