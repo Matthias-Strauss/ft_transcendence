@@ -30,6 +30,8 @@ export function ConversationsList() {
   const setTargetUsername = useChatStore((s) => s.setTargetUsername);
   const setPanelOpen = useChatStore((s) => s.setPanelOpen);
   const setUnreadForUser = useChatStore((s) => s.setUnreadForUser);
+  const unreadByUser = useChatStore((s) => s.unreadByUser);
+  const clearUnreadForUser = useChatStore((s) => s.clearUnreadForUser);
   const targetUsername = useChatStore((s) => s.targetUsername);
   const meUsername = useUserStore((s) => s.user?.username ?? null);
 
@@ -169,6 +171,7 @@ export function ConversationsList() {
               className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-[#071426] transition-colors"
               onClick={() => {
                 if (it.canMessage === false) return;
+                if (it.target.username) clearUnreadForUser(it.target.username);
                 setTargetUsername(it.target.username);
                 setPanelOpen(true);
               }}
@@ -205,9 +208,9 @@ export function ConversationsList() {
                 </div>
               </div>
 
-              {it.unreadCount ? (
+              {((it.target.username && unreadByUser[it.target.username]) || 0) > 0 ? (
                 <div className="ml-2 bg-[var(--color-1)] text-[#f7f9f9] px-2 py-1 rounded-full text-xs">
-                  {it.unreadCount}
+                  {unreadByUser[it.target.username]}
                 </div>
               ) : null}
             </button>
