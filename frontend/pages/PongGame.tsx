@@ -5,10 +5,12 @@ import {
   FreeCamera,
   GlowLayer,
   HemisphericLight,
+  Mesh,
   MeshBuilder,
   Scene,
   StandardMaterial,
   Vector3,
+  VideoTexture,
 } from '@babylonjs/core';
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 
@@ -48,6 +50,10 @@ type PongRejoinFailed = { reason: 'match_not_resumable' };
 
 const RENDER_DELAY_MS = 33;
 const SNAPSHOT_BUFFER_MAX = 8;
+
+const AURA_BG = '#191521';
+const VIDEO_DOME_URL =
+  'https://videos.pexels.com/video-files/32822471/13990568_3840_2160_24fps.mp4';
 
 type TimedSnapshot = { t: number; snap: PongSnapshot };
 
@@ -268,15 +274,57 @@ export default function PongGame() {
     const scene = new Scene(engine);
     scene.skipPointerMovePicking = true;
     scene.blockMaterialDirtyMechanism = true;
+    scene.clearColor = Color4.FromHexString(`${AURA_BG}ff`);
+    scene.fogMode = Scene.FOGMODE_EXP2;
+    scene.fogDensity = 0.009;
+    scene.fogColor = Color3.FromHexString(AURA_BG);
 
     const camera = new FreeCamera('camera1', new Vector3(0, 30, 70), scene);
     camera.setTarget(new Vector3(0, 0, 0));
     cameraRef.current = camera;
 
-    new HemisphericLight('light', new Vector3(3, 4, 6), scene);
+    const fillLight = new HemisphericLight('light', new Vector3(3, 4, 6), scene);
+    fillLight.intensity = 0.7;
 
     const gl = new GlowLayer('glow', scene);
     gl.intensity = 1.0;
+
+    const dome = MeshBuilder.CreateSphere(
+      'videoDome',
+      { diameter: 260, segments: 32, sideOrientation: Mesh.BACKSIDE },
+      scene,
+    );
+    dome.position.y = 40;
+    dome.infiniteDistance = true;
+
+    const domeTexture = new VideoTexture(
+      'domeTexture',
+      VIDEO_DOME_URL,
+      scene,
+      true,
+      false,
+      VideoTexture.TRILINEAR_SAMPLINGMODE,
+      {
+        autoPlay: true,
+        loop: true,
+        muted: true,
+        autoUpdateTexture: true,
+      },
+    );
+    domeTexture.video.crossOrigin = 'anonymous';
+    domeTexture.video.muted = true;
+    domeTexture.video.playsInline = true;
+    domeTexture.video.playbackRate = 0.8;
+
+    const domeMat = new StandardMaterial('domeMat', scene);
+    domeMat.backFaceCulling = false;
+    domeMat.disableLighting = true;
+    domeMat.diffuseTexture = domeTexture;
+    domeMat.emissiveTexture = domeTexture;
+    domeMat.diffuseColor = Color3.FromHexString('#ffffff');
+    domeMat.emissiveColor = Color3.FromHexString('#c4b7ff').scale(0.8);
+    dome.material = domeMat;
+
     const floor = MeshBuilder.CreateGround(
       'floor',
       { width: ARENA_WIDTH, height: ARENA_DEPTH },
