@@ -6,6 +6,7 @@ import SocialApp from './SocialApp';
 import RegistrationPage from './pages/RegistrationPage';
 import UserProfile from './pages/UserProfile';
 import PongGame from './pages/PongGame';
+import NotFound from './pages/NotFound';
 import { connectSocketFromStorage, disconnectSocket, socket } from './socket';
 import { Toast } from './components/ui/Toast';
 import { clearClientSession } from './utils/api';
@@ -43,7 +44,9 @@ export default function App() {
         >
           <Route path="game" element={<PongGame />} />
           <Route path="users/:username" element={<UserProfile />} />
+          <Route path="*" element={<NotFound />} />
         </Route>
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </>
   );
