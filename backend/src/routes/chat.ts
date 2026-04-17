@@ -6,6 +6,7 @@ import { asyncHandler } from '../errors/asyncHandler.js';
 import { AuthErrors, ChatErrors, FileErrors, RequestErrors } from '../errors/catalog.js';
 import {
   ChatMessagesQuerySchema,
+  DeleteChatFileParamsSchema,
   directMessageInclude,
   findChatTargetByUsername,
   getUserBlockRelation,
@@ -22,13 +23,15 @@ import {
   buildChatPdfStoragePath,
   chatPdfUploadHandler,
   cleanupUploadedChatPdf,
+  deleteStoredChatPdf,
   ensureChatPdfStorageDir,
+  getChatPdfStoragePathFromMetadata,
   getUploadedChatPdfFromReq,
 } from '../files/chatPdfs.js';
 import { createDirectMessage } from '../ws/chatHelper.js';
 import { resolveInFilesDir } from '../files/storage.js';
 import { getRealtimeRuntime } from '../ws/runtime.js';
-import { emitDirectMessage } from '../ws/chat.js';
+import { emitDirectMessage, emitDirectMessageDeleted } from '../ws/chat.js';
 
 export const chatRouter = Router();
 
@@ -319,6 +322,92 @@ chatRouter.post(
     }
 
     return res.status(201).json(serializeDirectMessage(message, viewerId));
+  }),
+);
+
+// delete a shared file from a private conversation
+chatRouter.delete(
+  '/chat/conversations/:username/files/:messageId',
+  requireAuth,
+  asyncHandler(async (req: AuthedRequest, res) => {
+    if (!req.userId) {
+      throw AuthErrors.invalidToken();
+    }
+
+    const parsedParams = DeleteChatFileParamsSchema.safeParse(req.params);
+    if (!parsedParams.success) {
+      throw RequestErrors.badRequest(parsedParams.error.issues);
+    }
+
+    const viewerId = req.userId;
+    const targetUser = await findChatTargetByUsername(parsedParams.data.username);
+
+    if (viewerId === targetUser.id) {
+      throw ChatErrors.messageToSelfForbidden();
+    }
+
+    const message = await prisma.directMessage.findFirst({
+      where: {
+        id: parsedParams.data.messageId,
+        type: 'FILE',
+        OR: [
+          {
+            senderId: viewerId,
+            recipientId: targetUser.id,
+          },
+          {
+            senderId: targetUser.id,
+            recipientId: viewerId,
+          },
+        ],
+      },
+      include: directMessageInclude,
+    });
+
+    if (!message) {
+      throw FileErrors.fileNotFound();
+    }
+
+    const storedPdfPath = getChatPdfStoragePathFromMetadata(message.metadata);
+    if (!storedPdfPath) {
+      throw FileErrors.fileNotFound();
+    }
+
+    if (message.senderId !== viewerId) {
+      throw ChatErrors.fileDeleteForbidden();
+    }
+
+    await prisma.directMessage.delete({
+      where: {
+        id: message.id,
+      },
+    });
+
+    await deleteStoredChatPdf(storedPdfPath);
+
+    const realtimeRuntime = getRealtimeRuntime();
+    if (realtimeRuntime) {
+      try {
+        emitDirectMessageDeleted(realtimeRuntime.io, realtimeRuntime.registry, {
+          messageId: message.id,
+          senderUsername: message.sender.username,
+          recipientUsername: message.recipient.username,
+          deletedByUserId: viewerId,
+        });
+      } catch (error) {
+        console.error('oen chat file delete realtime emit failed: ', {
+          messageId: message.id,
+          error,
+        });
+      }
+    }
+
+    return res.json({
+      ok: true,
+      deletedMessageId: message.id,
+      deletedFilePath: storedPdfPath,
+      username: targetUser.username,
+    });
   }),
 );
 

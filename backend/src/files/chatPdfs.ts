@@ -21,7 +21,7 @@ const CHAT_PDF_PATH_PREFIX = 'chat-pdfs/';
 const CHAT_PDF_FILENAME_PREFIX = 'chat_pdf_';
 const CHAT_PDF_STORAGE_DIR = 'chat-pdfs';
 
-type ChatPdfMetadata = {
+export type ChatPdfMetadata = {
   kind: 'chat_pdf';
   originalName: string;
   mimeType: 'application/pdf';
@@ -199,6 +199,18 @@ export function buildChatPdfMetadata(params: {
   };
 }
 
+export function getChatPdfStoragePathFromMetadata(metadata: unknown) {
+  if (!isChatPdfMetadata(metadata)) {
+    return null;
+  }
+
+  return metadata.storagePath;
+}
+
+export async function deleteStoredChatPdf(filePath: string) {
+  await fs.unlink(resolveInFilesDir(filePath)).catch(() => undefined);
+}
+
 export function getChatPdfMessageIdFromPath(filePath: string) {
   const normalized = normalizeRequestedFilePath(filePath);
 
@@ -220,7 +232,7 @@ export function getChatPdfMessageIdFromPath(filePath: string) {
   return withoutPrefix.slice(0, lastSeparatorIdx);
 }
 
-function isChatPdfMetadata(value: unknown): value is ChatPdfMetadata {
+export function isChatPdfMetadata(value: unknown): value is ChatPdfMetadata {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     return false;
   }

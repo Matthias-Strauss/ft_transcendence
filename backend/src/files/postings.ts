@@ -5,7 +5,7 @@ import fs from 'fs/promises';
 import { fileTypeFromFile } from 'file-type';
 
 import { normalizeRequestedFilePath, resolveInFilesDir } from './storage.js';
-import { AuthErrors, FileErrors, RequestErrors } from '../errors/catalog.js';
+import { FileErrors, RequestErrors } from '../errors/catalog.js';
 import { POST_IMAGE_MAX_FILE_SIZE_BYTES } from '../config.js';
 import { AuthedRequest } from '../auth/middleware.js';
 import { asyncHandler } from '../errors/asyncHandler.js';

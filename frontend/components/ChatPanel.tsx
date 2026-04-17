@@ -7,116 +7,20 @@ import useChatStore, { type ChatMessage } from '../utils/chatState';
 import useUserStore from '../utils/userStore';
 import showToast from '../utils/toast';
 import { AuthedFilePreview } from './ui/AuthedFilePreview';
-import { Download } from 'lucide-react';
+import { Download, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Dropdown from './ui/Dropdown';
 import { DropdownItem } from '../types/posts';
 import { MoreHorizontal } from 'lucide-react';
+import { handleSend } from '../chat/send';
+import {
+  mapApiMessageToChatMessage,
+  normalizeIncomingPayload,
+  shouldShowMessageInActiveChat,
+} from '../chat/messages';
+import type { UploadedFileMeta } from '../chat/types';
 interface ChatPanelProps {
   onClose?: () => void;
-}
-
-interface NormalizedIncomingMessage {
-  chatMessage: ChatMessage;
-  otherUsername: string | null;
-  senderUsername: string | null;
-  recipientUsername: string | null;
-  isDirect: boolean;
-}
-
-function formatTime(value?: string | number | Date) {
-  const date = value ? new Date(value) : new Date();
-  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-}
-
-function mapApiMessageToChatMessage(m: any): ChatMessage {
-  return {
-    id: m.id,
-    user: m.isOwn ? 'You' : m.sender?.displayname ?? m.sender?.username ?? 'Player',
-    message: m.text ?? '',
-    time: formatTime(m.createdAt),
-    isOwn: Boolean(m.isOwn),
-    metadata: m.metadata ?? undefined,
-  };
-}
-
-function normalizeIncomingPayload(
-  payload: any,
-  meUsername: string | null,
-): NormalizedIncomingMessage | null {
-  if (!payload || typeof payload !== 'object') return null;
-
-  if ('text' in payload && 'sender' in payload) {
-    const senderUsername = payload.sender?.username ?? null;
-    const recipientUsername = payload.recipient?.username ?? null;
-    const isOwn = Boolean(payload.isOwn);
-    const isDirect = Boolean(senderUsername && recipientUsername);
-
-    let otherUsername: string | null = null;
-    if (senderUsername && recipientUsername) {
-      otherUsername = isOwn ? recipientUsername : senderUsername;
-    } else if (meUsername) {
-      otherUsername = senderUsername === meUsername ? recipientUsername : senderUsername;
-    } else {
-      otherUsername = senderUsername ?? recipientUsername;
-    }
-
-    if (senderUsername && recipientUsername && senderUsername === recipientUsername) {
-      return null;
-    }
-
-    return {
-      chatMessage: {
-        id: payload.id ?? `${Date.now()}-${Math.random()}`,
-        user: isOwn ? 'You' : payload.sender?.displayname ?? payload.sender?.username ?? 'Player',
-        message: payload.text ?? '',
-        time: formatTime(payload.createdAt),
-        isOwn,
-        metadata: payload.metadata ?? undefined,
-      },
-      otherUsername,
-      senderUsername,
-      recipientUsername,
-      isDirect,
-    };
-  }
-
-  const senderUsername = payload.username ?? null;
-  const recipientUsername = payload.to ?? null;
-  const isOwn = payload.from === socket.id;
-  const isDirect = Boolean(recipientUsername);
-
-  let otherUsername: string | null = null;
-  if (meUsername) {
-    otherUsername = senderUsername === meUsername ? recipientUsername : senderUsername;
-  } else {
-    otherUsername = senderUsername ?? recipientUsername;
-  }
-
-  return {
-    chatMessage: {
-      id: payload.id ?? `${Date.now()}-${Math.random()}`,
-      user: isOwn ? 'You' : senderUsername ?? 'Player',
-      message: payload.text ?? '',
-      time: formatTime(),
-      isOwn,
-      metadata: payload.metadata ?? undefined,
-    },
-    otherUsername,
-    senderUsername,
-    recipientUsername,
-    isDirect,
-  };
-}
-
-function shouldShowMessageInActiveChat(
-  activeTarget: string | null,
-  senderUsername: string | null,
-  recipientUsername: string | null,
-) {
-  if (!activeTarget) return false;
-
-  return senderUsername === activeTarget || recipientUsername === activeTarget;
 }
 
 export function ChatPanel({ onClose }: ChatPanelProps) {
@@ -126,7 +30,7 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
   const [file, setFile] = useState<File | null>(null);
   const [progress, setProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
-  const [uploadedFileMeta, setUploadedFileMeta] = useState<any | null>(null);
+  const [uploadedFileMeta, setUploadedFileMeta] = useState<UploadedFileMeta | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const targetUsernameRef = useRef<string | null>(null);
@@ -252,12 +156,11 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
     const onChatMessage = (payload: any) => {
       try {
         const activeTarget = targetUsernameRef.current;
-        const normalized = normalizeIncomingPayload(payload, meUsername);
+        const normalized = normalizeIncomingPayload(payload, meUsername, socket.id);
 
         if (!normalized) return;
 
-        const { chatMessage, otherUsername, senderUsername, recipientUsername, isDirect } =
-          normalized;
+        const { chatMessage, otherUsername, senderUsername, recipientUsername } = normalized;
 
         if (activeTarget && senderUsername === activeTarget) {
           setIsTargetTyping(false);
@@ -382,39 +285,60 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
     e.target.value = '';
   };
 
-  const handleSend = async () => {
-    const text = inputValue.trim();
+  const onSend = () => {
+    handleSend({
+      inputValue,
+      connected,
+      isUploading,
+      targetUsername,
+      meUsername,
+      fileName: file?.name,
+      uploadedFileMeta,
+      socket,
+      showToast,
+      stopTypingForTarget,
+      setInputValue,
+      setFile,
+      setUploadedFileMeta,
+      setProgress,
+      setIsUploading,
+    });
+  };
 
-    if (!connected || !targetUsername || isUploading) return;
-    if (!text && !uploadedFileMeta) return;
+  const markFileDeletedInState = (username: string, messageId: string) => {
+    const current = messagesByUser[username] ?? [];
 
-    if (meUsername && targetUsername === meUsername) {
-      showToast('You cannot chat with yourself', 'error');
+    const next = current.map((m) => {
+      if (m.id !== messageId) return m;
+      return {
+        ...m,
+        message: m.message?.trim() ? m.message : 'Attachment deleted',
+        metadata: undefined,
+      };
+    });
+
+    setMessagesForUser(username, next);
+  };
+
+  const handleFileDelete = async ({
+    fileId,
+    message,
+  }: {
+    fileId: string;
+    message: ChatMessage;
+  }) => {
+    const res = await apiFetch(`/api/chat/conversations/${targetUsername}/files/${fileId}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    if (!res.ok) {
+      showToast('Failed to delete file', 'error');
       return;
     }
 
-    stopTypingForTarget(targetUsername);
-
-    try {
-      socket.emit('chat:message', {
-        text,
-        to: targetUsername,
-        metadata: uploadedFileMeta
-          ? {
-              fileUrl: uploadedFileMeta.fileUrl || uploadedFileMeta.url || uploadedFileMeta.path,
-              originalName: file?.name || uploadedFileMeta.originalName,
-              ...uploadedFileMeta,
-            }
-          : undefined,
-      });
-
-      setInputValue('');
-      setFile(null);
-      setUploadedFileMeta(null);
-      setProgress(0);
-    } catch {
-      setIsUploading(false);
-    }
+    markFileDeletedInState(targetUsername, message.id);
+    showToast('File deleted', 'success');
   };
 
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -512,6 +436,7 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
           <div className="flex flex-col gap-4">
             {activeMessages.map((msg) => {
               const fileUrl = msg.metadata?.fileUrl;
+              const fileId = msg.id;
               const fileName = msg.metadata?.originalName;
               return (
                 <div
@@ -548,6 +473,10 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
                             className="size-4 shrink-0 cursor-pointer text-slate-500 transition hover:text-slate-900"
                             onClick={() => downloadFile(fileUrl, fileName)}
                           />
+                          <Trash2
+                            className="chat-file-delete"
+                            onClick={() => handleFileDelete({ fileId, message: msg })}
+                          />
                         </div>
                       </div>
                     ) : (
@@ -568,7 +497,7 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
               placeholder="Type a message..."
               value={inputValue}
               onChange={handleInputChange}
-              onKeyDown={(e) => e.key === 'Enter' && void handleSend()}
+              onKeyDown={(e) => e.key === 'Enter' && void onSend()}
               className="h-full flex-1 rounded-full border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-sky-500"
             />
 
@@ -583,7 +512,7 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
             </label>
 
             <button
-              onClick={() => void handleSend()}
+              onClick={() => void onSend()}
               disabled={!connected || isUploading || (!inputValue.trim() && !file)}
               className="inline-flex size-11 items-center justify-center rounded-full bg-sky-600 text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:bg-sky-300 disabled:text-slate-100"
               aria-label="Send message"

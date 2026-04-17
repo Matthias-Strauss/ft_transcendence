@@ -187,7 +187,7 @@ export default function SocialApp() {
         } else {
           state.incrementUnreadForUser(other, 1);
         }
-      } catch {}
+      } catch (err) {}
     };
 
     socket.on('chat:message', onChatMessage);
