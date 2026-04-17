@@ -15,6 +15,7 @@ import { Bookmarked } from './pages/Bookmarked';
 import Notifications from './pages/Notifications';
 import showToast from './utils/toast';
 import { clearClientSession } from './utils/api';
+import useNotificationStore from './utils/notificationStore';
 
 export default function SocialApp() {
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
@@ -194,6 +195,26 @@ export default function SocialApp() {
       socket.off('chat:message', onChatMessage);
     };
   }, []);
+
+  useEffect(() => {
+    const onNotification = (payload: any) => {
+      try {
+        const me = useUserStore.getState().user?.username ?? null;
+        if (!me) return;
+        const recipientUsername = payload?.recipient?.username ?? null;
+        if (!recipientUsername || recipientUsername !== me) return;
+
+        if (activeTab === 'notifications') return;
+
+        useNotificationStore.getState().incrementUnread(1);
+      } catch {}
+    };
+
+    socket.on('notification', onNotification);
+    return () => {
+      socket.off('notification', onNotification);
+    };
+  }, [activeTab]);
 
   useEffect(() => {
     let mounted = true;

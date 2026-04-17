@@ -17,6 +17,7 @@ import { AuthedImage } from './ui/AuthedImage';
 import { useUserStore } from '../utils/userStore';
 import type { UserStore } from '../utils/userStore';
 import useChatStore from '../utils/chatState';
+import useNotificationStore from '../utils/notificationStore';
 
 function Logo() {
   return (
@@ -54,7 +55,7 @@ export function LeftSidebar({
   const setUser = useUserStore((s: UserStore) => s.setUser);
   const storeUser = useUserStore((s: UserStore) => s.user);
   const effectiveMe = (storeUser as MeResponse | null) ?? me;
-  const [notifUnread, setNotifUnread] = useState<number>(0);
+  const notifUnread = useNotificationStore((s) => s.unreadCount);
   const totalUnread = useChatStore((s) => Object.values(s.unreadByUser).reduce((a, b) => a + b, 0));
   const onRootRoute = location.pathname === '/';
   const onGameRoute = location.pathname === '/game';
@@ -110,7 +111,7 @@ export function LeftSidebar({
         const res = await apiFetch('/api/notifications/unread_count');
         if (!mounted || !res.ok) return;
         const data = await res.json();
-        setNotifUnread(data.unreadCount ?? 0);
+        useNotificationStore.getState().setUnreadCount(data.unreadCount ?? 0);
       } catch {}
     }
 
