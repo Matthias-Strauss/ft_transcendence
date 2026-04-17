@@ -465,13 +465,6 @@ postsRouter.post(
         },
         skipDuplicates: true,
       });
-      const created = await tx.postBookmark.createMany({
-        data: {
-          postId,
-          userId: viewerId,
-        },
-        skipDuplicates: true,
-      });
 
       if (created.count > 0) {
         const updatedPost = await tx.post.update({
