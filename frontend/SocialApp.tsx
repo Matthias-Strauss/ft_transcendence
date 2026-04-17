@@ -16,6 +16,7 @@ import Notifications from './pages/Notifications';
 import showToast from './utils/toast';
 import { clearClientSession } from './utils/api';
 import useNotificationStore from './utils/notificationStore';
+import useFriendRequestStore from './utils/friendRequestStore';
 
 export default function SocialApp() {
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
@@ -215,6 +216,23 @@ export default function SocialApp() {
       socket.off('notification', onNotification);
     };
   }, [activeTab]);
+
+  useEffect(() => {
+    const onFriendRequest = (payload: any) => {
+      try {
+        const me = useUserStore.getState().user?.username ?? null;
+        const recipientUsername = payload?.recipient?.username ?? null;
+        if (!me || !recipientUsername || recipientUsername !== me) return;
+
+        useFriendRequestStore.getState().incrementIncoming(1);
+      } catch {}
+    };
+
+    socket.on('friend:request', onFriendRequest);
+    return () => {
+      socket.off('friend:request', onFriendRequest);
+    };
+  }, []);
 
   useEffect(() => {
     let mounted = true;
