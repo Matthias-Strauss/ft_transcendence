@@ -140,10 +140,12 @@ postsRouter.post(
     const contentValue = parsed.data.content?.trim() ?? '';
     if (contentValue.length === 0 && !uploadedPostImage) {
       await cleanupUploadedPostImage(req);
-      throw RequestErrors.badRequest([{
-        message: 'Either content or an image is required to create a post',
-        path: ['content'],
-      }]);
+      throw RequestErrors.badRequest([
+        {
+          message: 'Either content or an image is required to create a post',
+          path: ['content'],
+        },
+      ]);
     }
 
     let post;
@@ -448,48 +450,50 @@ postsRouter.post(
     await checkPostVisibility(postId, viewerId);
 
     await prisma.$transaction(async (tx) => {
-        const post = await tx.post.findUnique({ where: { id: postId }, select: { authorId: true } });
+      const post = await tx.post.findUnique({ where: { id: postId }, select: { authorId: true } });
 
-        const created = await tx.postBookmark.createMany({
-          data: {
-            postId,
-            userId: viewerId,
-          },
-          skipDuplicates: true,
-        });
-
-        if (created.count > 0) {
-          try {
-            if (post && post.authorId && post.authorId !== viewerId) {
-              const createdNotif = await tx.notification.create({
-                data: {
-                  recipientId: post.authorId,
-                  actorId: viewerId,
-                  type: 'POST_SAVE',
-                  postId,
-                },
-                include: {
-                  recipient: { select: { username: true } },
-                  actor: { select: { id: true, username: true, displayname: true, avatarPath: true } },
-                  post: { select: { id: true, content: true } },
-                  comment: { select: { id: true, content: true } },
-                },
-              });
-
-              try {
-                emitNotificationToRecipient(createdNotif);
-              } catch {}
-            }
-          } catch {}
-        }
-
-        return created;
+      const created = await tx.postBookmark.createMany({
+        data: {
+          postId,
+          userId: viewerId,
+        },
+        skipDuplicates: true,
       });
 
-      return res.json({
-        postId,
-        bookmarkedByMe: true,
-      });
+      if (created.count > 0) {
+        try {
+          if (post && post.authorId && post.authorId !== viewerId) {
+            const createdNotif = await tx.notification.create({
+              data: {
+                recipientId: post.authorId,
+                actorId: viewerId,
+                type: 'POST_SAVE',
+                postId,
+              },
+              include: {
+                recipient: { select: { username: true } },
+                actor: {
+                  select: { id: true, username: true, displayname: true, avatarPath: true },
+                },
+                post: { select: { id: true, content: true } },
+                comment: { select: { id: true, content: true } },
+              },
+            });
+
+            try {
+              emitNotificationToRecipient(createdNotif);
+            } catch {}
+          }
+        } catch {}
+      }
+
+      return created;
+    });
+
+    return res.json({
+      postId,
+      bookmarkedByMe: true,
+    });
   }),
 );
 
@@ -568,7 +572,9 @@ postsRouter.post(
               },
               include: {
                 recipient: { select: { username: true } },
-                actor: { select: { id: true, username: true, displayname: true, avatarPath: true } },
+                actor: {
+                  select: { id: true, username: true, displayname: true, avatarPath: true },
+                },
                 post: { select: { id: true, content: true } },
                 comment: { select: { id: true, content: true } },
               },
@@ -796,7 +802,9 @@ postsRouter.post(
               },
               include: {
                 recipient: { select: { username: true } },
-                actor: { select: { id: true, username: true, displayname: true, avatarPath: true } },
+                actor: {
+                  select: { id: true, username: true, displayname: true, avatarPath: true },
+                },
                 post: { select: { id: true, content: true } },
                 comment: { select: { id: true, content: true } },
               },
@@ -808,30 +816,32 @@ postsRouter.post(
           }
         } catch {}
 
-            try {
-              const postAuthorId = commentRow.post?.authorId;
-              if (postAuthorId && postAuthorId !== viewerId && postAuthorId !== commentRow.authorId) {
-                const createdNotif = await tx.notification.create({
-                  data: {
-                    recipientId: postAuthorId,
-                    actorId: viewerId,
-                    type: 'COMMENT_LIKE',
-                    postId,
-                    commentId,
-                  },
-                  include: {
-                    recipient: { select: { username: true } },
-                    actor: { select: { id: true, username: true, displayname: true, avatarPath: true } },
-                    post: { select: { id: true, content: true } },
-                    comment: { select: { id: true, content: true } },
-                  },
-                });
+        try {
+          const postAuthorId = commentRow.post?.authorId;
+          if (postAuthorId && postAuthorId !== viewerId && postAuthorId !== commentRow.authorId) {
+            const createdNotif = await tx.notification.create({
+              data: {
+                recipientId: postAuthorId,
+                actorId: viewerId,
+                type: 'COMMENT_LIKE',
+                postId,
+                commentId,
+              },
+              include: {
+                recipient: { select: { username: true } },
+                actor: {
+                  select: { id: true, username: true, displayname: true, avatarPath: true },
+                },
+                post: { select: { id: true, content: true } },
+                comment: { select: { id: true, content: true } },
+              },
+            });
 
-                try {
-                  emitNotificationToRecipient(createdNotif);
-                } catch {}
-              }
+            try {
+              emitNotificationToRecipient(createdNotif);
             } catch {}
+          }
+        } catch {}
 
         return {
           likedByMe: true,
