@@ -136,6 +136,19 @@ export const UploadChatPdfSchema = z
   })
   .strict();
 
+export const DeleteChatFileParamsSchema = z
+  .object({
+    username: z
+      .string()
+      .trim()
+      .toLowerCase()
+      .min(3)
+      .max(30)
+      .regex(/^[a-z0-9._-]+$/),
+    messageId: z.string().trim().min(1).max(191),
+  })
+  .strict();
+
 export async function moveUploadedChatPdf(params: { sourcePath: string; targetPath: string }) {
   try {
     await fs.rename(params.sourcePath, params.targetPath);

@@ -18,9 +18,10 @@ interface PostCardProps {
 
 export function PostCard({ post, onDeleted }: PostCardProps) {
   const currentUser = useUserStore((s) => s.user);
+  const [isBookmarked, setIsBookmarked] = useState(post.bookmarkedByMe ?? false);
+  const [bookmarkCount, setBookmarkCount] = useState(post.bookmarkCount ?? 0);
   const items: DropdownItem[] = [
-    { id: 0, text: 'Save', icon: <Bookmark /> },
-    { id: 1, text: 'Share', icon: <Repeat2 /> },
+    { id: 0, text: isBookmarked ? 'Remove' : 'Save', icon: <Bookmark /> },
   ];
   if (currentUser?.id === post.authorId) {
     items.push({ id: 2, text: 'Delete', icon: <Trash /> });
@@ -43,12 +44,16 @@ export function PostCard({ post, onDeleted }: PostCardProps) {
     setLikeCount(post.likeCount ?? 0);
     setLiked(post.likedByMe);
     setShared(post.shareCount ?? 0);
+    setIsBookmarked(post.bookmarkedByMe ?? false);
+    setBookmarkCount(post.bookmarkCount ?? 0);
   }, [
     post.commentCount,
     post.comments?.meta?.total,
     post.likeCount,
     post.likedByMe,
     post.shareCount,
+    post.bookmarkedByMe,
+    post.bookmarkCount,
   ]);
 
   const handleCommentCreated = () => {
@@ -60,6 +65,8 @@ export function PostCard({ post, onDeleted }: PostCardProps) {
     data?: {
       shareCount?: number;
       incremented?: boolean;
+      bookmarkCount?: number;
+      bookmarkedByMe?: boolean;
     },
   ) => {
     if (action === 'Share') {
@@ -71,6 +78,14 @@ export function PostCard({ post, onDeleted }: PostCardProps) {
         showToast('Post shared successfully.', 'success');
       } else {
         showToast('You already shared this post.', 'info');
+      }
+    } else if (action === 'Save' || action === 'Remove') {
+      if (typeof data?.bookmarkCount === 'number') {
+        setBookmarkCount(data.bookmarkCount);
+      }
+
+      if (typeof data?.bookmarkedByMe === 'boolean') {
+        setIsBookmarked(data.bookmarkedByMe);
       }
     } else if (action === 'Delete') {
       onDeleted?.(post.id);
@@ -234,15 +249,10 @@ export function PostCard({ post, onDeleted }: PostCardProps) {
               </span>
             </button>
 
-            <button
-              className="flex items-center gap-2 group transition-colors"
-              onClick={() => setIsOpen(true)}
-            >
-              <div className="p-2 rounded-full transition-colors">
-                <Share2 className="size-[18px] text-[#8b98a5]" />
-              </div>
-              <span className="text-[13px] text-[#8b98a5] ">{shareCount}</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <Bookmark className="size-[18px] text-[#8b98a5]" />
+              <span className="text-[13px] text-[#8b98a5]">{bookmarkCount}</span>
+            </div>
           </div>
           {commentOpen && <CommentSection post={post} onCommentCreated={handleCommentCreated} />}
         </div>
