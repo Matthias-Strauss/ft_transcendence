@@ -18,6 +18,7 @@ import { AuthedImage } from './ui/AuthedImage';
 import { useUserStore } from '../utils/userStore';
 import type { UserStore } from '../utils/userStore';
 import useChatStore from '../utils/chatState';
+import useNotificationStore from '../utils/notificationStore';
 
 function Logo() {
   return (
@@ -55,6 +56,7 @@ export function LeftSidebar({
   const setUser = useUserStore((s: UserStore) => s.setUser);
   const storeUser = useUserStore((s: UserStore) => s.user);
   const effectiveMe = (storeUser as MeResponse | null) ?? me;
+  const notifUnread = useNotificationStore((s) => s.unreadCount);
   const totalUnread = useChatStore((s) => Object.values(s.unreadByUser).reduce((a, b) => a + b, 0));
   const onRootRoute = location.pathname === '/';
   const onGameRoute = location.pathname === '/game';
@@ -103,6 +105,23 @@ export function LeftSidebar({
     void load();
   }, [setUser]);
 
+  useEffect(() => {
+    let mounted = true;
+    async function fetchUnread() {
+      try {
+        const res = await apiFetch('/api/notifications/unread_count');
+        if (!mounted || !res.ok) return;
+        const data = await res.json();
+        useNotificationStore.getState().setUnreadCount(data.unreadCount ?? 0);
+      } catch {}
+    }
+
+    void fetchUnread();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   return (
     <div
       className={`fixed left-0 top-0 z-[1200] flex h-screen w-[220px] flex-col gap-3 overflow-y-auto border-r border-[#39444d] bg-[#0f172a] px-4 pb-4 pt-0 transition-transform duration-300 md:translate-x-0 ${
@@ -129,9 +148,15 @@ export function LeftSidebar({
         <SidebarItem
           icon={<Bell className="size-6" />}
           label="Notifications"
-          active={onRootRoute && activeTab === 'notifications'}
-          to="/"
+          active={activeTab === 'notifications' || location.pathname === '/notifications'}
           onClick={() => handleTabClick('notifications')}
+          badge={
+            notifUnread > 0 ? (
+              <div className="bg-red-600 text-[#f7f9f9] text-xs px-2 py-0.5 rounded-full min-w-[20px] text-center">
+                {notifUnread}
+              </div>
+            ) : undefined
+          }
         />
         <SidebarItem
           icon={<MessageSquare className="size-6" />}
