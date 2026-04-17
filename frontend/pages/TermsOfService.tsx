@@ -1,7 +1,17 @@
+import { useNavigate } from 'react-router-dom';
+
 export default function TermsOfService() {
+  const navigate = useNavigate();
   return (
     <div className="min-h-screen bg-slate-950 text-white p-8">
       <div className="mx-auto max-w-3xl">
+        <button
+          type="button"
+          onClick={() => navigate(-1)}
+          className="mb-4 inline-flex items-center gap-2 rounded px-3 py-1 text-sm font-semibold text-sky-300 hover:bg-white/5"
+        >
+          ← Back
+        </button>
         <h1 className="text-4xl font-bold mb-4">Terms of Service</h1>
         <p className="text-sm text-slate-300 mb-6">Effective date: 17 April 2026</p>
 
