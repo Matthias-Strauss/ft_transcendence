@@ -21,7 +21,7 @@ export function bindConnectionHandler(
     registry.addConnection(user.username, socket.id);
     console.log('Authenticated user connected:', user);
 
-    bindChatMessageHandler(io, socket, user, registry);
+    bindChatMessageHandler(io, socket, user, registry, matchManager);
     bindPongHandlers(socket, user, matchManager);
 
     socket.on('disconnect', () => {

@@ -1,9 +1,13 @@
-import { useEffect, useRef, useState, type ChangeEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { Send, FileUp, Ban, ShieldCheck } from 'lucide-react';
 import { socket } from '../socket';
 import { apiFetch } from '../utils/api';
 import { uploadFile } from '../utils/send_file';
-import useChatStore, { type ChatMessage } from '../utils/chatState';
+import useChatStore, {
+  type ChatMessage,
+  type PongInviteMetadata,
+  type PongNotificationMetadata,
+} from '../utils/chatState';
 import useUserStore from '../utils/userStore';
 import showToast from '../utils/toast';
 import { AuthedFilePreview } from './ui/AuthedFilePreview';
@@ -23,10 +27,79 @@ interface ChatPanelProps {
   onClose?: () => void;
 }
 
+function isPongInviteMetadata(metadata: ChatMessage['metadata']): metadata is PongInviteMetadata {
+  return metadata?.kind === 'pong_invite' && metadata.game === 'pong';
+}
+
+function isPongNotificationMetadata(
+  metadata: ChatMessage['metadata'],
+): metadata is PongNotificationMetadata {
+  return metadata?.kind === 'pong_notification' && metadata.game === 'pong';
+}
+
+function formatInviteExpiry(expiresAt: string) {
+  const expiry = new Date(expiresAt);
+  const isExpired = expiry.getTime() <= Date.now();
+
+  if (isExpired) {
+    return 'Expired';
+  }
+
+  return `Expires ${expiry.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+}
+
+function buildNotificationLabel(metadata: PongNotificationMetadata) {
+  if (metadata.event === 'invite_accepted') {
+    return 'Invite Accepted';
+  }
+
+  if (metadata.event === 'invite_declined') {
+    return 'Invite Declined';
+  }
+
+  if (metadata.event === 'opponent_left') {
+    return 'Player Left';
+  }
+
+  if (metadata.event === 'opponent_disconnected') {
+    return 'Match Ended';
+  }
+
+  return 'Match Result';
+}
+
+function buildNotificationCopy(metadata: PongNotificationMetadata) {
+  if (metadata.event === 'invite_accepted') {
+    return 'The Pong invite was accepted.';
+  }
+
+  if (metadata.event === 'invite_declined') {
+    return 'The Pong invite was declined.';
+  }
+
+  if (metadata.event === 'opponent_left') {
+    const who = metadata.endedByUsername ?? 'A player';
+    return `${who} left the match.`;
+  }
+
+  if (metadata.event === 'opponent_disconnected') {
+    const who = metadata.endedByUsername ?? 'A player';
+    return `${who} disconnected and did not return in time.`;
+  }
+
+  const finalScore = metadata.finalScore;
+  if (!finalScore || !metadata.winnerUsername) {
+    return 'The Pong match finished.';
+  }
+
+  return `${metadata.winnerUsername} won ${finalScore.p1}-${finalScore.p2}.`;
+}
+
 export function ChatPanel({ onClose }: ChatPanelProps) {
   const [inputValue, setInputValue] = useState('');
   const [connected, setConnected] = useState(socket.connected);
   const [isTargetTyping, setIsTargetTyping] = useState(false);
+  const [respondingInviteIds, setRespondingInviteIds] = useState<string[]>([]);
   const [file, setFile] = useState<File | null>(null);
   const [progress, setProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
@@ -49,6 +122,24 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
   const meUsername = useUserStore((s) => s.user?.username ?? null);
 
   const activeMessages = targetUsername ? messagesByUser[targetUsername] ?? [] : [];
+  const inviteOutcomeById = useMemo(
+    () =>
+      activeMessages.reduce<Record<string, 'ACCEPTED' | 'DECLINED'>>((acc, msg) => {
+        const notification = isPongNotificationMetadata(msg.metadata) ? msg.metadata : null;
+        if (!notification) {
+          return acc;
+        }
+
+        if (notification.event === 'invite_accepted') {
+          acc[notification.inviteId] = 'ACCEPTED';
+        } else if (notification.event === 'invite_declined') {
+          acc[notification.inviteId] = 'DECLINED';
+        }
+
+        return acc;
+      }, {}),
+    [activeMessages],
+  );
 
   const emitTypingEvent = (target: string, isTyping: boolean) => {
     if (!connected) {
@@ -376,6 +467,50 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
     }, 1200);
   };
 
+  const handleInvitePong = () => {
+    if (!connected || !targetUsername) return;
+
+    if (meUsername && targetUsername === meUsername) {
+      showToast('You cannot invite yourself', 'error');
+      return;
+    }
+
+    socket.emit('game:invite:create', {
+      to: targetUsername,
+    });
+  };
+
+  const handleInviteResponse = (inviteId: string, action: 'accept' | 'decline') => {
+    setRespondingInviteIds((current) => [...new Set([...current, inviteId])]);
+
+    socket.emit(`game:invite:${action}`, {
+      inviteId,
+    });
+  };
+
+  useEffect(() => {
+    setRespondingInviteIds((current) =>
+      current.filter((inviteId) => !(inviteId in inviteOutcomeById)),
+    );
+  }, [inviteOutcomeById]);
+
+  useEffect(() => {
+    const onChatError = (payload: any) => {
+      const code = typeof payload?.code === 'string' ? payload.code : '';
+
+      if (!code.startsWith('GAME_INVITE_')) {
+        return;
+      }
+
+      setRespondingInviteIds([]);
+      showToast(payload?.message || 'Unable to update invite', 'error');
+    };
+
+    socket.on('chat:error', onChatError);
+    return () => {
+      socket.off('chat:error', onChatError);
+    };
+  }, []);
   const items: DropdownItem[] = [
     { id: 0, text: 'Block User', icon: <Ban /> },
     { id: 1, text: 'Unblock User', icon: <ShieldCheck /> },
@@ -396,6 +531,16 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
           </div>
 
           <div className="flex items-center gap-2">
+            {targetUsername && (
+              <button
+                type="button"
+                className="rounded-full bg-slate-900 px-[10px] py-1.5 text-[11px] font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+                onClick={handleInvitePong}
+                disabled={!connected}
+              >
+                Play Pong
+              </button>
+            )}
             <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] font-medium text-slate-600">
               <span
                 className={`size-2 rounded-full ${connected ? 'bg-emerald-500' : 'bg-rose-500'}`}
@@ -438,6 +583,23 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
               const fileUrl = msg.metadata?.fileUrl;
               const fileId = msg.id;
               const fileName = msg.metadata?.originalName;
+              const inviteMetadata = isPongInviteMetadata(msg.metadata) ? msg.metadata : null;
+              const notificationMetadata = isPongNotificationMetadata(msg.metadata)
+                ? msg.metadata
+                : null;
+              const inviteExpired =
+                inviteMetadata && new Date(inviteMetadata.expiresAt).getTime() <= Date.now();
+              const inviteOutcome = inviteMetadata
+                ? inviteOutcomeById[inviteMetadata.inviteId] ??
+                  (inviteExpired ? 'EXPIRED' : inviteMetadata.status)
+                : null;
+              const canRespond =
+                Boolean(inviteMetadata) &&
+                !msg.isOwn &&
+                inviteOutcome === 'PENDING' &&
+                !inviteExpired;
+              const isResponding =
+                inviteMetadata && respondingInviteIds.includes(inviteMetadata.inviteId);
               return (
                 <div
                   key={msg.id}
@@ -457,7 +619,65 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
                         : 'rounded-bl-md border border-slate-200 bg-slate-100 text-slate-900'
                     }`}
                   >
-                    {fileUrl ? (
+                    {inviteMetadata ? (
+                      <div className="flex min-w-[220px] flex-col gap-2">
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="m-0 text-[13px] font-bold">Pong Invite</p>
+                          <span className="rounded-full bg-slate-900/10 px-2 py-1 text-[10px] font-bold tracking-[0.04em]">
+                            {inviteOutcome}
+                          </span>
+                        </div>
+                        <p className="m-0 text-[12px] leading-[1.5]">
+                          {msg.isOwn ? 'You challenged this player to a match.' : `${msg.user} challenged you to a match.`}
+                        </p>
+                        <p className="m-0 text-[12px] leading-[1.5] opacity-80">
+                          {formatInviteExpiry(inviteMetadata.expiresAt)}
+                        </p>
+                        {canRespond && (
+                          <div className="mt-1 flex gap-2">
+                            <button
+                              type="button"
+                              className="rounded-full bg-emerald-600 px-3 py-1.5 text-[11px] font-bold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-slate-400"
+                              onClick={() => handleInviteResponse(inviteMetadata.inviteId, 'accept')}
+                              disabled={Boolean(isResponding)}
+                            >
+                              Accept
+                            </button>
+                            <button
+                              type="button"
+                              className="rounded-full border border-slate-300 px-3 py-1.5 text-[11px] font-bold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-400"
+                              onClick={() =>
+                                handleInviteResponse(inviteMetadata.inviteId, 'decline')
+                              }
+                              disabled={Boolean(isResponding)}
+                            >
+                              Decline
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ) : notificationMetadata ? (
+                      <div className="flex min-w-[220px] flex-col gap-2">
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="m-0 text-[13px] font-bold">
+                            {buildNotificationLabel(notificationMetadata)}
+                          </p>
+                          <span className="rounded-full bg-sky-900/10 px-2 py-1 text-[10px] font-bold tracking-[0.04em] text-sky-900">
+                            PONG
+                          </span>
+                        </div>
+                        <p className="m-0 text-[12px] leading-[1.5]">
+                          {buildNotificationCopy(notificationMetadata)}
+                        </p>
+                        {notificationMetadata.event === 'match_result' &&
+                          notificationMetadata.finalScore && (
+                            <p className="m-0 text-[12px] font-semibold leading-[1.5] opacity-80">
+                              Final score: {notificationMetadata.finalScore.p1}-
+                              {notificationMetadata.finalScore.p2}
+                            </p>
+                          )}
+                      </div>
+                    ) : fileUrl ? (
                       <div className="flex flex-col gap-2">
                         <p className="m-0 break-words text-[13px] font-semibold">
                           📎 {fileName || 'Attachment'}
