@@ -316,6 +316,33 @@ usersRouter.post(
       throw FriendErrors.requestNotFound();
     }
 
+    try {
+      const accepter = await prisma.user.findUnique({
+        where: { id: viewerId },
+        select: { id: true, username: true, displayname: true, avatarPath: true },
+      });
+
+      try {
+        const runtime = getRealtimeRuntime();
+        if (runtime && accepter) {
+          const sockets = runtime.registry.getSocketsByUsername(targetUser.username);
+          if (sockets && sockets.size > 0) {
+            const payload = {
+              accepter,
+              recipient: { username: targetUser.username },
+              createdAt: new Date().toISOString(),
+            };
+
+            for (const sid of sockets) {
+              try {
+                runtime.io.to(sid).emit('friend:accepted', payload);
+              } catch (e) {}
+            }
+          }
+        }
+      } catch (e) {}
+    } catch (e) {}
+
     return res.json({
       ok: true,
       accepted: true,
@@ -357,6 +384,33 @@ usersRouter.post(
     if (deletedFriendships.count === 0) {
       throw FriendErrors.requestNotFound();
     }
+
+    try {
+      const decliner = await prisma.user.findUnique({
+        where: { id: viewerId },
+        select: { id: true, username: true, displayname: true, avatarPath: true },
+      });
+
+      try {
+        const runtime = getRealtimeRuntime();
+        if (runtime && decliner) {
+          const sockets = runtime.registry.getSocketsByUsername(targetUser.username);
+          if (sockets && sockets.size > 0) {
+            const payload = {
+              decliner,
+              recipient: { username: targetUser.username },
+              createdAt: new Date().toISOString(),
+            };
+
+            for (const sid of sockets) {
+              try {
+                runtime.io.to(sid).emit('friend:declined', payload);
+              } catch (e) {}
+            }
+          }
+        }
+      } catch (e) {}
+    } catch (e) {}
 
     return res.json({
       ok: true,
@@ -483,6 +537,35 @@ usersRouter.delete(
         requesterId: viewerId,
       },
     });
+
+    try {
+      if (deletedFriendships.count > 0) {
+        const withdrawer = await prisma.user.findUnique({
+          where: { id: viewerId },
+          select: { id: true, username: true, displayname: true, avatarPath: true },
+        });
+
+        try {
+          const runtime = getRealtimeRuntime();
+          if (runtime && withdrawer) {
+            const sockets = runtime.registry.getSocketsByUsername(targetUser.username);
+            if (sockets && sockets.size > 0) {
+              const payload = {
+                withdrawer,
+                recipient: { username: targetUser.username },
+                createdAt: new Date().toISOString(),
+              };
+
+              for (const sid of sockets) {
+                try {
+                  runtime.io.to(sid).emit('friend:withdrawn', payload);
+                } catch (e) {}
+              }
+            }
+          }
+        } catch (e) {}
+      }
+    } catch (e) {}
 
     return res.json({
       ok: true,
