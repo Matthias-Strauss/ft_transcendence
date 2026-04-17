@@ -12,6 +12,7 @@ import useChatStore from './utils/chatState';
 import useUserStore from './utils/userStore';
 import { socket } from './socket';
 import { Bookmarked } from './pages/Bookmarked';
+import Notifications from './pages/Notifications';
 import showToast from './utils/toast';
 import { clearClientSession } from './utils/api';
 
@@ -230,12 +231,7 @@ export default function SocialApp() {
       case 'home':
         return <HomeFeed ref={inputRef} />;
       case 'notifications':
-        return (
-          <div className="p-8 text-center">
-            <h2 className="font-bold text-[20px] text-[#f7f9f9] mb-2">Notifications</h2>
-            <p className="text-[#8b98a5]">Your notifications will appear here</p>
-          </div>
-        );
+        return <Notifications />;
       case 'messages':
         return <ConversationsList />;
       case 'friends':
