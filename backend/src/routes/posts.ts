@@ -19,6 +19,7 @@ import {
   PostFeedScope,
   getPostsFeedWthScope,
 } from '../utils/postUtils.js';
+import { emitNotificationToRecipient } from '../utils/notificationRuntime.js';
 import {
   postImageUploadHandler,
   getUploadedPostImageFromReq,
@@ -139,10 +140,18 @@ postsRouter.post(
     const contentValue = parsed.data.content?.trim() ?? '';
     if (contentValue.length === 0 && !uploadedPostImage) {
       await cleanupUploadedPostImage(req);
-      throw RequestErrors.badRequest([{
-        message: 'Either content or an image is required to create a post',
-        path: ['content'],
-      }]);
+      throw RequestErrors.badRequest([
+        {
+          message: 'Either content or an image is required to create a post',
+          path: ['content'],
+        },
+      ]);
+      throw RequestErrors.badRequest([
+        {
+          message: 'Either content or an image is required to create a post',
+          path: ['content'],
+        },
+      ]);
     }
 
     let post;
@@ -322,7 +331,7 @@ postsRouter.post(
     const comment = await prisma.$transaction(async (tx) => {
       const post = await tx.post.findUnique({
         where: { id: req.params.id },
-        select: { id: true },
+        select: { id: true, authorId: true },
       });
 
       if (!post) {
@@ -344,6 +353,30 @@ postsRouter.post(
           commentCount: { increment: 1 },
         },
       });
+
+      try {
+        if (post && post.authorId && post.authorId !== viewerId) {
+          const createdNotif = await tx.notification.create({
+            data: {
+              recipientId: post.authorId,
+              actorId: viewerId,
+              type: 'POST_COMMENT',
+              postId: req.params.id,
+              commentId: createdComment.id,
+            },
+            include: {
+              recipient: { select: { username: true } },
+              actor: { select: { id: true, username: true, displayname: true, avatarPath: true } },
+              post: { select: { id: true, content: true } },
+              comment: { select: { id: true, content: true } },
+            },
+          });
+
+          try {
+            emitNotificationToRecipient(createdNotif);
+          } catch {}
+        }
+      } catch {}
 
       return createdComment;
     });
@@ -422,18 +455,81 @@ postsRouter.post(
 
     await checkPostVisibility(postId, viewerId);
 
-    await prisma.postBookmark.createMany({
-      data: {
-        postId,
-        userId: viewerId,
-      },
-      skipDuplicates: true,
+    const result = await prisma.$transaction(async (tx) => {
+      const post = await tx.post.findUnique({ where: { id: postId }, select: { authorId: true } });
+
+      const created = await tx.postBookmark.createMany({
+        data: {
+          postId,
+          userId: viewerId,
+        },
+        skipDuplicates: true,
+      });
+
+      if (created.count > 0) {
+        const updatedPost = await tx.post.update({
+          where: { id: postId },
+          data: {
+            bookmarkCount: { increment: 1 },
+          },
+          select: {
+            id: true,
+            bookmarkCount: true,
+          },
+        });
+
+        try {
+          if (post && post.authorId && post.authorId !== viewerId) {
+            const createdNotif = await tx.notification.create({
+              data: {
+                recipientId: post.authorId,
+                actorId: viewerId,
+                type: 'POST_SAVE',
+                postId,
+              },
+              include: {
+                recipient: { select: { username: true } },
+                actor: {
+                  select: { id: true, username: true, displayname: true, avatarPath: true },
+                },
+                post: { select: { id: true, content: true } },
+                comment: { select: { id: true, content: true } },
+              },
+            });
+
+            try {
+              emitNotificationToRecipient(createdNotif);
+            } catch {}
+          }
+        } catch {}
+
+        return {
+          postId: updatedPost.id,
+          bookmarkedByMe: true,
+          bookmarkCount: updatedPost.bookmarkCount,
+        };
+      }
+
+      const unchangedPost = await tx.post.findUnique({
+        where: { id: postId },
+        select: {
+          id: true,
+          bookmarkCount: true,
+        },
+      });
+
+      if (!unchangedPost) {
+        throw PostErrors.notFound();
+      }
+
+      return {
+        postId: unchangedPost.id,
+        bookmarkedByMe: true,
+        bookmarkCount: unchangedPost.bookmarkCount,
+      };
     });
 
-    return res.json({
-      postId,
-      bookmarkedByMe: true,
-    });
+    return res.json(result);
   }),
 );
 
@@ -450,17 +546,53 @@ postsRouter.delete(
 
     await checkPostVisibility(postId, viewerId);
 
-    await prisma.postBookmark.deleteMany({
-      where: {
-        postId,
-        userId: viewerId,
-      },
+    const result = await prisma.$transaction(async (tx) => {
+      const deleted = await tx.postBookmark.deleteMany({
+        where: {
+          postId,
+          userId: viewerId,
+        },
+      });
+
+      if (deleted.count > 0) {
+        const updatedPost = await tx.post.update({
+          where: { id: postId },
+          data: {
+            bookmarkCount: { decrement: 1 },
+          },
+          select: {
+            id: true,
+            bookmarkCount: true,
+          },
+        });
+
+        return {
+          postId: updatedPost.id,
+          bookmarkedByMe: false,
+          bookmarkCount: updatedPost.bookmarkCount,
+        };
+      }
+
+      const unchangedPost = await tx.post.findUnique({
+        where: { id: postId },
+        select: {
+          id: true,
+          bookmarkCount: true,
+        },
+      });
+
+      if (!unchangedPost) {
+        throw PostErrors.notFound();
+      }
+
+      return {
+        postId: unchangedPost.id,
+        bookmarkedByMe: false,
+        bookmarkCount: unchangedPost.bookmarkCount,
+      };
     });
 
-    return res.json({
-      postId,
-      bookmarkedByMe: false,
-    });
+    return res.json(result);
   }),
 );
 
@@ -479,6 +611,8 @@ postsRouter.post(
     await checkPostVisibility(postId, viewerId);
 
     const result = await prisma.$transaction(async (tx) => {
+      const post = await tx.post.findUnique({ where: { id: postId }, select: { authorId: true } });
+
       const created = await tx.postLike.createMany({
         data: {
           postId,
@@ -498,6 +632,31 @@ postsRouter.post(
             likeCount: true,
           },
         });
+
+        try {
+          if (post && post.authorId && post.authorId !== viewerId) {
+            const createdNotif = await tx.notification.create({
+              data: {
+                recipientId: post.authorId,
+                actorId: viewerId,
+                type: 'POST_LIKE',
+                postId,
+              },
+              include: {
+                recipient: { select: { username: true } },
+                actor: {
+                  select: { id: true, username: true, displayname: true, avatarPath: true },
+                },
+                post: { select: { id: true, content: true } },
+                comment: { select: { id: true, content: true } },
+              },
+            });
+
+            try {
+              emitNotificationToRecipient(createdNotif);
+            } catch {}
+          }
+        } catch {}
 
         return {
           postId: updatedPost.id,
@@ -680,6 +839,13 @@ postsRouter.post(
     await checkCommentBelongsToPost(commentId, postId);
 
     const result = await prisma.$transaction(async (tx) => {
+      const commentRow = await tx.comment.findUnique({
+        where: { id: commentId },
+        include: { post: { select: { authorId: true, id: true } } },
+      });
+
+      if (!commentRow) throw CommentErrors.notFound();
+
       const created = await tx.commentLike.createMany({
         data: {
           commentId,
@@ -696,6 +862,58 @@ postsRouter.post(
           },
           select: { likeCount: true },
         });
+        try {
+          if (commentRow.authorId && commentRow.authorId !== viewerId) {
+            const createdNotif = await tx.notification.create({
+              data: {
+                recipientId: commentRow.authorId,
+                actorId: viewerId,
+                type: 'COMMENT_LIKE',
+                postId,
+                commentId,
+              },
+              include: {
+                recipient: { select: { username: true } },
+                actor: {
+                  select: { id: true, username: true, displayname: true, avatarPath: true },
+                },
+                post: { select: { id: true, content: true } },
+                comment: { select: { id: true, content: true } },
+              },
+            });
+
+            try {
+              emitNotificationToRecipient(createdNotif);
+            } catch {}
+          }
+        } catch {}
+
+        try {
+          const postAuthorId = commentRow.post?.authorId;
+          if (postAuthorId && postAuthorId !== viewerId && postAuthorId !== commentRow.authorId) {
+            const createdNotif = await tx.notification.create({
+              data: {
+                recipientId: postAuthorId,
+                actorId: viewerId,
+                type: 'COMMENT_LIKE',
+                postId,
+                commentId,
+              },
+              include: {
+                recipient: { select: { username: true } },
+                actor: {
+                  select: { id: true, username: true, displayname: true, avatarPath: true },
+                },
+                post: { select: { id: true, content: true } },
+                comment: { select: { id: true, content: true } },
+              },
+            });
+
+            try {
+              emitNotificationToRecipient(createdNotif);
+            } catch {}
+          }
+        } catch {}
 
         return {
           likedByMe: true,

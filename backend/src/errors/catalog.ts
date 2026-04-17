@@ -149,6 +149,11 @@ export const ERROR_CATALOG = {
     message: 'This user has blocked you',
     errCode: 'CHAT_BLOCKED_BY_TARGET',
   },
+  CHAT_FILE_DELETE_FORBIDDEN: {
+    statusCode: 403,
+    message: 'You can only delete files you sent in private chat',
+    errCode: 'CHAT_FILE_DELETE_FORBIDDEN',
+  },
 } as const;
 
 export type ErrorKey = keyof typeof ERROR_CATALOG;
@@ -217,4 +222,5 @@ export const ChatErrors = {
   messageToSelfForbidden: () => appError('CHAT_MESSAGE_TO_SELF_FORBIDDEN'),
   blockedByMe: () => appError('CHAT_BLOCKED_BY_ME'),
   blockedByTarget: () => appError('CHAT_BLOCKED_BY_TARGET'),
+  fileDeleteForbidden: () => appError('CHAT_FILE_DELETE_FORBIDDEN'),
 };

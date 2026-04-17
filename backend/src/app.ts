@@ -13,6 +13,7 @@ import { chatRouter } from './routes/chat.js';
 import { healthRouter } from './routes/health.js';
 import { meRouter } from './routes/me.js';
 import { postsRouter } from './routes/posts.js';
+import { notificationsRouter } from './routes/notifications.js';
 import { presenceRouter } from './routes/presence.js';
 import { testRouter } from './routes/test.js';
 import { uploadsRouter } from './routes/upload.js';
@@ -30,6 +31,7 @@ function createAPI() {
   api.use(uploadsRouter);
   api.use(chatRouter);
   api.use(postsRouter);
+  api.use(notificationsRouter);
   api.use(meRouter);
 
   return api;

@@ -12,8 +12,10 @@ import useChatStore from './utils/chatState';
 import useUserStore from './utils/userStore';
 import { socket } from './socket';
 import { Bookmarked } from './pages/Bookmarked';
+import Notifications from './pages/Notifications';
 import showToast from './utils/toast';
 import { clearClientSession } from './utils/api';
+import useNotificationStore from './utils/notificationStore';
 
 export default function SocialApp() {
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
@@ -185,7 +187,7 @@ export default function SocialApp() {
         } else {
           state.incrementUnreadForUser(other, 1);
         }
-      } catch {}
+      } catch (err) {}
     };
 
     socket.on('chat:message', onChatMessage);
@@ -193,6 +195,26 @@ export default function SocialApp() {
       socket.off('chat:message', onChatMessage);
     };
   }, []);
+
+  useEffect(() => {
+    const onNotification = (payload: any) => {
+      try {
+        const me = useUserStore.getState().user?.username ?? null;
+        if (!me) return;
+        const recipientUsername = payload?.recipient?.username ?? null;
+        if (!recipientUsername || recipientUsername !== me) return;
+
+        if (activeTab === 'notifications') return;
+
+        useNotificationStore.getState().incrementUnread(1);
+      } catch {}
+    };
+
+    socket.on('notification', onNotification);
+    return () => {
+      socket.off('notification', onNotification);
+    };
+  }, [activeTab]);
 
   useEffect(() => {
     let mounted = true;
@@ -230,12 +252,7 @@ export default function SocialApp() {
       case 'home':
         return <HomeFeed ref={inputRef} />;
       case 'notifications':
-        return (
-          <div className="p-8 text-center">
-            <h2 className="font-bold text-[20px] text-[#f7f9f9] mb-2">Notifications</h2>
-            <p className="text-[#8b98a5]">Your notifications will appear here</p>
-          </div>
-        );
+        return <Notifications />;
       case 'messages':
         return <ConversationsList />;
       case 'friends':
