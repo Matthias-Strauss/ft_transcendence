@@ -68,7 +68,10 @@ notificationsRouter.post(
   asyncHandler(async (req: AuthedRequest, res) => {
     if (!req.userId) return res.status(401).json({ ok: false });
 
-    await prisma.notification.updateMany({ where: { recipientId: req.userId, readAt: null }, data: { readAt: new Date() } });
+    await prisma.notification.updateMany({
+      where: { recipientId: req.userId, readAt: null },
+      data: { readAt: new Date() },
+    });
 
     return res.json({ ok: true });
   }),

@@ -111,6 +111,7 @@ model Post {
   likeCount    Int      @default(0)
   commentCount Int      @default(0)
   shareCount   Int      @default(0)
+  bookmarkCount Int     @default(0)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
