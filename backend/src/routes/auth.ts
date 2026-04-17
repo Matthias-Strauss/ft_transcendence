@@ -157,6 +157,8 @@ const RegisterSchema = z
       .regex(/^[a-z0-9._-]+$/),
     email: z.email().optional(),
     password: z.string().min(1).max(100),
+    acceptedPrivacy: z.literal(true),
+    acceptedTerms: z.literal(true),
   })
   .strict()
   .superRefine((val, ctx) => {

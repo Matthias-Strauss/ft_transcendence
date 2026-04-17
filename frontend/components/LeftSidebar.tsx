@@ -9,7 +9,8 @@ import {
   MessageSquare,
   Bookmark,
   User as UserIcon,
-  MoreHorizontal,
+  ShieldCheck,
+  FileText,
 } from 'lucide-react';
 
 import { SidebarItem } from './ui/SidebarItem';
@@ -167,11 +168,18 @@ export function LeftSidebar({
           onClick={handleProfileNavigate}
         />
         <SidebarItem
-          icon={<MoreHorizontal className="size-6" />}
-          label="More"
-          active={onRootRoute && activeTab === 'more'}
-          to="/"
-          onClick={() => handleTabClick('more')}
+          icon={<ShieldCheck className="size-6" />}
+          label="Privacy"
+          active={location.pathname === '/privacy'}
+          to="/privacy"
+          onClick={() => handleTabClick('privacy')}
+        />
+        <SidebarItem
+          icon={<FileText className="size-6" />}
+          label="Terms"
+          active={location.pathname === '/terms'}
+          to="/terms"
+          onClick={() => handleTabClick('terms')}
         />
       </div>
 
