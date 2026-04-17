@@ -22,6 +22,7 @@ import {
   getFriendshipUserIdsOrdered,
   getFriendRelation,
 } from '../utils/friendUtils.js';
+import { getRealtimeRuntime } from '../ws/runtime.js';
 import { FriendErrors } from '../errors/catalog.js';
 import {
   buildDescDateIdCursor,
@@ -315,6 +316,33 @@ usersRouter.post(
       throw FriendErrors.requestNotFound();
     }
 
+    try {
+      const accepter = await prisma.user.findUnique({
+        where: { id: viewerId },
+        select: { id: true, username: true, displayname: true, avatarPath: true },
+      });
+
+      try {
+        const runtime = getRealtimeRuntime();
+        if (runtime && accepter) {
+          const sockets = runtime.registry.getSocketsByUsername(targetUser.username);
+          if (sockets && sockets.size > 0) {
+            const payload = {
+              accepter,
+              recipient: { username: targetUser.username },
+              createdAt: new Date().toISOString(),
+            };
+
+            for (const sid of sockets) {
+              try {
+                runtime.io.to(sid).emit('friend:accepted', payload);
+              } catch (e) {}
+            }
+          }
+        }
+      } catch (e) {}
+    } catch (e) {}
+
     return res.json({
       ok: true,
       accepted: true,
@@ -356,6 +384,33 @@ usersRouter.post(
     if (deletedFriendships.count === 0) {
       throw FriendErrors.requestNotFound();
     }
+
+    try {
+      const decliner = await prisma.user.findUnique({
+        where: { id: viewerId },
+        select: { id: true, username: true, displayname: true, avatarPath: true },
+      });
+
+      try {
+        const runtime = getRealtimeRuntime();
+        if (runtime && decliner) {
+          const sockets = runtime.registry.getSocketsByUsername(targetUser.username);
+          if (sockets && sockets.size > 0) {
+            const payload = {
+              decliner,
+              recipient: { username: targetUser.username },
+              createdAt: new Date().toISOString(),
+            };
+
+            for (const sid of sockets) {
+              try {
+                runtime.io.to(sid).emit('friend:declined', payload);
+              } catch (e) {}
+            }
+          }
+        }
+      } catch (e) {}
+    } catch (e) {}
 
     return res.json({
       ok: true,
@@ -418,6 +473,33 @@ usersRouter.post(
       },
     });
 
+    try {
+      const actor = await prisma.user.findUnique({
+        where: { id: viewerId },
+        select: { id: true, username: true, displayname: true, avatarPath: true },
+      });
+
+      try {
+        const runtime = getRealtimeRuntime();
+        if (runtime && actor) {
+          const sockets = runtime.registry.getSocketsByUsername(targetUser.username);
+          if (sockets && sockets.size > 0) {
+            const payload = {
+              requester: actor,
+              recipient: { username: targetUser.username },
+              createdAt: new Date().toISOString(),
+            };
+
+            for (const sid of sockets) {
+              try {
+                runtime.io.to(sid).emit('friend:request', payload);
+              } catch (e) {}
+            }
+          }
+        }
+      } catch (e) {}
+    } catch (e) {}
+
     return res.status(201).json({
       ok: true,
       requested: true,
@@ -456,10 +538,40 @@ usersRouter.delete(
       },
     });
 
+    try {
+      if (deletedFriendships.count > 0) {
+        const withdrawer = await prisma.user.findUnique({
+          where: { id: viewerId },
+          select: { id: true, username: true, displayname: true, avatarPath: true },
+        });
+
+        try {
+          const runtime = getRealtimeRuntime();
+          if (runtime && withdrawer) {
+            const sockets = runtime.registry.getSocketsByUsername(targetUser.username);
+            if (sockets && sockets.size > 0) {
+              const payload = {
+                withdrawer,
+                recipient: { username: targetUser.username },
+                createdAt: new Date().toISOString(),
+              };
+
+              for (const sid of sockets) {
+                try {
+                  runtime.io.to(sid).emit('friend:withdrawn', payload);
+                } catch (e) {}
+              }
+            }
+          }
+        } catch (e) {}
+      }
+    } catch (e) {}
+    const relation = await getFriendRelation(viewerId, targetUser.id);
+
     return res.json({
       ok: true,
       withdrawn: deletedFriendships.count > 0,
-      user: serializeFriendUser(targetUser),
+      user: serializeFriendUser(targetUser, relation),
     });
   }),
 );

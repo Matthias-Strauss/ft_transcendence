@@ -19,6 +19,7 @@ import { useUserStore } from '../utils/userStore';
 import type { UserStore } from '../utils/userStore';
 import useChatStore from '../utils/chatState';
 import useNotificationStore from '../utils/notificationStore';
+import useFriendRequestStore from '../utils/friendRequestStore';
 
 function Logo() {
   return (
@@ -58,6 +59,7 @@ export function LeftSidebar({
   const effectiveMe = (storeUser as MeResponse | null) ?? me;
   const notifUnread = useNotificationStore((s) => s.unreadCount);
   const totalUnread = useChatStore((s) => Object.values(s.unreadByUser).reduce((a, b) => a + b, 0));
+  const incomingRequests = useFriendRequestStore((s) => s.incomingCount);
   const onRootRoute = location.pathname === '/';
   const onGameRoute = location.pathname === '/game';
   const onProfileRoute = location.pathname.startsWith('/users/');
@@ -117,6 +119,18 @@ export function LeftSidebar({
     }
 
     void fetchUnread();
+
+    async function fetchFriendRequests() {
+      try {
+        const res = await apiFetch('/api/me/friends/requests');
+        if (!mounted || !res.ok) return;
+        const data = await res.json();
+        const count = (data.items || []).filter((it: any) => it.friendRequestIncoming).length;
+        useFriendRequestStore.getState().setIncomingCount(count);
+      } catch {}
+    }
+
+    void fetchFriendRequests();
     return () => {
       mounted = false;
     };
@@ -178,6 +192,13 @@ export function LeftSidebar({
           active={onRootRoute && activeTab === 'friends'}
           to="/"
           onClick={() => handleTabClick('friends')}
+          badge={
+            incomingRequests > 0 ? (
+              <div className="bg-red-600 text-[#f7f9f9] text-xs px-2 py-0.5 rounded-full min-w-[20px] text-center">
+                {incomingRequests}
+              </div>
+            ) : undefined
+          }
         />
         <SidebarItem
           icon={<Bookmark className="size-6" />}
