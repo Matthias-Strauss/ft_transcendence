@@ -146,6 +146,12 @@ postsRouter.post(
           path: ['content'],
         },
       ]);
+      throw RequestErrors.badRequest([
+        {
+          message: 'Either content or an image is required to create a post',
+          path: ['content'],
+        },
+      ]);
     }
 
     let post;
@@ -452,6 +458,13 @@ postsRouter.post(
     const result = await prisma.$transaction(async (tx) => {
       const post = await tx.post.findUnique({ where: { id: postId }, select: { authorId: true } });
 
+      const created = await tx.postBookmark.createMany({
+        data: {
+          postId,
+          userId: viewerId,
+        },
+        skipDuplicates: true,
+      });
       const created = await tx.postBookmark.createMany({
         data: {
           postId,

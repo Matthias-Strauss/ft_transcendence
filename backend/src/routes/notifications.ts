@@ -2,6 +2,7 @@ import { Router } from 'express';
 
 import { AuthedRequest, requireAuth } from '../auth/middleware.js';
 import { asyncHandler } from '../errors/asyncHandler.js';
+import { AuthErrors, PostErrors } from '../errors/catalog.js';
 import { prisma } from '../db.js';
 
 export const notificationsRouter = Router();
@@ -10,7 +11,7 @@ notificationsRouter.get(
   '/notifications',
   requireAuth,
   asyncHandler(async (req: AuthedRequest, res) => {
-    if (!req.userId) return res.status(401).json({ items: [] });
+    if (!req.userId) throw AuthErrors.invalidToken();
 
     const limit = Math.min(100, Number(req.query.limit || 50));
 
@@ -33,7 +34,7 @@ notificationsRouter.get(
   '/notifications/unread_count',
   requireAuth,
   asyncHandler(async (req: AuthedRequest, res) => {
-    if (!req.userId) return res.status(401).json({ unreadCount: 0 });
+    if (!req.userId) throw AuthErrors.invalidToken();
 
     const unreadCount = await prisma.notification.count({
       where: { recipientId: req.userId, readAt: null },
@@ -47,13 +48,13 @@ notificationsRouter.post(
   '/notifications/:id/read',
   requireAuth,
   asyncHandler(async (req: AuthedRequest, res) => {
-    if (!req.userId) return res.status(401).json({ ok: false });
+    if (!req.userId) throw AuthErrors.invalidToken();
 
     const id = req.params.id;
 
     const existing = await prisma.notification.findUnique({ where: { id } });
     if (!existing || existing.recipientId !== req.userId) {
-      return res.status(404).json({ ok: false });
+      throw PostErrors.notFound();
     }
 
     await prisma.notification.update({ where: { id }, data: { readAt: new Date() } });
@@ -66,7 +67,7 @@ notificationsRouter.post(
   '/notifications/mark_all_read',
   requireAuth,
   asyncHandler(async (req: AuthedRequest, res) => {
-    if (!req.userId) return res.status(401).json({ ok: false });
+    if (!req.userId) throw AuthErrors.invalidToken();
 
     await prisma.notification.updateMany({
       where: { recipientId: req.userId, readAt: null },

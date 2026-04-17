@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react';
 import { AuthedImage } from '../components/ui/AuthedImage';
 import { apiFetch } from '../utils/api';
 import showToast from '../utils/toast';
@@ -27,6 +27,7 @@ interface NotificationItem {
 export function Notifications() {
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const pendingRef = useRef<Set<string>>(new Set());
 
   const fetchNotifications = useCallback(async () => {
     setLoading(true);
@@ -72,20 +73,30 @@ export function Notifications() {
   }, []);
 
   const markRead = async (id: string) => {
+    if (pendingRef.current.has(id)) return;
+    pendingRef.current.add(id);
     try {
-      const wasUnread = items.find((it) => it.id === id && !it.readAt) != null;
       const res = await apiFetch(`/api/notifications/${encodeURIComponent(id)}/read`, {
         method: 'POST',
       });
       if (!res.ok) throw new Error('Failed');
+
+      let didChange = false;
       setItems((prev) =>
-        prev.map((it) => (it.id === id ? { ...it, readAt: new Date().toISOString() } : it)),
+        prev.map((it) => {
+          if (it.id !== id) return it;
+          if (!it.readAt) didChange = true;
+          return { ...it, readAt: new Date().toISOString() };
+        }),
       );
-      if (wasUnread) {
+
+      if (didChange) {
         useNotificationStore.getState().incrementUnread(-1);
       }
     } catch {
       showToast('Could not mark notification read', 'error');
+    } finally {
+      pendingRef.current.delete(id);
     }
   };
 
