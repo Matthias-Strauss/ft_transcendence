@@ -19,6 +19,7 @@ import {
   PostFeedScope,
   getPostsFeedWthScope,
 } from '../utils/postUtils.js';
+import { emitNotificationToRecipient } from '../utils/notificationRuntime.js';
 import {
   postImageUploadHandler,
   getUploadedPostImageFromReq,
@@ -347,7 +348,7 @@ postsRouter.post(
 
       try {
         if (post && post.authorId && post.authorId !== viewerId) {
-          await tx.notification.create({
+          const createdNotif = await tx.notification.create({
             data: {
               recipientId: post.authorId,
               actorId: viewerId,
@@ -355,9 +356,19 @@ postsRouter.post(
               postId: req.params.id,
               commentId: createdComment.id,
             },
+            include: {
+              recipient: { select: { username: true } },
+              actor: { select: { id: true, username: true, displayname: true, avatarPath: true } },
+              post: { select: { id: true, content: true } },
+              comment: { select: { id: true, content: true } },
+            },
           });
+
+          try {
+            emitNotificationToRecipient(createdNotif);
+          } catch {}
         }
-      } catch { }
+      } catch {}
 
       return createdComment;
     });
@@ -450,14 +461,24 @@ postsRouter.post(
         if (created.count > 0) {
           try {
             if (post && post.authorId && post.authorId !== viewerId) {
-              await tx.notification.create({
+              const createdNotif = await tx.notification.create({
                 data: {
                   recipientId: post.authorId,
                   actorId: viewerId,
                   type: 'POST_SAVE',
                   postId,
                 },
+                include: {
+                  recipient: { select: { username: true } },
+                  actor: { select: { id: true, username: true, displayname: true, avatarPath: true } },
+                  post: { select: { id: true, content: true } },
+                  comment: { select: { id: true, content: true } },
+                },
               });
+
+              try {
+                emitNotificationToRecipient(createdNotif);
+              } catch {}
             }
           } catch {}
         }
@@ -538,14 +559,24 @@ postsRouter.post(
 
         try {
           if (post && post.authorId && post.authorId !== viewerId) {
-            await tx.notification.create({
+            const createdNotif = await tx.notification.create({
               data: {
                 recipientId: post.authorId,
                 actorId: viewerId,
                 type: 'POST_LIKE',
                 postId,
               },
+              include: {
+                recipient: { select: { username: true } },
+                actor: { select: { id: true, username: true, displayname: true, avatarPath: true } },
+                post: { select: { id: true, content: true } },
+                comment: { select: { id: true, content: true } },
+              },
             });
+
+            try {
+              emitNotificationToRecipient(createdNotif);
+            } catch {}
           }
         } catch {}
 
@@ -755,7 +786,7 @@ postsRouter.post(
         });
         try {
           if (commentRow.authorId && commentRow.authorId !== viewerId) {
-            await tx.notification.create({
+            const createdNotif = await tx.notification.create({
               data: {
                 recipientId: commentRow.authorId,
                 actorId: viewerId,
@@ -763,24 +794,44 @@ postsRouter.post(
                 postId,
                 commentId,
               },
+              include: {
+                recipient: { select: { username: true } },
+                actor: { select: { id: true, username: true, displayname: true, avatarPath: true } },
+                post: { select: { id: true, content: true } },
+                comment: { select: { id: true, content: true } },
+              },
             });
+
+            try {
+              emitNotificationToRecipient(createdNotif);
+            } catch {}
           }
         } catch {}
 
-        try {
-          const postAuthorId = commentRow.post?.authorId;
-          if (postAuthorId && postAuthorId !== viewerId && postAuthorId !== commentRow.authorId) {
-            await tx.notification.create({
-              data: {
-                recipientId: postAuthorId,
-                actorId: viewerId,
-                type: 'COMMENT_LIKE',
-                postId,
-                commentId,
-              },
-            });
-          }
-        } catch {}
+            try {
+              const postAuthorId = commentRow.post?.authorId;
+              if (postAuthorId && postAuthorId !== viewerId && postAuthorId !== commentRow.authorId) {
+                const createdNotif = await tx.notification.create({
+                  data: {
+                    recipientId: postAuthorId,
+                    actorId: viewerId,
+                    type: 'COMMENT_LIKE',
+                    postId,
+                    commentId,
+                  },
+                  include: {
+                    recipient: { select: { username: true } },
+                    actor: { select: { id: true, username: true, displayname: true, avatarPath: true } },
+                    post: { select: { id: true, content: true } },
+                    comment: { select: { id: true, content: true } },
+                  },
+                });
+
+                try {
+                  emitNotificationToRecipient(createdNotif);
+                } catch {}
+              }
+            } catch {}
 
         return {
           likedByMe: true,
