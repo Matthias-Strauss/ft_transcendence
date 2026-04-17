@@ -22,6 +22,7 @@ import {
   getFriendshipUserIdsOrdered,
   getFriendRelation,
 } from '../utils/friendUtils.js';
+import { getRealtimeRuntime } from '../ws/runtime.js';
 import { FriendErrors } from '../errors/catalog.js';
 import {
   buildDescDateIdCursor,
@@ -417,6 +418,33 @@ usersRouter.post(
         status: 'PENDING',
       },
     });
+
+    try {
+      const actor = await prisma.user.findUnique({
+        where: { id: viewerId },
+        select: { id: true, username: true, displayname: true, avatarPath: true },
+      });
+
+      try {
+        const runtime = getRealtimeRuntime();
+        if (runtime && actor) {
+          const sockets = runtime.registry.getSocketsByUsername(targetUser.username);
+          if (sockets && sockets.size > 0) {
+            const payload = {
+              requester: actor,
+              recipient: { username: targetUser.username },
+              createdAt: new Date().toISOString(),
+            };
+
+            for (const sid of sockets) {
+              try {
+                runtime.io.to(sid).emit('friend:request', payload);
+              } catch (e) {}
+            }
+          }
+        }
+      } catch (e) {}
+    } catch (e) {}
 
     return res.status(201).json({
       ok: true,
