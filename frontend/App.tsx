@@ -7,6 +7,8 @@ import RegistrationPage from './pages/RegistrationPage';
 import UserProfile from './pages/UserProfile';
 import PongGame from './pages/PongGame';
 import NotFound from './pages/NotFound';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import TermsOfService from './pages/TermsOfService';
 import { connectSocketFromStorage, disconnectSocket, socket } from './socket';
 import { Toast } from './components/ui/Toast';
 import { clearClientSession } from './utils/api';
@@ -34,6 +36,8 @@ export default function App() {
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegistrationPage />} />
+        <Route path="/privacy" element={<PrivacyPolicy />} />
+        <Route path="/terms" element={<TermsOfService />} />
         <Route
           path="/"
           element={
