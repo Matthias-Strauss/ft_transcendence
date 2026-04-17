@@ -74,9 +74,13 @@ export function Notifications() {
   const markRead = async (id: string) => {
     try {
       const wasUnread = items.find((it) => it.id === id && !it.readAt) != null;
-      const res = await apiFetch(`/api/notifications/${encodeURIComponent(id)}/read`, { method: 'POST' });
+      const res = await apiFetch(`/api/notifications/${encodeURIComponent(id)}/read`, {
+        method: 'POST',
+      });
       if (!res.ok) throw new Error('Failed');
-      setItems((prev) => prev.map((it) => (it.id === id ? { ...it, readAt: new Date().toISOString() } : it)));
+      setItems((prev) =>
+        prev.map((it) => (it.id === id ? { ...it, readAt: new Date().toISOString() } : it)),
+      );
       if (wasUnread) {
         useNotificationStore.getState().incrementUnread(-1);
       }
@@ -150,10 +154,16 @@ export function Notifications() {
           >
             <div className="size-10 rounded-full overflow-hidden shrink-0">
               {n.actor?.avatarPath ? (
-                <AuthedImage src={`/files/${n.actor.avatarPath}`} alt={n.actor?.displayname ?? n.actor?.username ?? ''} className="w-full h-full object-cover" />
+                <AuthedImage
+                  src={`/files/${n.actor.avatarPath}`}
+                  alt={n.actor?.displayname ?? n.actor?.username ?? ''}
+                  className="w-full h-full object-cover"
+                />
               ) : (
                 <div className="size-10 rounded-full bg-gradient-to-br from-[var(--color-1)] to-[var(--color-2)] flex items-center justify-center">
-                  <span className="text-white">{(n.actor?.username ?? 'S').charAt(0).toUpperCase()}</span>
+                  <span className="text-white">
+                    {(n.actor?.username ?? 'S').charAt(0).toUpperCase()}
+                  </span>
                 </div>
               )}
             </div>
@@ -161,9 +171,15 @@ export function Notifications() {
             <div className="flex-1 min-w-0">
               <p className="text-[14px] text-[#f7f9f9]">{renderMessage(n)}</p>
               <p className="text-[12px] text-[#8b98a5] truncate mt-1">
-                {n.comment?.content ? `${n.comment.content}` : n.post?.content ? `${n.post.content}` : ''}
+                {n.comment?.content
+                  ? `${n.comment.content}`
+                  : n.post?.content
+                  ? `${n.post.content}`
+                  : ''}
               </p>
-              <p className="text-[11px] text-[#66707a] mt-1">{new Date(n.createdAt).toLocaleString()}</p>
+              <p className="text-[11px] text-[#66707a] mt-1">
+                {new Date(n.createdAt).toLocaleString()}
+              </p>
             </div>
           </div>
         ))}
