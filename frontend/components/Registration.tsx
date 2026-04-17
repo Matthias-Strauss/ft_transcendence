@@ -11,6 +11,8 @@ const Registration: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [acceptedPrivacy, setAcceptedPrivacy] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
 
@@ -28,7 +30,10 @@ const Registration: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
-
+    if (!acceptedPrivacy || !acceptedTerms) {
+      setError('You must accept the Privacy Policy and Terms of Service to continue');
+      return;
+    }
     const validationError = validate();
     if (validationError) {
       setError(validationError);
@@ -40,7 +45,14 @@ const Registration: React.FC = () => {
       const res = await apiFetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, email, password, displayname }),
+        body: JSON.stringify({
+          username,
+          email,
+          password,
+          displayname,
+          acceptedPrivacy,
+          acceptedTerms,
+        }),
       });
 
       if (res.ok) {
@@ -145,6 +157,42 @@ const Registration: React.FC = () => {
                 />
               </div>
 
+              <div className="space-y-2 mt-1">
+                <label className="flex items-start gap-3 text-sm text-slate-300">
+                  <input
+                    type="checkbox"
+                    checked={acceptedPrivacy}
+                    onChange={(e) => setAcceptedPrivacy(e.target.checked)}
+                    aria-required
+                    className="mt-1 h-4 w-4 rounded border-white/20 bg-white/5 text-sky-400"
+                  />
+                  <span>
+                    I have read and agree to the{' '}
+                    <Link to="/privacy" className="font-semibold text-sky-300 hover:underline">
+                      Privacy Policy
+                    </Link>
+                    .
+                  </span>
+                </label>
+
+                <label className="flex items-start gap-3 text-sm text-slate-300">
+                  <input
+                    type="checkbox"
+                    checked={acceptedTerms}
+                    onChange={(e) => setAcceptedTerms(e.target.checked)}
+                    aria-required
+                    className="mt-1 h-4 w-4 rounded border-white/20 bg-white/5 text-sky-400"
+                  />
+                  <span>
+                    I have read and agree to the{' '}
+                    <Link to="/terms" className="font-semibold text-sky-300 hover:underline">
+                      Terms of Service
+                    </Link>
+                    .
+                  </span>
+                </label>
+              </div>
+
               {error && (
                 <div className="rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
                   {error}
@@ -154,7 +202,7 @@ const Registration: React.FC = () => {
               <button
                 type="submit"
                 className="group relative inline-flex w-full items-center justify-center overflow-hidden rounded-full bg-gradient-to-r from-sky-400 to-pink-500 px-4 py-3 font-semibold text-white shadow-lg shadow-sky-500/20 transition duration-300 hover:-translate-y-0.5 hover:shadow-sky-500/30 disabled:cursor-not-allowed disabled:opacity-60"
-                disabled={submitting}
+                disabled={submitting || !acceptedPrivacy || !acceptedTerms}
                 aria-busy={submitting}
               >
                 <span className="auth-button-sheen pointer-events-none absolute inset-y-0 left-[-30%] w-24 -skew-x-12 bg-gradient-to-r from-transparent via-white/35 to-transparent" />
