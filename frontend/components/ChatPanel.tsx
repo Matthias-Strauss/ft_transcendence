@@ -462,21 +462,25 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
                         <p className="m-0 break-words text-[13px] font-semibold">
                           📎 {fileName || 'Attachment'}
                         </p>
-                        <div className="flex items-center gap-3">
+                        <div className="flex flex-col gap-2">
                           <AuthedFilePreview
                             src={fileUrl}
                             fileName={fileName || 'Attachment'}
                             mimeType={msg.metadata?.mimeType || 'application/pdf'}
                             className="max-h-40 w-auto max-w-full rounded-lg object-contain"
                           />
-                          <Download
-                            className="size-4 shrink-0 cursor-pointer text-slate-500 transition hover:text-slate-900"
-                            onClick={() => downloadFile(fileUrl, fileName)}
-                          />
-                          <Trash2
-                            className="chat-file-delete"
-                            onClick={() => handleFileDelete({ fileId, message: msg })}
-                          />
+
+                          <div className="flex items-center gap-3 pl-1">
+                            <Download
+                              className="size-4 cursor-pointer text-slate-500 transition hover:text-slate-900"
+                              onClick={() => downloadFile(fileUrl, fileName)}
+                            />
+
+                            <Trash2
+                              className="size-4 cursor-pointer text-red-500 transition hover:text-red-700"
+                              onClick={() => handleFileDelete({ fileId, message: msg })}
+                            />
+                          </div>
                         </div>
                       </div>
                     ) : (
