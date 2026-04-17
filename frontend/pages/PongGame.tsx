@@ -10,7 +10,7 @@ import {
   StandardMaterial,
   Vector3,
 } from '@babylonjs/core';
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 
 import {
   ARENA_DEPTH,
@@ -25,6 +25,8 @@ import {
   type PongSnapshot,
 } from '../game/pongConstants';
 import { socket } from '../socket';
+import usePongStore from '../utils/pongState';
+import showToast from '../utils/toast';
 import { usePongDebugHud } from './PongDebugHud';
 
 type Mode = 'idle' | 'waiting' | 'playing' | 'ended';
@@ -42,9 +44,20 @@ type PongResumed = {
   score: { p1: number; p2: number };
 };
 type PongOpponentDisconnected = { graceMs: number };
+type PongRejoinFailed = { reason: 'match_not_resumable' };
 
 const RENDER_DELAY_MS = 33;
 const SNAPSHOT_BUFFER_MAX = 8;
+
+const AURA_BG = '#191521';
+const VIDEO_DOME_URL = '/video_dome.mp4';
+const VIDEO_BACKGROUND_SCALE = 1.38;
+const VIDEO_BACKGROUND_POSITION = '50% 50%';
+const VIDEO_BACKGROUND_OFFSET_Y = '-18%';
+const CAMERA_Y = 14;
+const CAMERA_Z = 60;
+const CAMERA_TARGET_Y = 3.4;
+const CAMERA_FOV = 1.12;
 
 type TimedSnapshot = { t: number; snap: PongSnapshot };
 
@@ -60,16 +73,19 @@ export default function PongGame() {
     reset: resetDebugHud,
     toggle: toggleDebugHud,
   } = debugHud;
-  const [mode, setMode] = useState<Mode>('idle');
+  const activeMatch = usePongStore((state) => state.activeMatch);
+  const setActiveMatch = usePongStore((state) => state.setActiveMatch);
+  const clearActiveMatch = usePongStore((state) => state.clearActiveMatch);
+  const [mode, setMode] = useState<Mode>(activeMatch ? 'playing' : 'idle');
   const [connected, setConnected] = useState(socket.connected);
-  const [opponent, setOpponent] = useState<string>('');
-  const [youAre, setYouAre] = useState<Slot | null>(null);
-  const [score, setScore] = useState({ p1: 0, p2: 0 });
+  const [opponent, setOpponent] = useState<string>(activeMatch?.opponent ?? '');
+  const [youAre, setYouAre] = useState<Slot | null>(activeMatch?.youAre ?? null);
+  const [score, setScore] = useState(activeMatch?.score ?? { p1: 0, p2: 0 });
   const [endedReason, setEndedReason] = useState<PongEnded['reason'] | null>(null);
   const [opponentGoneUntil, setOpponentGoneUntil] = useState<number | null>(null);
   const [opponentCountdownMs, setOpponentCountdownMs] = useState(0);
-  const modeRef = useRef<Mode>('idle');
-  const youAreRef = useRef<Slot | null>(null);
+  const modeRef = useRef<Mode>(activeMatch ? 'playing' : 'idle');
+  const youAreRef = useRef<Slot | null>(activeMatch?.youAre ?? null);
   const ignoreNextEndedRef = useRef(false);
 
   useEffect(() => {
@@ -80,6 +96,19 @@ export default function PongGame() {
     youAreRef.current = youAre;
   }, [youAre]);
 
+  const resetToIdle = useCallback(() => {
+    clearActiveMatch();
+    snapshotBufferRef.current = [];
+    resetDebugHud();
+    setOpponent('');
+    setYouAre(null);
+    setScore({ p1: 0, p2: 0 });
+    setEndedReason(null);
+    setOpponentGoneUntil(null);
+    setOpponentCountdownMs(0);
+    setMode('idle');
+  }, [clearActiveMatch, resetDebugHud]);
+
   useEffect(() => {
     const emitLeaveIfActive = () => {
       if (!socket.connected) return;
@@ -89,7 +118,9 @@ export default function PongGame() {
 
     const onConnect = () => {
       setConnected(true);
-      socket.emit('pong:rejoin');
+      if (usePongStore.getState().activeMatch) {
+        socket.emit('pong:rejoin');
+      }
     };
     const onDisconnect = () => setConnected(false);
     const onWaiting = () => {
@@ -104,6 +135,12 @@ export default function PongGame() {
       resetDebugHud();
       lastSeenScoreP1 = 0;
       lastSeenScoreP2 = 0;
+      setActiveMatch({
+        matchId: payload.matchId,
+        youAre: payload.youAre,
+        opponent: payload.opponent,
+        score: { p1: 0, p2: 0 },
+      });
       setOpponent(payload.opponent);
       setYouAre(payload.youAre);
       setScore({ p1: 0, p2: 0 });
@@ -127,6 +164,7 @@ export default function PongGame() {
         ignoreNextEndedRef.current = false;
         return;
       }
+      clearActiveMatch();
       setEndedReason(payload.reason);
       setScore(payload.finalScore);
       setOpponentGoneUntil(null);
@@ -147,11 +185,25 @@ export default function PongGame() {
       resetDebugHud();
       lastSeenScoreP1 = payload.score.p1;
       lastSeenScoreP2 = payload.score.p2;
+      setActiveMatch({
+        matchId: payload.matchId,
+        youAre: payload.youAre,
+        opponent: payload.opponent,
+        score: payload.score,
+      });
       setOpponent(payload.opponent);
       setYouAre(payload.youAre);
       setScore(payload.score);
       setEndedReason(null);
       setMode('playing');
+    };
+    const onRejoinFailed = (payload: PongRejoinFailed) => {
+      if (payload.reason !== 'match_not_resumable') {
+        return;
+      }
+      ignoreNextEndedRef.current = false;
+      resetToIdle();
+      showToast('Match already ended while you were disconnected', 'info');
     };
 
     socket.on('connect', onConnect);
@@ -163,6 +215,7 @@ export default function PongGame() {
     socket.on('pong:opponent_disconnected', onOpponentDisconnected);
     socket.on('pong:opponent_returned', onOpponentReturned);
     socket.on('pong:resumed', onResumed);
+    socket.on('pong:rejoin_failed', onRejoinFailed);
     window.addEventListener('pagehide', emitLeaveIfActive);
 
     return () => {
@@ -175,10 +228,11 @@ export default function PongGame() {
       socket.off('pong:opponent_disconnected', onOpponentDisconnected);
       socket.off('pong:opponent_returned', onOpponentReturned);
       socket.off('pong:resumed', onResumed);
+      socket.off('pong:rejoin_failed', onRejoinFailed);
       window.removeEventListener('pagehide', emitLeaveIfActive);
       emitLeaveIfActive();
     };
-  }, [notifySnapshot, resetDebugHud]);
+  }, [clearActiveMatch, notifySnapshot, resetDebugHud, resetToIdle, setActiveMatch]);
 
   useEffect(() => {
     if (opponentGoneUntil === null) return;
@@ -207,40 +261,39 @@ export default function PongGame() {
   const leaveGame = (suppressEndEvent: boolean) => {
     ignoreNextEndedRef.current = suppressEndEvent;
     socket.emit('pong:leave');
-    snapshotBufferRef.current = [];
-    setOpponent('');
-    setYouAre(null);
-    setScore({ p1: 0, p2: 0 });
-    setEndedReason(null);
-    setOpponentGoneUntil(null);
-    setOpponentCountdownMs(0);
-    setMode('idle');
+    resetToIdle();
   };
 
   const backToLobby = () => {
-    setEndedReason(null);
-    setMode('idle');
+    resetToIdle();
   };
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const engine = new Engine(canvas, false);
+    const engine = new Engine(canvas, false, { alpha: true });
     engine.setHardwareScalingLevel(Math.max(1, window.devicePixelRatio));
     engineRef.current = engine;
     const scene = new Scene(engine);
     scene.skipPointerMovePicking = true;
     scene.blockMaterialDirtyMechanism = true;
+    scene.clearColor = new Color4(0, 0, 0, 0);
+    scene.fogMode = Scene.FOGMODE_EXP2;
+    scene.fogDensity = 0.009;
+    scene.fogColor = Color3.FromHexString(AURA_BG);
 
-    const camera = new FreeCamera('camera1', new Vector3(0, 30, 70), scene);
-    camera.setTarget(new Vector3(0, 0, 0));
+    const camera = new FreeCamera('camera1', new Vector3(0, CAMERA_Y, CAMERA_Z), scene);
+    camera.fov = CAMERA_FOV;
+    camera.setTarget(new Vector3(0, CAMERA_TARGET_Y, 0));
     cameraRef.current = camera;
 
-    new HemisphericLight('light', new Vector3(3, 4, 6), scene);
+    const fillLight = new HemisphericLight('light', new Vector3(3, 4, 6), scene);
+    fillLight.intensity = 0.7;
 
     const gl = new GlowLayer('glow', scene);
     gl.intensity = 1.0;
+
     const floor = MeshBuilder.CreateGround(
       'floor',
       { width: ARENA_WIDTH, height: ARENA_DEPTH },
@@ -248,6 +301,8 @@ export default function PongGame() {
     );
     const floorMat = new StandardMaterial('floorMat', scene);
     floorMat.diffuseColor = Color3.FromHexString('#0f172a');
+    floorMat.emissiveColor = Color3.FromHexString('#0f172a').scale(0.18);
+    floorMat.alpha = 0.58;
     floor.material = floorMat;
     floor.freezeWorldMatrix();
 
@@ -262,6 +317,7 @@ export default function PongGame() {
     const wallMat = new StandardMaterial('wallMat', scene);
     wallMat.diffuseColor = Color3.FromHexString('#6a00ff');
     wallMat.emissiveColor = Color3.FromHexString('#6a00ff').scale(1.0);
+    wallMat.alpha = 0.72;
     leftWall.material = wallMat;
     leftWall.position.x = -ARENA_WIDTH / 2;
     leftWall.position.y = 0.5;
@@ -284,6 +340,11 @@ export default function PongGame() {
       { width: ARENA_WIDTH, height: 0.05, depth: 0.1, faceColors: lineColors },
       scene,
     );
+    const lineMat = new StandardMaterial('lineMat', scene);
+    lineMat.diffuseColor = Color3.FromHexString('#334155');
+    lineMat.emissiveColor = Color3.FromHexString('#334155').scale(0.35);
+    lineMat.alpha = 0.42;
+    centerLine.material = lineMat;
     centerLine.position.y = 0.1;
     centerLine.freezeWorldMatrix();
 
@@ -413,9 +474,10 @@ export default function PongGame() {
   useEffect(() => {
     const camera = cameraRef.current;
     if (!camera) return;
-    const z = youAre === 'p2' ? -70 : 70;
-    camera.position.set(0, 30, z);
-    camera.setTarget(new Vector3(0, 0, 0));
+    const z = youAre === 'p2' ? -CAMERA_Z : CAMERA_Z;
+    camera.position.set(0, CAMERA_Y, z);
+    camera.fov = CAMERA_FOV;
+    camera.setTarget(new Vector3(0, CAMERA_TARGET_Y, 0));
   }, [youAre]);
 
   const endedTitle = (() => {
@@ -441,136 +503,154 @@ export default function PongGame() {
   };
 
   return (
-    <div style={{ width: '100%', height: 'calc(100vh - 2rem)', position: 'relative' }}>
-      <canvas ref={canvasRef} style={{ width: '100%', height: '100%' }} />
-      {debugHudElement}
-      {mode === 'playing' && (
-        <div
-          style={{
-            position: 'absolute',
-            top: 20,
-            left: '50%',
-            transform: 'translateX(-50%)',
-            color: '#f7f9f9',
-            fontSize: 32,
-            fontFamily: 'monospace',
-            fontWeight: 'bold',
-            textShadow: '2px 2px 4px rgba(0,0,0,0.8)',
-            pointerEvents: 'none',
-            textAlign: 'center',
-          }}
-        >
-          <div>
-            <span style={{ color: '#95ff00' }}>{score.p1}</span>
-            {' - '}
-            <span style={{ color: '#ff0095' }}>{score.p2}</span>
-          </div>
-          {youAre && opponent && (
-            <div style={{ fontSize: 14, marginTop: 6, opacity: 0.8 }}>
-              you are {youAre} · vs {opponent}
+    <div className="relative h-[calc(100vh-2rem)] w-full overflow-hidden bg-[#191521]">
+      <video
+        autoPlay
+        loop
+        muted
+        playsInline
+        preload="auto"
+        src={VIDEO_DOME_URL}
+        className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center brightness-[0.38] contrast-[1.05] saturate-[1.15]"
+        style={{
+          objectPosition: VIDEO_BACKGROUND_POSITION,
+          transform: `translateY(${VIDEO_BACKGROUND_OFFSET_Y}) scale(${VIDEO_BACKGROUND_SCALE})`,
+        }}
+      />
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(25,21,33,0.18)_0%,rgba(25,21,33,0.34)_44%,rgba(25,21,33,0.76)_100%)]" />
+      <canvas ref={canvasRef} className="absolute inset-0 z-10 h-full w-full" />
+      <div className="relative z-20 h-full w-full">
+        {debugHudElement}
+        {mode === 'playing' && (
+          <div
+            style={{
+              position: 'absolute',
+              top: 20,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              color: '#f7f9f9',
+              fontSize: 32,
+              fontFamily: 'monospace',
+              fontWeight: 'bold',
+              textShadow: '2px 2px 4px rgba(0,0,0,0.8)',
+              pointerEvents: 'none',
+              textAlign: 'center',
+            }}
+          >
+            <div>
+              <span style={{ color: '#95ff00' }}>{score.p1}</span>
+              {' - '}
+              <span style={{ color: '#ff0095' }}>{score.p2}</span>
             </div>
-          )}
-        </div>
-      )}
-      {mode === 'playing' && (
-        <button
-          style={{
-            ...buttonStyle,
-            position: 'absolute',
-            top: 20,
-            right: 20,
-            background: 'rgba(0,0,0,0.55)',
-            pointerEvents: 'auto',
-          }}
-          onClick={() => leaveGame(true)}
-        >
-          Leave Game
-        </button>
-      )}
-      {mode === 'playing' && (!connected || opponentGoneUntil !== null) && (
-        <div
-          style={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            color: '#f7f9f9',
-            fontSize: 22,
-            fontFamily: 'monospace',
-            background: 'rgba(0,0,0,0.75)',
-            padding: '20px 32px',
-            borderRadius: 10,
-            textAlign: 'center',
-            pointerEvents: 'none',
-          }}
-        >
-          {!connected ? (
-            'Reconnecting…'
-          ) : (
-            <>
-              <div>Opponent disconnected</div>
-              <div style={{ fontSize: 16, marginTop: 8, opacity: 0.8 }}>
-                Waiting {Math.ceil(opponentCountdownMs / 1000)}s
+            {youAre && opponent && (
+              <div style={{ fontSize: 14, marginTop: 6, opacity: 0.8 }}>
+                you are {youAre} · vs {opponent}
               </div>
-            </>
-          )}
-        </div>
-      )}
-      {mode !== 'playing' && (
-        <div
-          style={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            color: '#f7f9f9',
-            fontFamily: 'monospace',
-            background: 'rgba(0,0,0,0.75)',
-            padding: '28px 40px',
-            borderRadius: 10,
-            textAlign: 'center',
-            minWidth: 280,
-          }}
-        >
-          {mode === 'idle' && (
-            <>
-              <div style={{ fontSize: 36, fontWeight: 'bold', marginBottom: 8 }}>PONG</div>
-              <div style={{ fontSize: 14, opacity: 0.7, marginBottom: 24 }}>
-                First to {WIN_SCORE}
-              </div>
-              <button style={buttonStyle} onClick={findMatch} disabled={!connected}>
-                {connected ? 'Find Match' : 'Connecting…'}
-              </button>
-            </>
-          )}
-          {mode === 'waiting' && (
-            <>
-              <div style={{ fontSize: 22, marginBottom: 24 }}>Waiting for opponent…</div>
-              <button style={buttonStyle} onClick={() => leaveGame(false)}>
-                Leave Queue
-              </button>
-            </>
-          )}
-          {mode === 'ended' && (
-            <>
-              <div style={{ fontSize: 28, fontWeight: 'bold', marginBottom: 12 }}>{endedTitle}</div>
-              <div style={{ fontSize: 20, marginBottom: 24 }}>
-                Final: <span style={{ color: '#95ff00' }}>{score.p1}</span>
-                {' : '}
-                <span style={{ color: '#ff0095' }}>{score.p2}</span>
-              </div>
-              <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+            )}
+          </div>
+        )}
+        {mode === 'playing' && (
+          <button
+            style={{
+              ...buttonStyle,
+              position: 'absolute',
+              top: 20,
+              right: 20,
+              background: 'rgba(0,0,0,0.55)',
+              pointerEvents: 'auto',
+            }}
+            onClick={() => leaveGame(true)}
+          >
+            Leave Game
+          </button>
+        )}
+        {mode === 'playing' && (!connected || opponentGoneUntil !== null) && (
+          <div
+            style={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              color: '#f7f9f9',
+              fontSize: 22,
+              fontFamily: 'monospace',
+              background: 'rgba(0,0,0,0.75)',
+              padding: '20px 32px',
+              borderRadius: 10,
+              textAlign: 'center',
+              pointerEvents: 'none',
+            }}
+          >
+            {!connected ? (
+              'Reconnecting…'
+            ) : (
+              <>
+                <div>Opponent disconnected</div>
+                <div style={{ fontSize: 16, marginTop: 8, opacity: 0.8 }}>
+                  Waiting {Math.ceil(opponentCountdownMs / 1000)}s
+                </div>
+              </>
+            )}
+          </div>
+        )}
+        {mode !== 'playing' && (
+          <div
+            style={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              color: '#f7f9f9',
+              fontFamily: 'monospace',
+              background: 'rgba(0,0,0,0.75)',
+              padding: '28px 40px',
+              borderRadius: 10,
+              textAlign: 'center',
+              minWidth: 280,
+            }}
+          >
+            {mode === 'idle' && (
+              <>
+                <div style={{ fontSize: 36, fontWeight: 'bold', marginBottom: 8 }}>PONG</div>
+                <div style={{ fontSize: 14, opacity: 0.7, marginBottom: 24 }}>
+                  First to {WIN_SCORE}
+                </div>
                 <button style={buttonStyle} onClick={findMatch} disabled={!connected}>
-                  Play Again
+                  {connected ? 'Find Match' : 'Connecting…'}
                 </button>
-                <button style={buttonStyle} onClick={backToLobby}>
-                  Back to Lobby
+              </>
+            )}
+            {mode === 'waiting' && (
+              <>
+                <div style={{ fontSize: 22, marginBottom: 24 }}>Waiting for opponent…</div>
+                <button style={buttonStyle} onClick={() => leaveGame(false)}>
+                  Leave Queue
                 </button>
-              </div>
-            </>
-          )}
-        </div>
-      )}
+              </>
+            )}
+            {mode === 'ended' && (
+              <>
+                <div style={{ fontSize: 28, fontWeight: 'bold', marginBottom: 12 }}>
+                  {endedTitle}
+                </div>
+                <div style={{ fontSize: 20, marginBottom: 24 }}>
+                  Final: <span style={{ color: '#95ff00' }}>{score.p1}</span>
+                  {' : '}
+                  <span style={{ color: '#ff0095' }}>{score.p2}</span>
+                </div>
+                <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+                  <button style={buttonStyle} onClick={findMatch} disabled={!connected}>
+                    Play Again
+                  </button>
+                  <button style={buttonStyle} onClick={backToLobby}>
+                    Back to Lobby
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

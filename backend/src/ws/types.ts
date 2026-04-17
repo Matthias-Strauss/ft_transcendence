@@ -21,6 +21,14 @@ export type ChatReadPayload = {
   with: string;
 };
 
+export type GameInviteCreatePayload = {
+  to: string;
+};
+
+export type GameInviteRespondPayload = {
+  inviteId: string;
+};
+
 export type PongInputPayload = {
   left: boolean;
   right: boolean;

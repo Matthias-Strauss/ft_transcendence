@@ -37,32 +37,11 @@ export class GameEngine {
     this.p1.applyInput();
     this.p2.applyInput();
 
-    this.ball.x += this.ballVx;
-    this.ball.z += this.ballVz;
-
-    if (Arena.hitsSideWall(this.ball)) {
-      this.ballVx *= -1;
-    }
-
-    if (this.ballVz > 0 && Arena.paddleHit(this.ball, this.p1.paddleX, 'p1')) {
-      this.ballVz *= -BALL_BOUNCE_MULT;
-      if (Math.abs(this.ballVz) > BALL_MAX_SPEED) this.ballVz = -BALL_MAX_SPEED;
-      this.ballVx = (this.ball.x - this.p1.paddleX) * BALL_PADDLE_OFFSET_MULT;
-    }
-
-    if (this.ballVz < 0 && Arena.paddleHit(this.ball, this.p2.paddleX, 'p2')) {
-      this.ballVz *= -BALL_BOUNCE_MULT;
-      if (Math.abs(this.ballVz) > BALL_MAX_SPEED) this.ballVz = BALL_MAX_SPEED;
-      this.ballVx = (this.ball.x - this.p2.paddleX) * BALL_PADDLE_OFFSET_MULT;
-    }
-
-    if (Arena.ballPastP1(this.ball)) {
-      this.p2.score += 1;
-      this.resetBall(-1);
-    } else if (Arena.ballPastP2(this.ball)) {
-      this.p1.score += 1;
-      this.resetBall(1);
-    }
+    this.moveBall();
+    this.bounceOffSideWall();
+    this.tryBounceOffPaddle(this.p1, 'p1', 1);
+    this.tryBounceOffPaddle(this.p2, 'p2', -1);
+    this.tryAwardPoint();
 
     this.tick += 1;
   }
@@ -82,5 +61,44 @@ export class GameEngine {
     this.ball.z = 0;
     this.ballVx = BALL_START_VX_ABS * (Math.random() > 0.5 ? 1 : -1);
     this.ballVz = BALL_START_VZ_ABS * signZ;
+  }
+
+  private moveBall() {
+    this.ball.x += this.ballVx;
+    this.ball.z += this.ballVz;
+  }
+
+  private bounceOffSideWall() {
+    if (Arena.hitsSideWall(this.ball)) {
+      this.ballVx *= -1;
+    }
+  }
+
+  private tryBounceOffPaddle(player: Player, slot: 'p1' | 'p2', direction: 1 | -1) {
+    if (Math.sign(this.ballVz) !== direction) return;
+    if (!Arena.paddleHit(this.ball, player.paddleX, slot)) return;
+
+    this.ballVz = this.cappedBallVz(-this.ballVz * BALL_BOUNCE_MULT, direction);
+    this.ballVx = (this.ball.x - player.paddleX) * BALL_PADDLE_OFFSET_MULT;
+  }
+
+  private cappedBallVz(nextBallVz: number, direction: 1 | -1) {
+    return Math.min(Math.abs(nextBallVz), BALL_MAX_SPEED) * -direction;
+  }
+
+  private tryAwardPoint() {
+    if (Arena.ballPastP1(this.ball)) {
+      this.awardPoint(this.p2, -1);
+      return;
+    }
+
+    if (Arena.ballPastP2(this.ball)) {
+      this.awardPoint(this.p1, 1);
+    }
+  }
+
+  private awardPoint(player: Player, nextServeDirection: number) {
+    player.score += 1;
+    this.resetBall(nextServeDirection);
   }
 }

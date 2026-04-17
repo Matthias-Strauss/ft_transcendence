@@ -16,15 +16,33 @@ type Match = {
   tickCount: number;
 };
 
+type MatchEndedHook = (params: {
+  matchId: string;
+  reason: MatchEndReason;
+  finalScore: { p1: number; p2: number };
+  players: {
+    p1: { username: string };
+    p2: { username: string };
+  };
+  endedBy?: { slot: Slot; username: string };
+}) => void;
+
 export type MatchManager = {
   join: (socketId: string, username: string) => void;
+  createDirectMatch: (
+    playerOne: { socketId: string; username: string },
+    playerTwo: { socketId: string; username: string },
+  ) => string | null;
   setInput: (socketId: string, input: PongInput) => void;
   leave: (socketId: string, reason: MatchEndReason) => void;
-  reconnect: (socketId: string, username: string) => boolean;
+  reconnect: (
+    socketId: string,
+    username: string,
+  ) => { resumed: true } | { resumed: false; reason: 'match_not_resumable' };
   shutdown: () => void;
 };
 
-export function createMatchManager(io: SocketIOServer): MatchManager {
+export function createMatchManager(io: SocketIOServer, onMatchEnded?: MatchEndedHook): MatchManager {
   const matches = new Map<string, Match>();
   const socketToMatchId = new Map<string, string>();
   const socketToSlot = new Map<string, Slot>();
@@ -58,6 +76,7 @@ export function createMatchManager(io: SocketIOServer): MatchManager {
     matchId: string,
     reason: MatchEndReason,
     finalScore: { p1: number; p2: number },
+    endedBy?: { slot: Slot; username: string },
   ) {
     const match = matches.get(matchId);
     if (!match) return;
@@ -73,6 +92,19 @@ export function createMatchManager(io: SocketIOServer): MatchManager {
     io.to(match.room).emit('pong:ended', { reason, finalScore });
     io.sockets.sockets.get(p1Id)?.leave(match.room);
     io.sockets.sockets.get(p2Id)?.leave(match.room);
+
+    if (onMatchEnded) {
+      onMatchEnded({
+        matchId,
+        reason,
+        finalScore,
+        players: {
+          p1: { username: match.engine.p1.username },
+          p2: { username: match.engine.p2.username },
+        },
+        endedBy,
+      });
+    }
 
     matches.delete(matchId);
     socketToMatchId.delete(p1Id);
@@ -94,7 +126,12 @@ export function createMatchManager(io: SocketIOServer): MatchManager {
     socketToSlot.delete(socketId);
 
     const timer = setTimeout(() => {
-      endMatch(matchId, 'disconnect', { p1: match.engine.p1.score, p2: match.engine.p2.score });
+      endMatch(
+        matchId,
+        'disconnect',
+        { p1: match.engine.p1.score, p2: match.engine.p2.score },
+        { slot, username: player.username },
+      );
     }, RECONNECT_GRACE_MS);
 
     match.paused = { slot, timer, username: player.username };
@@ -105,13 +142,16 @@ export function createMatchManager(io: SocketIOServer): MatchManager {
     });
   }
 
-  function reconnect(socketId: string, username: string): boolean {
+  function reconnect(
+    socketId: string,
+    username: string,
+  ): { resumed: true } | { resumed: false; reason: 'match_not_resumable' } {
     const matchId = pendingReconnects.get(username);
-    if (!matchId) return false;
+    if (!matchId) return { resumed: false, reason: 'match_not_resumable' };
     const match = matches.get(matchId);
     if (!match || !match.paused) {
       pendingReconnects.delete(username);
-      return false;
+      return { resumed: false, reason: 'match_not_resumable' };
     }
 
     clearTimeout(match.paused.timer);
@@ -133,23 +173,15 @@ export function createMatchManager(io: SocketIOServer): MatchManager {
       score: { p1: match.engine.p1.score, p2: match.engine.p2.score },
     });
     io.to(opponent.socketId).emit('pong:opponent_returned');
-    return true;
+    return { resumed: true };
   }
 
-  function join(socketId: string, username: string) {
-    if (socketToMatchId.has(socketId)) return;
-    if (pendingReconnects.has(username)) return;
-
-    if (!waiting) {
-      waiting = { socketId, username };
-      io.to(socketId).emit('pong:waiting');
-      return;
-    }
-
-    if (waiting.socketId === socketId) return;
-
-    const p1 = new Player(waiting.socketId, waiting.username);
-    const p2 = new Player(socketId, username);
+  function createMatch(
+    playerOne: { socketId: string; username: string },
+    playerTwo: { socketId: string; username: string },
+  ) {
+    const p1 = new Player(playerOne.socketId, playerOne.username);
+    const p2 = new Player(playerTwo.socketId, playerTwo.username);
     const matchId = `m${nextMatchId++}`;
     const match: Match = {
       id: matchId,
@@ -178,6 +210,44 @@ export function createMatchManager(io: SocketIOServer): MatchManager {
       opponent: p1.username,
     });
 
+    return match.id;
+  }
+
+  function createDirectMatch(
+    playerOne: { socketId: string; username: string },
+    playerTwo: { socketId: string; username: string },
+  ) {
+    if (socketToMatchId.has(playerOne.socketId) || socketToMatchId.has(playerTwo.socketId)) {
+      return null;
+    }
+
+    if (
+      pendingReconnects.has(playerOne.username) ||
+      pendingReconnects.has(playerTwo.username) ||
+      waiting?.socketId === playerOne.socketId ||
+      waiting?.socketId === playerTwo.socketId
+    ) {
+      return null;
+    }
+
+    return createMatch(playerOne, playerTwo);
+  }
+
+  function join(socketId: string, username: string) {
+    if (socketToMatchId.has(socketId)) return;
+    if (pendingReconnects.has(username)) return;
+
+    if (!waiting) {
+      waiting = { socketId, username };
+      io.to(socketId).emit('pong:waiting');
+      return;
+    }
+
+    if (waiting.socketId === socketId) return;
+    createMatch(
+      { socketId: waiting.socketId, username: waiting.username },
+      { socketId, username },
+    );
     waiting = null;
   }
 
@@ -208,7 +278,17 @@ export function createMatchManager(io: SocketIOServer): MatchManager {
       return;
     }
 
-    endMatch(matchId, reason, { p1: match.engine.p1.score, p2: match.engine.p2.score });
+    const slot = socketToSlot.get(socketId);
+    const endedBy = slot
+      ? { slot, username: slot === 'p1' ? match.engine.p1.username : match.engine.p2.username }
+      : undefined;
+
+    endMatch(
+      matchId,
+      reason,
+      { p1: match.engine.p1.score, p2: match.engine.p2.score },
+      endedBy,
+    );
   }
 
   function shutdown() {
@@ -223,5 +303,5 @@ export function createMatchManager(io: SocketIOServer): MatchManager {
     waiting = null;
   }
 
-  return { join, setInput, leave, reconnect, shutdown };
+  return { join, createDirectMatch, setInput, leave, reconnect, shutdown };
 }

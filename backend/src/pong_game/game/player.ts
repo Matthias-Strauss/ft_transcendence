@@ -22,7 +22,11 @@ export class Player {
   }
 
   applyInput() {
-    if (this.input.left && this.paddleX < PADDLE_LIMIT) this.paddleX += PADDLE_SPEED;
-    if (this.input.right && this.paddleX > -PADDLE_LIMIT) this.paddleX -= PADDLE_SPEED;
+    let nextPaddleX = this.paddleX;
+
+    if (this.input.left) nextPaddleX += PADDLE_SPEED;
+    if (this.input.right) nextPaddleX -= PADDLE_SPEED;
+
+    this.paddleX = Math.max(-PADDLE_LIMIT, Math.min(PADDLE_LIMIT, nextPaddleX));
   }
 }
