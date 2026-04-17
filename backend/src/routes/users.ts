@@ -566,12 +566,13 @@ usersRouter.delete(
         } catch (e) {}
       }
     } catch (e) {}
+      const relation = await getFriendRelation(viewerId, targetUser.id);
 
-    return res.json({
-      ok: true,
-      withdrawn: deletedFriendships.count > 0,
-      user: serializeFriendUser(targetUser),
-    });
+      return res.json({
+        ok: true,
+        withdrawn: deletedFriendships.count > 0,
+        user: serializeFriendUser(targetUser, relation),
+      });
   }),
 );
 
