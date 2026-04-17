@@ -5,12 +5,10 @@ import {
   FreeCamera,
   GlowLayer,
   HemisphericLight,
-  Mesh,
   MeshBuilder,
   Scene,
   StandardMaterial,
   Vector3,
-  VideoTexture,
 } from '@babylonjs/core';
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 
@@ -27,8 +25,8 @@ import {
   type PongSnapshot,
 } from '../game/pongConstants';
 import { socket } from '../socket';
-import showToast from '../utils/toast';
 import usePongStore from '../utils/pongState';
+import showToast from '../utils/toast';
 import { usePongDebugHud } from './PongDebugHud';
 
 type Mode = 'idle' | 'waiting' | 'playing' | 'ended';
@@ -52,8 +50,14 @@ const RENDER_DELAY_MS = 33;
 const SNAPSHOT_BUFFER_MAX = 8;
 
 const AURA_BG = '#191521';
-const VIDEO_DOME_URL =
-  'https://videos.pexels.com/video-files/32822471/13990568_3840_2160_24fps.mp4';
+const VIDEO_DOME_URL = '/video_dome.mp4';
+const VIDEO_BACKGROUND_SCALE = 1.38;
+const VIDEO_BACKGROUND_POSITION = '50% 50%';
+const VIDEO_BACKGROUND_OFFSET_Y = '-18%';
+const CAMERA_Y = 14;
+const CAMERA_Z = 60;
+const CAMERA_TARGET_Y = 3.4;
+const CAMERA_FOV = 1.12;
 
 type TimedSnapshot = { t: number; snap: PongSnapshot };
 
@@ -268,19 +272,20 @@ export default function PongGame() {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const engine = new Engine(canvas, false);
+    const engine = new Engine(canvas, false, { alpha: true });
     engine.setHardwareScalingLevel(Math.max(1, window.devicePixelRatio));
     engineRef.current = engine;
     const scene = new Scene(engine);
     scene.skipPointerMovePicking = true;
     scene.blockMaterialDirtyMechanism = true;
-    scene.clearColor = Color4.FromHexString(`${AURA_BG}ff`);
+    scene.clearColor = new Color4(0, 0, 0, 0);
     scene.fogMode = Scene.FOGMODE_EXP2;
     scene.fogDensity = 0.009;
     scene.fogColor = Color3.FromHexString(AURA_BG);
 
-    const camera = new FreeCamera('camera1', new Vector3(0, 30, 70), scene);
-    camera.setTarget(new Vector3(0, 0, 0));
+    const camera = new FreeCamera('camera1', new Vector3(0, CAMERA_Y, CAMERA_Z), scene);
+    camera.fov = CAMERA_FOV;
+    camera.setTarget(new Vector3(0, CAMERA_TARGET_Y, 0));
     cameraRef.current = camera;
 
     const fillLight = new HemisphericLight('light', new Vector3(3, 4, 6), scene);
@@ -289,42 +294,6 @@ export default function PongGame() {
     const gl = new GlowLayer('glow', scene);
     gl.intensity = 1.0;
 
-    const dome = MeshBuilder.CreateSphere(
-      'videoDome',
-      { diameter: 260, segments: 32, sideOrientation: Mesh.BACKSIDE },
-      scene,
-    );
-    dome.position.y = 40;
-    dome.infiniteDistance = true;
-
-    const domeTexture = new VideoTexture(
-      'domeTexture',
-      VIDEO_DOME_URL,
-      scene,
-      true,
-      false,
-      VideoTexture.TRILINEAR_SAMPLINGMODE,
-      {
-        autoPlay: true,
-        loop: true,
-        muted: true,
-        autoUpdateTexture: true,
-      },
-    );
-    domeTexture.video.crossOrigin = 'anonymous';
-    domeTexture.video.muted = true;
-    domeTexture.video.playsInline = true;
-    domeTexture.video.playbackRate = 0.8;
-
-    const domeMat = new StandardMaterial('domeMat', scene);
-    domeMat.backFaceCulling = false;
-    domeMat.disableLighting = true;
-    domeMat.diffuseTexture = domeTexture;
-    domeMat.emissiveTexture = domeTexture;
-    domeMat.diffuseColor = Color3.FromHexString('#ffffff');
-    domeMat.emissiveColor = Color3.FromHexString('#c4b7ff').scale(0.8);
-    dome.material = domeMat;
-
     const floor = MeshBuilder.CreateGround(
       'floor',
       { width: ARENA_WIDTH, height: ARENA_DEPTH },
@@ -332,6 +301,8 @@ export default function PongGame() {
     );
     const floorMat = new StandardMaterial('floorMat', scene);
     floorMat.diffuseColor = Color3.FromHexString('#0f172a');
+    floorMat.emissiveColor = Color3.FromHexString('#0f172a').scale(0.18);
+    floorMat.alpha = 0.58;
     floor.material = floorMat;
     floor.freezeWorldMatrix();
 
@@ -346,6 +317,7 @@ export default function PongGame() {
     const wallMat = new StandardMaterial('wallMat', scene);
     wallMat.diffuseColor = Color3.FromHexString('#6a00ff');
     wallMat.emissiveColor = Color3.FromHexString('#6a00ff').scale(1.0);
+    wallMat.alpha = 0.72;
     leftWall.material = wallMat;
     leftWall.position.x = -ARENA_WIDTH / 2;
     leftWall.position.y = 0.5;
@@ -368,6 +340,11 @@ export default function PongGame() {
       { width: ARENA_WIDTH, height: 0.05, depth: 0.1, faceColors: lineColors },
       scene,
     );
+    const lineMat = new StandardMaterial('lineMat', scene);
+    lineMat.diffuseColor = Color3.FromHexString('#334155');
+    lineMat.emissiveColor = Color3.FromHexString('#334155').scale(0.35);
+    lineMat.alpha = 0.42;
+    centerLine.material = lineMat;
     centerLine.position.y = 0.1;
     centerLine.freezeWorldMatrix();
 
@@ -497,9 +474,10 @@ export default function PongGame() {
   useEffect(() => {
     const camera = cameraRef.current;
     if (!camera) return;
-    const z = youAre === 'p2' ? -70 : 70;
-    camera.position.set(0, 30, z);
-    camera.setTarget(new Vector3(0, 0, 0));
+    const z = youAre === 'p2' ? -CAMERA_Z : CAMERA_Z;
+    camera.position.set(0, CAMERA_Y, z);
+    camera.fov = CAMERA_FOV;
+    camera.setTarget(new Vector3(0, CAMERA_TARGET_Y, 0));
   }, [youAre]);
 
   const endedTitle = (() => {
@@ -525,136 +503,154 @@ export default function PongGame() {
   };
 
   return (
-    <div style={{ width: '100%', height: 'calc(100vh - 2rem)', position: 'relative' }}>
-      <canvas ref={canvasRef} style={{ width: '100%', height: '100%' }} />
-      {debugHudElement}
-      {mode === 'playing' && (
-        <div
-          style={{
-            position: 'absolute',
-            top: 20,
-            left: '50%',
-            transform: 'translateX(-50%)',
-            color: '#f7f9f9',
-            fontSize: 32,
-            fontFamily: 'monospace',
-            fontWeight: 'bold',
-            textShadow: '2px 2px 4px rgba(0,0,0,0.8)',
-            pointerEvents: 'none',
-            textAlign: 'center',
-          }}
-        >
-          <div>
-            <span style={{ color: '#95ff00' }}>{score.p1}</span>
-            {' - '}
-            <span style={{ color: '#ff0095' }}>{score.p2}</span>
-          </div>
-          {youAre && opponent && (
-            <div style={{ fontSize: 14, marginTop: 6, opacity: 0.8 }}>
-              you are {youAre} · vs {opponent}
+    <div className="relative h-[calc(100vh-2rem)] w-full overflow-hidden bg-[#191521]">
+      <video
+        autoPlay
+        loop
+        muted
+        playsInline
+        preload="auto"
+        src={VIDEO_DOME_URL}
+        className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center brightness-[0.38] contrast-[1.05] saturate-[1.15]"
+        style={{
+          objectPosition: VIDEO_BACKGROUND_POSITION,
+          transform: `translateY(${VIDEO_BACKGROUND_OFFSET_Y}) scale(${VIDEO_BACKGROUND_SCALE})`,
+        }}
+      />
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(25,21,33,0.18)_0%,rgba(25,21,33,0.34)_44%,rgba(25,21,33,0.76)_100%)]" />
+      <canvas ref={canvasRef} className="absolute inset-0 z-10 h-full w-full" />
+      <div className="relative z-20 h-full w-full">
+        {debugHudElement}
+        {mode === 'playing' && (
+          <div
+            style={{
+              position: 'absolute',
+              top: 20,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              color: '#f7f9f9',
+              fontSize: 32,
+              fontFamily: 'monospace',
+              fontWeight: 'bold',
+              textShadow: '2px 2px 4px rgba(0,0,0,0.8)',
+              pointerEvents: 'none',
+              textAlign: 'center',
+            }}
+          >
+            <div>
+              <span style={{ color: '#95ff00' }}>{score.p1}</span>
+              {' - '}
+              <span style={{ color: '#ff0095' }}>{score.p2}</span>
             </div>
-          )}
-        </div>
-      )}
-      {mode === 'playing' && (
-        <button
-          style={{
-            ...buttonStyle,
-            position: 'absolute',
-            top: 20,
-            right: 20,
-            background: 'rgba(0,0,0,0.55)',
-            pointerEvents: 'auto',
-          }}
-          onClick={() => leaveGame(true)}
-        >
-          Leave Game
-        </button>
-      )}
-      {mode === 'playing' && (!connected || opponentGoneUntil !== null) && (
-        <div
-          style={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            color: '#f7f9f9',
-            fontSize: 22,
-            fontFamily: 'monospace',
-            background: 'rgba(0,0,0,0.75)',
-            padding: '20px 32px',
-            borderRadius: 10,
-            textAlign: 'center',
-            pointerEvents: 'none',
-          }}
-        >
-          {!connected ? (
-            'Reconnecting…'
-          ) : (
-            <>
-              <div>Opponent disconnected</div>
-              <div style={{ fontSize: 16, marginTop: 8, opacity: 0.8 }}>
-                Waiting {Math.ceil(opponentCountdownMs / 1000)}s
+            {youAre && opponent && (
+              <div style={{ fontSize: 14, marginTop: 6, opacity: 0.8 }}>
+                you are {youAre} · vs {opponent}
               </div>
-            </>
-          )}
-        </div>
-      )}
-      {mode !== 'playing' && (
-        <div
-          style={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            color: '#f7f9f9',
-            fontFamily: 'monospace',
-            background: 'rgba(0,0,0,0.75)',
-            padding: '28px 40px',
-            borderRadius: 10,
-            textAlign: 'center',
-            minWidth: 280,
-          }}
-        >
-          {mode === 'idle' && (
-            <>
-              <div style={{ fontSize: 36, fontWeight: 'bold', marginBottom: 8 }}>PONG</div>
-              <div style={{ fontSize: 14, opacity: 0.7, marginBottom: 24 }}>
-                First to {WIN_SCORE}
-              </div>
-              <button style={buttonStyle} onClick={findMatch} disabled={!connected}>
-                {connected ? 'Find Match' : 'Connecting…'}
-              </button>
-            </>
-          )}
-          {mode === 'waiting' && (
-            <>
-              <div style={{ fontSize: 22, marginBottom: 24 }}>Waiting for opponent…</div>
-              <button style={buttonStyle} onClick={() => leaveGame(false)}>
-                Leave Queue
-              </button>
-            </>
-          )}
-          {mode === 'ended' && (
-            <>
-              <div style={{ fontSize: 28, fontWeight: 'bold', marginBottom: 12 }}>{endedTitle}</div>
-              <div style={{ fontSize: 20, marginBottom: 24 }}>
-                Final: <span style={{ color: '#95ff00' }}>{score.p1}</span>
-                {' : '}
-                <span style={{ color: '#ff0095' }}>{score.p2}</span>
-              </div>
-              <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+            )}
+          </div>
+        )}
+        {mode === 'playing' && (
+          <button
+            style={{
+              ...buttonStyle,
+              position: 'absolute',
+              top: 20,
+              right: 20,
+              background: 'rgba(0,0,0,0.55)',
+              pointerEvents: 'auto',
+            }}
+            onClick={() => leaveGame(true)}
+          >
+            Leave Game
+          </button>
+        )}
+        {mode === 'playing' && (!connected || opponentGoneUntil !== null) && (
+          <div
+            style={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              color: '#f7f9f9',
+              fontSize: 22,
+              fontFamily: 'monospace',
+              background: 'rgba(0,0,0,0.75)',
+              padding: '20px 32px',
+              borderRadius: 10,
+              textAlign: 'center',
+              pointerEvents: 'none',
+            }}
+          >
+            {!connected ? (
+              'Reconnecting…'
+            ) : (
+              <>
+                <div>Opponent disconnected</div>
+                <div style={{ fontSize: 16, marginTop: 8, opacity: 0.8 }}>
+                  Waiting {Math.ceil(opponentCountdownMs / 1000)}s
+                </div>
+              </>
+            )}
+          </div>
+        )}
+        {mode !== 'playing' && (
+          <div
+            style={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              color: '#f7f9f9',
+              fontFamily: 'monospace',
+              background: 'rgba(0,0,0,0.75)',
+              padding: '28px 40px',
+              borderRadius: 10,
+              textAlign: 'center',
+              minWidth: 280,
+            }}
+          >
+            {mode === 'idle' && (
+              <>
+                <div style={{ fontSize: 36, fontWeight: 'bold', marginBottom: 8 }}>PONG</div>
+                <div style={{ fontSize: 14, opacity: 0.7, marginBottom: 24 }}>
+                  First to {WIN_SCORE}
+                </div>
                 <button style={buttonStyle} onClick={findMatch} disabled={!connected}>
-                  Play Again
+                  {connected ? 'Find Match' : 'Connecting…'}
                 </button>
-                <button style={buttonStyle} onClick={backToLobby}>
-                  Back to Lobby
+              </>
+            )}
+            {mode === 'waiting' && (
+              <>
+                <div style={{ fontSize: 22, marginBottom: 24 }}>Waiting for opponent…</div>
+                <button style={buttonStyle} onClick={() => leaveGame(false)}>
+                  Leave Queue
                 </button>
-              </div>
-            </>
-          )}
-        </div>
-      )}
+              </>
+            )}
+            {mode === 'ended' && (
+              <>
+                <div style={{ fontSize: 28, fontWeight: 'bold', marginBottom: 12 }}>
+                  {endedTitle}
+                </div>
+                <div style={{ fontSize: 20, marginBottom: 24 }}>
+                  Final: <span style={{ color: '#95ff00' }}>{score.p1}</span>
+                  {' : '}
+                  <span style={{ color: '#ff0095' }}>{score.p2}</span>
+                </div>
+                <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+                  <button style={buttonStyle} onClick={findMatch} disabled={!connected}>
+                    Play Again
+                  </button>
+                  <button style={buttonStyle} onClick={backToLobby}>
+                    Back to Lobby
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
