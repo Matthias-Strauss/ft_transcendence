@@ -2,6 +2,9 @@ import { useCallback, useEffect, useState } from 'react';
 import { AuthedImage } from '../components/ui/AuthedImage';
 import { apiFetch } from '../utils/api';
 import showToast from '../utils/toast';
+import { socket } from '../socket';
+import useUserStore from '../utils/userStore';
+import useNotificationStore from '../utils/notificationStore';
 
 interface Actor {
   id?: string;
@@ -13,6 +16,7 @@ interface Actor {
 interface NotificationItem {
   id: string;
   type: string;
+  recipient?: { username?: string | null } | null;
   post?: { id?: string; content?: string | null } | null;
   comment?: { id?: string; content?: string | null } | null;
   actor?: Actor | null;
@@ -42,16 +46,40 @@ export function Notifications() {
     (async () => {
       await fetchNotifications();
       try {
-        await markAllRead();
+        const ok = await markAllRead();
+        if (ok) {
+          useNotificationStore.getState().setUnreadCount(0);
+        }
       } catch (e) {}
     })();
   }, [fetchNotifications]);
 
+  useEffect(() => {
+    const onNotification = (payload: NotificationItem) => {
+      try {
+        const me = useUserStore.getState().user?.username ?? null;
+        const recipientUsername = payload?.recipient?.username ?? null;
+        if (!me || !recipientUsername || recipientUsername !== me) return;
+
+        setItems((prev) => [payload, ...prev]);
+      } catch {}
+    };
+
+    socket.on('notification', onNotification);
+    return () => {
+      socket.off('notification', onNotification);
+    };
+  }, []);
+
   const markRead = async (id: string) => {
     try {
+      const wasUnread = items.find((it) => it.id === id && !it.readAt) != null;
       const res = await apiFetch(`/api/notifications/${encodeURIComponent(id)}/read`, { method: 'POST' });
       if (!res.ok) throw new Error('Failed');
       setItems((prev) => prev.map((it) => (it.id === id ? { ...it, readAt: new Date().toISOString() } : it)));
+      if (wasUnread) {
+        useNotificationStore.getState().incrementUnread(-1);
+      }
     } catch {
       showToast('Could not mark notification read', 'error');
     }
@@ -62,8 +90,11 @@ export function Notifications() {
       const res = await apiFetch('/api/notifications/mark_all_read', { method: 'POST' });
       if (!res.ok) throw new Error('Failed');
       setItems((prev) => prev.map((it) => ({ ...it, readAt: new Date().toISOString() })));
+      useNotificationStore.getState().setUnreadCount(0);
+      return true;
     } catch {
       showToast('Could not mark all read', 'error');
+      return false;
     }
   };
 
