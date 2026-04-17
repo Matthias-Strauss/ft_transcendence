@@ -35,7 +35,10 @@ export type MatchManager = {
   ) => string | null;
   setInput: (socketId: string, input: PongInput) => void;
   leave: (socketId: string, reason: MatchEndReason) => void;
-  reconnect: (socketId: string, username: string) => boolean;
+  reconnect: (
+    socketId: string,
+    username: string,
+  ) => { resumed: true } | { resumed: false; reason: 'match_not_resumable' };
   shutdown: () => void;
 };
 
@@ -139,13 +142,16 @@ export function createMatchManager(io: SocketIOServer, onMatchEnded?: MatchEnded
     });
   }
 
-  function reconnect(socketId: string, username: string): boolean {
+  function reconnect(
+    socketId: string,
+    username: string,
+  ): { resumed: true } | { resumed: false; reason: 'match_not_resumable' } {
     const matchId = pendingReconnects.get(username);
-    if (!matchId) return false;
+    if (!matchId) return { resumed: false, reason: 'match_not_resumable' };
     const match = matches.get(matchId);
     if (!match || !match.paused) {
       pendingReconnects.delete(username);
-      return false;
+      return { resumed: false, reason: 'match_not_resumable' };
     }
 
     clearTimeout(match.paused.timer);
@@ -167,7 +173,7 @@ export function createMatchManager(io: SocketIOServer, onMatchEnded?: MatchEnded
       score: { p1: match.engine.p1.score, p2: match.engine.p2.score },
     });
     io.to(opponent.socketId).emit('pong:opponent_returned');
-    return true;
+    return { resumed: true };
   }
 
   function createMatch(

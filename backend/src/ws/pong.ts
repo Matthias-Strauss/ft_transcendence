@@ -9,7 +9,10 @@ export function bindPongHandlers(socket: Socket, user: SocketUser, matchManager:
   });
 
   socket.on('pong:rejoin', () => {
-    matchManager.reconnect(socket.id, user.username);
+    const result = matchManager.reconnect(socket.id, user.username);
+    if (!result.resumed) {
+      socket.emit('pong:rejoin_failed', { reason: result.reason });
+    }
   });
 
   socket.on('pong:input', (payload: PongInputPayload) => {

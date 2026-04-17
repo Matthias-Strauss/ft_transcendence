@@ -10,7 +10,7 @@ import {
   StandardMaterial,
   Vector3,
 } from '@babylonjs/core';
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 
 import {
   ARENA_DEPTH,
@@ -25,6 +25,7 @@ import {
   type PongSnapshot,
 } from '../game/pongConstants';
 import { socket } from '../socket';
+import showToast from '../utils/toast';
 import usePongStore from '../utils/pongState';
 import { usePongDebugHud } from './PongDebugHud';
 
@@ -43,6 +44,7 @@ type PongResumed = {
   score: { p1: number; p2: number };
 };
 type PongOpponentDisconnected = { graceMs: number };
+type PongRejoinFailed = { reason: 'match_not_resumable' };
 
 const RENDER_DELAY_MS = 33;
 const SNAPSHOT_BUFFER_MAX = 8;
@@ -61,20 +63,20 @@ export default function PongGame() {
     reset: resetDebugHud,
     toggle: toggleDebugHud,
   } = debugHud;
-  const [mode, setMode] = useState<Mode>('idle');
-  const [connected, setConnected] = useState(socket.connected);
-  const [opponent, setOpponent] = useState<string>('');
-  const [youAre, setYouAre] = useState<Slot | null>(null);
-  const [score, setScore] = useState({ p1: 0, p2: 0 });
-  const [endedReason, setEndedReason] = useState<PongEnded['reason'] | null>(null);
-  const [opponentGoneUntil, setOpponentGoneUntil] = useState<number | null>(null);
-  const [opponentCountdownMs, setOpponentCountdownMs] = useState(0);
-  const modeRef = useRef<Mode>('idle');
-  const youAreRef = useRef<Slot | null>(null);
-  const ignoreNextEndedRef = useRef(false);
   const activeMatch = usePongStore((state) => state.activeMatch);
   const setActiveMatch = usePongStore((state) => state.setActiveMatch);
   const clearActiveMatch = usePongStore((state) => state.clearActiveMatch);
+  const [mode, setMode] = useState<Mode>(activeMatch ? 'playing' : 'idle');
+  const [connected, setConnected] = useState(socket.connected);
+  const [opponent, setOpponent] = useState<string>(activeMatch?.opponent ?? '');
+  const [youAre, setYouAre] = useState<Slot | null>(activeMatch?.youAre ?? null);
+  const [score, setScore] = useState(activeMatch?.score ?? { p1: 0, p2: 0 });
+  const [endedReason, setEndedReason] = useState<PongEnded['reason'] | null>(null);
+  const [opponentGoneUntil, setOpponentGoneUntil] = useState<number | null>(null);
+  const [opponentCountdownMs, setOpponentCountdownMs] = useState(0);
+  const modeRef = useRef<Mode>(activeMatch ? 'playing' : 'idle');
+  const youAreRef = useRef<Slot | null>(activeMatch?.youAre ?? null);
+  const ignoreNextEndedRef = useRef(false);
 
   useEffect(() => {
     modeRef.current = mode;
@@ -84,20 +86,18 @@ export default function PongGame() {
     youAreRef.current = youAre;
   }, [youAre]);
 
-  useEffect(() => {
-    if (!activeMatch) {
-      return;
-    }
-
-    ignoreNextEndedRef.current = false;
+  const resetToIdle = useCallback(() => {
+    clearActiveMatch();
     snapshotBufferRef.current = [];
     resetDebugHud();
-    setOpponent(activeMatch.opponent);
-    setYouAre(activeMatch.youAre);
-    setScore(activeMatch.score);
+    setOpponent('');
+    setYouAre(null);
+    setScore({ p1: 0, p2: 0 });
     setEndedReason(null);
-    setMode('playing');
-  }, [activeMatch, resetDebugHud]);
+    setOpponentGoneUntil(null);
+    setOpponentCountdownMs(0);
+    setMode('idle');
+  }, [clearActiveMatch, resetDebugHud]);
 
   useEffect(() => {
     const emitLeaveIfActive = () => {
@@ -108,7 +108,9 @@ export default function PongGame() {
 
     const onConnect = () => {
       setConnected(true);
-      socket.emit('pong:rejoin');
+      if (usePongStore.getState().activeMatch) {
+        socket.emit('pong:rejoin');
+      }
     };
     const onDisconnect = () => setConnected(false);
     const onWaiting = () => {
@@ -185,6 +187,14 @@ export default function PongGame() {
       setEndedReason(null);
       setMode('playing');
     };
+    const onRejoinFailed = (payload: PongRejoinFailed) => {
+      if (payload.reason !== 'match_not_resumable') {
+        return;
+      }
+      ignoreNextEndedRef.current = false;
+      resetToIdle();
+      showToast('Match already ended while you were disconnected', 'info');
+    };
 
     socket.on('connect', onConnect);
     socket.on('disconnect', onDisconnect);
@@ -195,6 +205,7 @@ export default function PongGame() {
     socket.on('pong:opponent_disconnected', onOpponentDisconnected);
     socket.on('pong:opponent_returned', onOpponentReturned);
     socket.on('pong:resumed', onResumed);
+    socket.on('pong:rejoin_failed', onRejoinFailed);
     window.addEventListener('pagehide', emitLeaveIfActive);
 
     return () => {
@@ -207,10 +218,11 @@ export default function PongGame() {
       socket.off('pong:opponent_disconnected', onOpponentDisconnected);
       socket.off('pong:opponent_returned', onOpponentReturned);
       socket.off('pong:resumed', onResumed);
+      socket.off('pong:rejoin_failed', onRejoinFailed);
       window.removeEventListener('pagehide', emitLeaveIfActive);
       emitLeaveIfActive();
     };
-  }, [clearActiveMatch, notifySnapshot, resetDebugHud, setActiveMatch]);
+  }, [clearActiveMatch, notifySnapshot, resetDebugHud, resetToIdle, setActiveMatch]);
 
   useEffect(() => {
     if (opponentGoneUntil === null) return;
@@ -239,21 +251,11 @@ export default function PongGame() {
   const leaveGame = (suppressEndEvent: boolean) => {
     ignoreNextEndedRef.current = suppressEndEvent;
     socket.emit('pong:leave');
-    clearActiveMatch();
-    snapshotBufferRef.current = [];
-    setOpponent('');
-    setYouAre(null);
-    setScore({ p1: 0, p2: 0 });
-    setEndedReason(null);
-    setOpponentGoneUntil(null);
-    setOpponentCountdownMs(0);
-    setMode('idle');
+    resetToIdle();
   };
 
   const backToLobby = () => {
-    clearActiveMatch();
-    setEndedReason(null);
-    setMode('idle');
+    resetToIdle();
   };
 
   useEffect(() => {
