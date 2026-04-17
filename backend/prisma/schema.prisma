@@ -35,6 +35,13 @@ enum PostVisibility {
   FRIENDS
 }
 
+enum NotificationType {
+  POST_LIKE
+  POST_COMMENT
+  POST_SAVE
+  COMMENT_LIKE
+}
+
 model User {
   id          String   @id @default(cuid())
   username    String   @unique
@@ -60,6 +67,8 @@ model User {
   receivedFriendRequests  Friendship[] @relation("FriendshipAddressee")
   sentGameInvites         GameInvite[] @relation("GameInviteSender")
   receivedGameInvites     GameInvite[] @relation("GameInviteRecipient")
+  receivedNotifications  Notification[] @relation("NotificationRecipient")
+  sentNotifications      Notification[] @relation("NotificationActor")
 }
 
 model RefreshToken {
@@ -115,6 +124,7 @@ model Post {
   likeCount    Int      @default(0)
   commentCount Int      @default(0)
   shareCount   Int      @default(0)
+  bookmarkCount Int     @default(0)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -123,6 +133,7 @@ model Post {
   likes     PostLike[]
   shares    PostShare[]
   bookmarks PostBookmark[]
+  notifications Notification[]
 
   @@index([authorId])
   @@index([createdAt, id])
@@ -140,6 +151,7 @@ model Comment {
   post    Post @relation(fields: [postId], references: [id], onDelete: Cascade)
   author  User @relation(fields: [authorId], references: [id], onDelete: Cascade)
   likes   CommentLike[]
+  notifications Notification[]
 
   @@index([postId, createdAt, id])
   @@index([authorId])
@@ -236,4 +248,25 @@ model GameInvite {
   @@index([recipientId, status, expiresAt])
   @@index([senderId, status, expiresAt])
   @@index([matchId])
+}
+
+model Notification {
+  id          String           @id @default(cuid())
+  recipientId String
+  actorId     String?
+  type        NotificationType
+  postId      String?
+  commentId   String?
+  createdAt   DateTime         @default(now())
+  readAt      DateTime?
+
+  recipient User  @relation("NotificationRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  actor     User? @relation("NotificationActor", fields: [actorId], references: [id], onDelete: SetNull)
+  post      Post? @relation(fields: [postId], references: [id], onDelete: Cascade)
+  comment   Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@index([recipientId, createdAt])
+  @@index([actorId, createdAt])
+  @@index([postId, createdAt])
+  @@index([commentId, createdAt])
 }

@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
-import { Send, FileUp } from 'lucide-react';
+import { Send, FileUp, Ban, ShieldCheck } from 'lucide-react';
 import { socket } from '../socket';
 import { apiFetch } from '../utils/api';
-import '../styles/chat.css';
 import { uploadFile } from '../utils/send_file';
 import useChatStore, {
   type ChatMessage,
@@ -12,112 +11,20 @@ import useChatStore, {
 import useUserStore from '../utils/userStore';
 import showToast from '../utils/toast';
 import { AuthedFilePreview } from './ui/AuthedFilePreview';
-import { Download } from 'lucide-react';
+import { Download, Trash2 } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import Dropdown from './ui/Dropdown';
+import { DropdownItem } from '../types/posts';
+import { MoreHorizontal } from 'lucide-react';
+import { handleSend } from '../chat/send';
+import {
+  mapApiMessageToChatMessage,
+  normalizeIncomingPayload,
+  shouldShowMessageInActiveChat,
+} from '../chat/messages';
+import type { UploadedFileMeta } from '../chat/types';
 interface ChatPanelProps {
   onClose?: () => void;
-}
-
-interface NormalizedIncomingMessage {
-  chatMessage: ChatMessage;
-  otherUsername: string | null;
-  senderUsername: string | null;
-  recipientUsername: string | null;
-  isDirect: boolean;
-}
-
-function formatTime(value?: string | number | Date) {
-  const date = value ? new Date(value) : new Date();
-  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-}
-
-function mapApiMessageToChatMessage(m: any): ChatMessage {
-  return {
-    id: m.id,
-    user: m.isOwn ? 'You' : m.sender?.displayname ?? m.sender?.username ?? 'Player',
-    message: m.text ?? '',
-    time: formatTime(m.createdAt),
-    isOwn: Boolean(m.isOwn),
-    metadata: m.metadata ?? undefined,
-  };
-}
-
-function normalizeIncomingPayload(
-  payload: any,
-  meUsername: string | null,
-): NormalizedIncomingMessage | null {
-  if (!payload || typeof payload !== 'object') return null;
-
-  if ('text' in payload && 'sender' in payload) {
-    const senderUsername = payload.sender?.username ?? null;
-    const recipientUsername = payload.recipient?.username ?? null;
-    const isOwn = Boolean(payload.isOwn);
-    const isDirect = Boolean(senderUsername && recipientUsername);
-
-    let otherUsername: string | null = null;
-    if (senderUsername && recipientUsername) {
-      otherUsername = isOwn ? recipientUsername : senderUsername;
-    } else if (meUsername) {
-      otherUsername = senderUsername === meUsername ? recipientUsername : senderUsername;
-    } else {
-      otherUsername = senderUsername ?? recipientUsername;
-    }
-
-    if (senderUsername && recipientUsername && senderUsername === recipientUsername) {
-      return null;
-    }
-
-    return {
-      chatMessage: {
-        id: payload.id ?? `${Date.now()}-${Math.random()}`,
-        user: isOwn ? 'You' : payload.sender?.displayname ?? payload.sender?.username ?? 'Player',
-        message: payload.text ?? '',
-        time: formatTime(payload.createdAt),
-        isOwn,
-        metadata: payload.metadata ?? undefined,
-      },
-      otherUsername,
-      senderUsername,
-      recipientUsername,
-      isDirect,
-    };
-  }
-
-  const senderUsername = payload.username ?? null;
-  const recipientUsername = payload.to ?? null;
-  const isOwn = payload.from === socket.id;
-  const isDirect = Boolean(recipientUsername);
-
-  let otherUsername: string | null = null;
-  if (meUsername) {
-    otherUsername = senderUsername === meUsername ? recipientUsername : senderUsername;
-  } else {
-    otherUsername = senderUsername ?? recipientUsername;
-  }
-
-  return {
-    chatMessage: {
-      id: payload.id ?? `${Date.now()}-${Math.random()}`,
-      user: isOwn ? 'You' : senderUsername ?? 'Player',
-      message: payload.text ?? '',
-      time: formatTime(),
-      isOwn,
-      metadata: payload.metadata ?? undefined,
-    },
-    otherUsername,
-    senderUsername,
-    recipientUsername,
-    isDirect,
-  };
-}
-
-function shouldShowMessageInActiveChat(
-  activeTarget: string | null,
-  senderUsername: string | null,
-  recipientUsername: string | null,
-) {
-  if (!activeTarget) return false;
-
-  return senderUsername === activeTarget || recipientUsername === activeTarget;
 }
 
 function isPongInviteMetadata(metadata: ChatMessage['metadata']): metadata is PongInviteMetadata {
@@ -196,13 +103,14 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
   const [file, setFile] = useState<File | null>(null);
   const [progress, setProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
-  const [uploadedFileMeta, setUploadedFileMeta] = useState<any | null>(null);
+  const [uploadedFileMeta, setUploadedFileMeta] = useState<UploadedFileMeta | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const targetUsernameRef = useRef<string | null>(null);
   const typingTimeoutRef = useRef<number | null>(null);
   const isTypingRef = useRef(false);
   const typingTargetRef = useRef<string | null>(null);
+  const [isOpen, setIsOpen] = useState(false);
 
   const targetUsername = useChatStore((state) => state.targetUsername);
   const messagesByUser = useChatStore((s) => s.messagesByUser);
@@ -339,12 +247,11 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
     const onChatMessage = (payload: any) => {
       try {
         const activeTarget = targetUsernameRef.current;
-        const normalized = normalizeIncomingPayload(payload, meUsername);
+        const normalized = normalizeIncomingPayload(payload, meUsername, socket.id);
 
         if (!normalized) return;
 
-        const { chatMessage, otherUsername, senderUsername, recipientUsername, isDirect } =
-          normalized;
+        const { chatMessage, otherUsername, senderUsername, recipientUsername } = normalized;
 
         if (activeTarget && senderUsername === activeTarget) {
           setIsTargetTyping(false);
@@ -369,7 +276,6 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
 
           return;
         }
-
       } catch (e) {
         showToast('Error handling chat message', 'error');
       }
@@ -417,8 +323,7 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
         setMessagesForUser(username, mapped);
         try {
           clearUnreadForUser(username);
-        } catch (err) {
-        }
+        } catch (err) {}
         try {
           await apiFetch(`/api/chat/conversations/${encodeURIComponent(username)}/read`, {
             method: 'POST',
@@ -471,39 +376,60 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
     e.target.value = '';
   };
 
-  const handleSend = async () => {
-    const text = inputValue.trim();
+  const onSend = () => {
+    handleSend({
+      inputValue,
+      connected,
+      isUploading,
+      targetUsername,
+      meUsername,
+      fileName: file?.name,
+      uploadedFileMeta,
+      socket,
+      showToast,
+      stopTypingForTarget,
+      setInputValue,
+      setFile,
+      setUploadedFileMeta,
+      setProgress,
+      setIsUploading,
+    });
+  };
 
-    if (!connected || !targetUsername || isUploading) return;
-    if (!text && !uploadedFileMeta) return;
+  const markFileDeletedInState = (username: string, messageId: string) => {
+    const current = messagesByUser[username] ?? [];
 
-    if (meUsername && targetUsername === meUsername) {
-      showToast('You cannot chat with yourself', 'error');
+    const next = current.map((m) => {
+      if (m.id !== messageId) return m;
+      return {
+        ...m,
+        message: m.message?.trim() ? m.message : 'Attachment deleted',
+        metadata: undefined,
+      };
+    });
+
+    setMessagesForUser(username, next);
+  };
+
+  const handleFileDelete = async ({
+    fileId,
+    message,
+  }: {
+    fileId: string;
+    message: ChatMessage;
+  }) => {
+    const res = await apiFetch(`/api/chat/conversations/${targetUsername}/files/${fileId}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    if (!res.ok) {
+      showToast('Failed to delete file', 'error');
       return;
     }
 
-    stopTypingForTarget(targetUsername);
-
-    try {
-      socket.emit('chat:message', {
-        text,
-        to: targetUsername,
-        metadata: uploadedFileMeta
-          ? {
-              fileUrl: uploadedFileMeta.fileUrl || uploadedFileMeta.url || uploadedFileMeta.path,
-              originalName: file?.name || uploadedFileMeta.originalName,
-              ...uploadedFileMeta,
-            }
-          : undefined,
-      });
-
-      setInputValue('');
-      setFile(null);
-      setUploadedFileMeta(null);
-      setProgress(0);
-    } catch {
-      setIsUploading(false);
-    }
+    markFileDeletedInState(targetUsername, message.id);
+    showToast('File deleted', 'success');
   };
 
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -585,19 +511,26 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
       socket.off('chat:error', onChatError);
     };
   }, []);
+  const items: DropdownItem[] = [
+    { id: 0, text: 'Block User', icon: <Ban /> },
+    { id: 1, text: 'Unblock User', icon: <ShieldCheck /> },
+  ];
 
   return (
-    <div className="chat-panel">
-      <div className="chat-panel-inner">
-        <div className="chat-header">
+    <div className="fixed bottom-4 right-4 z-[1000] h-[min(560px,calc(100vh-32px))] w-[min(380px,calc(100vw-32px))] overflow-hidden rounded-[20px] border border-slate-200 bg-white shadow-[0_24px_60px_rgba(15,23,42,0.18)] max-sm:bottom-2 max-sm:right-2 max-sm:h-[min(520px,calc(100vh-16px))] max-sm:w-[calc(100vw-16px)]">
+      <div className="flex h-full flex-col bg-white">
+        <div className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3">
           <div>
-            <p className="chat-title">Live Chat</p>
-            <p className="chat-subtitle">
+            <p className="m-0 text-sm font-bold text-slate-900">Live Chat</p>
+            <Link
+              to={targetUsername ? `/users/${targetUsername}` : '/players'}
+              className="m-0 text-xs text-slate-500"
+            >
               {targetUsername ? `Chat with @${targetUsername}` : 'Talk with online players'}
-            </p>
+            </Link>
           </div>
 
-          <div className="chat-header-actions">
+          <div className="flex items-center gap-2">
             {targetUsername && (
               <button
                 type="button"
@@ -608,24 +541,47 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
                 Play Pong
               </button>
             )}
-
-            <div className="chat-status-pill">
-              <span className={`chat-status-dot ${connected ? 'online' : 'offline'}`} />
+            <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] font-medium text-slate-600">
+              <span
+                className={`size-2 rounded-full ${connected ? 'bg-emerald-500' : 'bg-rose-500'}`}
+              />
               {connected ? 'Connected' : 'Offline'}
+            </div>
+            <div className="relative">
+              <button
+                className="p-1 hover:bg-[var(--color-1)]/10 rounded-full transition-colors"
+                onClick={() => setIsOpen((prev) => !prev)}
+              >
+                <MoreHorizontal className="size-5 text-[#8b98a5]" />
+              </button>
+              {isOpen && (
+                <Dropdown
+                  items={items}
+                  isOpen={isOpen}
+                  setIsOpen={setIsOpen}
+                  postId="null"
+                  authorId={targetUsername || 'unknown'}
+                />
+              )}
             </div>
 
             {onClose && (
-              <button type="button" className="chat-close-btn" onClick={onClose}>
+              <button
+                type="button"
+                className="rounded-full border border-slate-300 bg-white px-3 py-1 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-50"
+                onClick={onClose}
+              >
                 Close
               </button>
             )}
           </div>
         </div>
 
-        <div className="chat-messages-wrap">
-          <div className="chat-messages">
+        <div className="flex-1 overflow-y-auto bg-white px-4 py-4">
+          <div className="flex flex-col gap-4">
             {activeMessages.map((msg) => {
               const fileUrl = msg.metadata?.fileUrl;
+              const fileId = msg.id;
               const fileName = msg.metadata?.originalName;
               const inviteMetadata = isPongInviteMetadata(msg.metadata) ? msg.metadata : null;
               const notificationMetadata = isPongNotificationMetadata(msg.metadata)
@@ -645,14 +601,23 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
               const isResponding =
                 inviteMetadata && respondingInviteIds.includes(inviteMetadata.inviteId);
               return (
-                <div key={msg.id} className={`chat-message-row ${msg.isOwn ? 'own' : 'other'}`}>
-                  <div className="chat-message-meta">
-                    <span className="chat-message-user">{msg.user}</span>
-                    <span className="chat-message-time">{msg.time}</span>
+                <div
+                  key={msg.id}
+                  className={`flex w-full flex-col gap-1 ${
+                    msg.isOwn ? 'items-end' : 'items-start'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-slate-900">{msg.user}</span>
+                    <span className="text-[11px] text-slate-500">{msg.time}</span>
                   </div>
 
                   <div
-                    className={`chat-bubble ${msg.isOwn ? 'chat-bubble-own' : 'chat-bubble-other'}`}
+                    className={`max-w-[82%] rounded-2xl px-3 py-2 text-sm leading-6 ${
+                      msg.isOwn
+                        ? 'rounded-br-md bg-sky-600 text-white'
+                        : 'rounded-bl-md border border-slate-200 bg-slate-100 text-slate-900'
+                    }`}
                   >
                     {inviteMetadata ? (
                       <div className="flex min-w-[220px] flex-col gap-2">
@@ -713,19 +678,29 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
                           )}
                       </div>
                     ) : fileUrl ? (
-                      <div className="chat-file-card">
-                        <p className="chat-file-title">📎 {fileName || 'Attachment'}</p>
-                        <div className="chat-file-actions">
+                      <div className="flex flex-col gap-2">
+                        <p className="m-0 break-words text-[13px] font-semibold">
+                          📎 {fileName || 'Attachment'}
+                        </p>
+                        <div className="flex flex-col gap-2">
                           <AuthedFilePreview
                             src={fileUrl}
                             fileName={fileName || 'Attachment'}
                             mimeType={msg.metadata?.mimeType || 'application/pdf'}
-                            className="chat-file-preview"
+                            className="max-h-40 w-auto max-w-full rounded-lg object-contain"
                           />
-                          <Download
-                            className="chat-file-download"
-                            onClick={() => downloadFile(fileUrl, fileName)}
-                          />
+
+                          <div className="flex items-center gap-3 pl-1">
+                            <Download
+                              className="size-4 cursor-pointer text-slate-500 transition hover:text-slate-900"
+                              onClick={() => downloadFile(fileUrl, fileName)}
+                            />
+
+                            <Trash2
+                              className="size-4 cursor-pointer text-red-500 transition hover:text-red-700"
+                              onClick={() => handleFileDelete({ fileId, message: msg })}
+                            />
+                          </div>
                         </div>
                       </div>
                     ) : (
@@ -739,19 +714,19 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
           </div>
         </div>
 
-        <div className="chat-input-wrap">
-          <div className="chat-input-row">
+        <div className="mt-auto border-t border-slate-200 bg-white px-3 py-3">
+          <div className="flex h-11 w-full items-center gap-2">
             <input
               type="text"
               placeholder="Type a message..."
               value={inputValue}
               onChange={handleInputChange}
-              onKeyDown={(e) => e.key === 'Enter' && void handleSend()}
-              className="chat-input"
+              onKeyDown={(e) => e.key === 'Enter' && void onSend()}
+              className="h-full flex-1 rounded-full border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-sky-500"
             />
 
-            <label className="cursor-pointer text-xl hover:opacity-80 transition">
-              <FileUp className="size-6 text-[#8b98a5]" />
+            <label className="inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-full border border-slate-300 text-slate-500 transition hover:bg-slate-50 hover:text-slate-700">
+              <FileUp className="size-5" />
               <input
                 type="file"
                 accept=".pdf"
@@ -761,21 +736,21 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
             </label>
 
             <button
-              onClick={() => void handleSend()}
+              onClick={() => void onSend()}
               disabled={!connected || isUploading || (!inputValue.trim() && !file)}
-              className="chat-send-btn"
+              className="inline-flex size-11 items-center justify-center rounded-full bg-sky-600 text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:bg-sky-300 disabled:text-slate-100"
               aria-label="Send message"
             >
-              <Send className="chat-send-icon" />
+              <Send className="size-4" />
             </button>
           </div>
 
           {file && progress < 100 && (
-            <div className="chat-upload-meta">
-              <span className="chat-upload-name" title={file.name}>
+            <div className="mt-2 flex items-center justify-between text-xs text-slate-500">
+              <span className="max-w-[80%] truncate font-medium text-slate-600" title={file.name}>
                 {shortenFileName(file.name)}
               </span>
-              <span className="chat-upload-percent">{progress}%</span>
+              <span className="font-mono tabular-nums">{progress}%</span>
             </div>
           )}
 
@@ -784,14 +759,14 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
               id="uploadProgress"
               value={progress}
               max="100"
-              className="chat-upload-progress"
+              className="mt-2 h-2 w-full overflow-hidden rounded-full [appearance:none] [&::-webkit-progress-bar]:rounded-full [&::-webkit-progress-bar]:bg-slate-200 [&::-webkit-progress-value]:rounded-full [&::-webkit-progress-value]:bg-sky-500 [&::-moz-progress-bar]:rounded-full [&::-moz-progress-bar]:bg-sky-500"
             >
               {progress}%
             </progress>
           )}
 
           {targetUsername && isTargetTyping && (
-            <div className="chat-typing-indicator">@{targetUsername} is typing…</div>
+            <div className="mt-2 text-xs italic text-slate-500">@{targetUsername} is typing…</div>
           )}
         </div>
       </div>

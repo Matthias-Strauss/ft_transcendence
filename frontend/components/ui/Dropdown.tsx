@@ -9,6 +9,8 @@ interface DropdownProps {
     data?: {
       shareCount?: number;
       incremented?: boolean;
+      bookmarkCount?: number;
+      bookmarkedByMe?: boolean;
     },
   ) => void;
   onRequestAction?: (action: string) => void;
@@ -27,6 +29,8 @@ async function handleAction({
   data?: {
     shareCount?: number;
     incremented?: boolean;
+    bookmarkCount?: number;
+    bookmarkedByMe?: boolean;
   };
 }> {
   const token = localStorage.getItem('accessToken');
@@ -43,19 +47,35 @@ async function handleAction({
         },
         body: JSON.stringify({ postId, authorId }),
       });
-      showToast('Post Saved', 'success');
-      return { ok: response.ok };
+      if (!response.ok) {
+        return { ok: false };
+      }
+
+      const data = (await response.json()) as {
+        bookmarkCount?: number;
+        bookmarkedByMe?: boolean;
+      };
+
+      showToast('Post saved.', 'success');
+      return { ok: true, data };
     }
     case 'Remove': {
       const response = await apiFetch(`/api/posts/${postId}/bookmark`, {
         method: 'DELETE',
       });
 
-      if (response.ok) {
-        showToast('Post removed from saved.', 'success');
+      if (!response.ok) {
+        return { ok: false };
       }
 
-      return { ok: response.ok };
+      const data = (await response.json()) as {
+        bookmarkCount?: number;
+        bookmarkedByMe?: boolean;
+      };
+
+      showToast('Post removed from saved.', 'success');
+
+      return { ok: true, data };
     }
     case 'Share': {
       const response = await apiFetch(`/api/posts/${postId}/share`, {
@@ -76,6 +96,32 @@ async function handleAction({
       };
 
       return { ok: true, data };
+    }
+    case 'Block User': {
+      const response = await apiFetch(`/api/chat/block/${authorId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userId: authorId }),
+      });
+
+      if (response.ok) {
+        showToast('User blocked', 'success');
+      }
+
+      return { ok: response.ok };
+    }
+    case 'Unblock User': {
+      const response = await apiFetch(`/api/chat/block/${authorId}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        showToast('User unblocked', 'success');
+      }
+
+      return { ok: response.ok };
     }
     default:
       return { ok: false };

@@ -131,7 +131,6 @@ export function ConversationsList() {
 
           return [newItem, ...prev];
         });
-
       } catch (e) {
         showToast('Failed to handle incoming chat message', 'error');
       }

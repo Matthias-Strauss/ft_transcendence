@@ -398,3 +398,32 @@ export function emitDirectMessage(
     }
   }
 }
+
+export function emitDirectMessageDeleted(
+  io: SocketIOServer,
+  registry: UserSocketRegistry,
+  params: {
+    messageId: string;
+    senderUsername: string;
+    recipientUsername: string;
+    deletedByUserId: string;
+  },
+) {
+  const payload = {
+    messageId: params.messageId,
+    deletedByUserId: params.deletedByUserId,
+  };
+
+  const usernames = new Set([params.senderUsername, params.recipientUsername]);
+
+  for (const username of usernames) {
+    const sockets = registry.getSocketsByUsername(username);
+    if (!sockets || sockets.size === 0) {
+      continue;
+    }
+
+    for (const socketId of sockets) {
+      io.to(socketId).emit('chat:message_deleted', payload);
+    }
+  }
+}

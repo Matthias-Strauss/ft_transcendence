@@ -43,6 +43,7 @@ export interface Post {
   likeCount: number;
   commentCount: number;
   shareCount: number;
+  bookmarkCount: number;
   createdAt: string;
   updatedAt: string;
   likedByMe?: boolean;
