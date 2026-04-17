@@ -25,8 +25,8 @@ export const PADDLE_LIMIT = 16;
 
 export const BALL_DIAMETER = 1.5;
 export const BALL_RADIUS = BALL_DIAMETER / 2;
-export const BALL_START_VX_ABS = 0.2;
-export const BALL_START_VZ_ABS = 0.3;
-export const BALL_MAX_SPEED = 1.2;
+export const BALL_START_VX_ABS = 0.3;
+export const BALL_START_VZ_ABS = 0.45;
+export const BALL_MAX_SPEED = 1.6;
 export const BALL_BOUNCE_MULT = 1.1;
 export const BALL_PADDLE_OFFSET_MULT = 0.1;
