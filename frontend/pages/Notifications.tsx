@@ -39,7 +39,12 @@ export function Notifications() {
   }, []);
 
   useEffect(() => {
-    void fetchNotifications();
+    (async () => {
+      await fetchNotifications();
+      try {
+        await markAllRead();
+      } catch (e) {}
+    })();
   }, [fetchNotifications]);
 
   const markRead = async (id: string) => {
@@ -90,15 +95,7 @@ export function Notifications() {
             <h1 className="font-bold text-[20px] text-[#f7f9f9]">Notifications</h1>
             <p className="text-[#8b98a5] text-sm">Post & comment activity.</p>
           </div>
-          <div>
-            <button
-              type="button"
-              onClick={markAllRead}
-              className="bg-[var(--color-1)] hover:bg-[var(--color-1)]/90 text-[#f7f9f9] rounded-full py-2 px-3 text-sm"
-            >
-              Mark all read
-            </button>
-          </div>
+          <div />
         </div>
       </div>
 
