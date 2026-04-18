@@ -13,6 +13,7 @@ import {
 import { runFriendAction } from '../utils/friendActions';
 import { AuthedImage } from '../components/ui/AuthedImage';
 import showToast from '../utils/toast';
+import useFriendRequestStore from '../utils/friendRequestStore';
 
 export function FriendsPage() {
   const [activeTab, setActiveTab] = useState<'friends' | 'requests'>('friends');
@@ -214,7 +215,8 @@ function RequestsList() {
   useEffect(() => {
     let mounted = true;
 
-    async function load() {
+    async function loadRequests() {
+      if (!mounted) return;
       setLoading(true);
       try {
         const res = await apiFetch('/api/me/friends/requests');
@@ -232,9 +234,24 @@ function RequestsList() {
       }
     }
 
-    void load();
+    void loadRequests();
+
+    const onAccepted = () => void loadRequests();
+    const onDeclined = () => void loadRequests();
+    const onWithdrawn = () => void loadRequests();
+    const onRequested = () => void loadRequests();
+
+    window.addEventListener('friend:accepted', onAccepted as EventListener);
+    window.addEventListener('friend:declined', onDeclined as EventListener);
+    window.addEventListener('friend:withdrawn', onWithdrawn as EventListener);
+    window.addEventListener('friend:request', onRequested as EventListener);
+
     return () => {
       mounted = false;
+      window.removeEventListener('friend:accepted', onAccepted as EventListener);
+      window.removeEventListener('friend:declined', onDeclined as EventListener);
+      window.removeEventListener('friend:withdrawn', onWithdrawn as EventListener);
+      window.removeEventListener('friend:request', onRequested as EventListener);
     };
   }, []);
 
@@ -248,6 +265,7 @@ function RequestsList() {
       (v) => setProcessingFlag(username, v),
       () => setRequests((prev) => prev.filter((r) => r.username !== username)),
     );
+    useFriendRequestStore.getState().incrementIncoming(-1);
     showToast('Friend request accepted!', 'success');
   };
 
@@ -258,6 +276,7 @@ function RequestsList() {
       (v) => setProcessingFlag(username, v),
       () => setRequests((prev) => prev.filter((r) => r.username !== username)),
     );
+    useFriendRequestStore.getState().incrementIncoming(-1);
     showToast('Friend request declined.', 'info');
   };
 

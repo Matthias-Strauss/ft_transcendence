@@ -15,6 +15,7 @@ import { Bookmarked } from './pages/Bookmarked';
 import Notifications from './pages/Notifications';
 import usePongStore from './utils/pongState';
 import useNotificationStore from './utils/notificationStore';
+import useFriendRequestStore from './utils/friendRequestStore';
 
 export default function SocialApp() {
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
@@ -174,6 +175,78 @@ export default function SocialApp() {
       socket.off('notification', onNotification);
     };
   }, [activeTab]);
+
+  useEffect(() => {
+    const onFriendRequest = (payload: any) => {
+      try {
+        const me = useUserStore.getState().user?.username ?? null;
+        const recipientUsername = payload?.recipient?.username ?? null;
+        if (!me || !recipientUsername || recipientUsername !== me) return;
+
+        useFriendRequestStore.getState().incrementIncoming(1);
+        try {
+          window.dispatchEvent(new CustomEvent('friend:request', { detail: payload }));
+        } catch {}
+      } catch {}
+    };
+
+    socket.on('friend:request', onFriendRequest);
+    return () => {
+      socket.off('friend:request', onFriendRequest);
+    };
+  }, []);
+
+  useEffect(() => {
+    const onFriendAccepted = (payload: any) => {
+      try {
+        const me = useUserStore.getState().user?.username ?? null;
+        const recipientUsername = payload?.recipient?.username ?? null;
+        if (!me || !recipientUsername || recipientUsername !== me) return;
+
+        window.dispatchEvent(new CustomEvent('friend:accepted', { detail: payload }));
+
+        const name = payload?.accepter?.displayname ?? payload?.accepter?.username ?? 'Someone';
+        showToast(`${name} accepted your friend request!`, 'success');
+      } catch {}
+    };
+
+    const onFriendDeclined = (payload: any) => {
+      try {
+        const me = useUserStore.getState().user?.username ?? null;
+        const recipientUsername = payload?.recipient?.username ?? null;
+        if (!me || !recipientUsername || recipientUsername !== me) return;
+
+        window.dispatchEvent(new CustomEvent('friend:declined', { detail: payload }));
+
+        const name = payload?.decliner?.displayname ?? payload?.decliner?.username ?? 'Someone';
+        showToast(`${name} declined your friend request.`, 'info');
+      } catch {}
+    };
+
+    const onFriendWithdrawn = (payload: any) => {
+      try {
+        const me = useUserStore.getState().user?.username ?? null;
+        const recipientUsername = payload?.recipient?.username ?? null;
+        if (!me || !recipientUsername || recipientUsername !== me) return;
+ 
+        useFriendRequestStore.getState().incrementIncoming(-1);
+        window.dispatchEvent(new CustomEvent('friend:withdrawn', { detail: payload }));
+
+        const name = payload?.withdrawer?.displayname ?? payload?.withdrawer?.username ?? 'Someone';
+        showToast(`${name} withdrew their friend request.`, 'info');
+      } catch {}
+    };
+
+    socket.on('friend:accepted', onFriendAccepted);
+    socket.on('friend:declined', onFriendDeclined);
+    socket.on('friend:withdrawn', onFriendWithdrawn);
+
+    return () => {
+      socket.off('friend:accepted', onFriendAccepted);
+      socket.off('friend:declined', onFriendDeclined);
+      socket.off('friend:withdrawn', onFriendWithdrawn);
+    };
+  }, []);
 
   useEffect(() => {
     let mounted = true;

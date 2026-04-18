@@ -191,6 +191,48 @@ export default function UserProfile() {
     );
   }, [user?.avatarUrl, user?.username]);
 
+  useEffect(() => {
+    const onAccepted = (e: any) => {
+      try {
+        const payload = e?.detail ?? null;
+        const accepterUsername = payload?.accepter?.username ?? null;
+        if (!accepterUsername || accepterUsername !== user?.username) return;
+
+        setUser((prev) => ({ ...(prev ?? {}), isFriend: true, friendStatus: 'friend', friendRequestSentByMe: false, friendRequestIncoming: false }));
+      } catch {}
+    };
+
+    const onDeclined = (e: any) => {
+      try {
+        const payload = e?.detail ?? null;
+        const declinerUsername = payload?.decliner?.username ?? null;
+        if (!declinerUsername || declinerUsername !== user?.username) return;
+
+        setUser((prev) => ({ ...(prev ?? {}), friendStatus: 'none', friendRequestSentByMe: false, friendRequestIncoming: false }));
+      } catch {}
+    };
+
+    const onWithdrawn = (e: any) => {
+      try {
+        const payload = e?.detail ?? null;
+        const withdrawerUsername = payload?.withdrawer?.username ?? null;
+        if (!withdrawerUsername || withdrawerUsername !== user?.username) return;
+
+        setUser((prev) => ({ ...(prev ?? {}), friendStatus: 'none', friendRequestIncoming: false, friendRequestSentByMe: false }));
+      } catch {}
+    };
+
+    window.addEventListener('friend:accepted', onAccepted as EventListener);
+    window.addEventListener('friend:declined', onDeclined as EventListener);
+    window.addEventListener('friend:withdrawn', onWithdrawn as EventListener);
+
+    return () => {
+      window.removeEventListener('friend:accepted', onAccepted as EventListener);
+      window.removeEventListener('friend:declined', onDeclined as EventListener);
+      window.removeEventListener('friend:withdrawn', onWithdrawn as EventListener);
+    };
+  }, [user?.username]);
+
   const handleSendFriendRequest = async () => {
     if (!user?.username) return;
     await runFriendAction(user.username, sendFriendRequest, setSendingRequest, (data) => {
