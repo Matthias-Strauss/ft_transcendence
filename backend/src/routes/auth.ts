@@ -190,7 +190,7 @@ const RegisterSchema = z
       .min(3)
       .max(30)
       .regex(/^[a-z0-9._-]+$/),
-    email: z.email().optional(),
+    email: z.email().trim().toLowerCase(),
     password: z.string().min(1).max(100),
     acceptedPrivacy: z.literal(true),
     acceptedTerms: z.literal(true),
@@ -221,9 +221,10 @@ authRouter.post(
 
     const displayname = parsed.data.displayname;
     const username = parsed.data.username;
+    const email = parsed.data.email;
     const userExists = await prisma.user.findFirst({
       where: {
-        OR: [{ username }, ...(parsed.data.email ? [{ email: parsed.data.email }] : [])],
+        OR: [{ username }, { email }],
       },
     });
     if (userExists) {
@@ -236,7 +237,7 @@ authRouter.post(
       data: {
         username,
         password: passwordHash,
-        email: parsed.data.email,
+        email,
         displayname,
       },
     });

@@ -80,8 +80,10 @@ services:
   frontend:
     container_name: transcendence-frontend
     build: ./frontend
+    env_file:
+      - .env
     ports:
-      - "${FRONTEND_PORT:-3000}:3000"
+      - "${FRONTEND_PORT:-3000}:${FRONTEND_PORT:-3000}"
     expose:
       - "${FRONTEND_PORT:-3000}"
     healthcheck:

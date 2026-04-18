@@ -5,6 +5,7 @@
   "description": "Root configuration for ft_transcendence",
   "scripts": {
     "dev": "vite --host --port 3000",
+    "build": "vite build",
     "format": "prettier --write \"**/*.{ts,tsx,js,json,md}\"",
     "lint": "eslint \"**/*.{ts,tsx,js,json,md}\""
   },
