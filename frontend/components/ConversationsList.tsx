@@ -5,6 +5,7 @@ import { AuthedImage } from './ui/AuthedImage';
 import { socket } from '../socket';
 import useUserStore from '../utils/userStore';
 import showToast from '../utils/toast';
+import { buildPongNotificationCopy, isPongNotificationMetadata } from '../chat/pongNotifications';
 
 type ConversationItem = {
   target: {
@@ -17,6 +18,7 @@ type ConversationItem = {
     id: string;
     text?: string | null;
     createdAt?: string;
+    metadata?: Record<string, any> | null;
   };
   unreadCount?: number;
   blockedByMe?: boolean;
@@ -96,6 +98,7 @@ export function ConversationsList() {
           id: payload.id,
           text: payload.text,
           createdAt: payload.createdAt,
+          metadata: payload.metadata ?? null,
         };
 
         setItems((prev) => {
@@ -203,7 +206,9 @@ export function ConversationsList() {
                 </div>
 
                 <div className="text-sm text-[#8b98a5] mt-1 truncate">
-                  {it.lastMessage?.text ?? ''}
+                  {isPongNotificationMetadata(it.lastMessage?.metadata)
+                    ? buildPongNotificationCopy(it.lastMessage.metadata)
+                    : (it.lastMessage?.text ?? '')}
                 </div>
               </div>
 

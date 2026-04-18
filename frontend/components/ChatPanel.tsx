@@ -15,11 +15,11 @@ import { Link } from 'react-router-dom';
 import Dropdown from './ui/Dropdown';
 import { DropdownItem } from '../types/posts';
 import { handleSend } from '../chat/send';
+import { mapApiMessageToChatMessage, normalizeIncomingPayload } from '../chat/messages';
 import {
-  mapApiMessageToChatMessage,
-  normalizeIncomingPayload,
-  shouldShowMessageInActiveChat,
-} from '../chat/messages';
+  buildPongNotificationCopy,
+  buildPongNotificationLabel,
+} from '../chat/pongNotifications';
 import type { UploadedFileMeta } from '../chat/types';
 
 const EMPTY_MESSAGES: ChatMessage[] = [];
@@ -49,53 +49,6 @@ function formatInviteExpiry(expiresAt: string) {
   return `Expires ${expiry.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
 }
 
-function buildNotificationLabel(metadata: PongNotificationMetadata) {
-  if (metadata.event === 'invite_accepted') {
-    return 'Invite Accepted';
-  }
-
-  if (metadata.event === 'invite_declined') {
-    return 'Invite Declined';
-  }
-
-  if (metadata.event === 'opponent_left') {
-    return 'Player Left';
-  }
-
-  if (metadata.event === 'opponent_disconnected') {
-    return 'Match Ended';
-  }
-
-  return 'Match Result';
-}
-
-function buildNotificationCopy(metadata: PongNotificationMetadata) {
-  if (metadata.event === 'invite_accepted') {
-    return 'The Pong invite was accepted.';
-  }
-
-  if (metadata.event === 'invite_declined') {
-    return 'The Pong invite was declined.';
-  }
-
-  if (metadata.event === 'opponent_left') {
-    const who = metadata.endedByUsername ?? 'A player';
-    return `${who} left the match.`;
-  }
-
-  if (metadata.event === 'opponent_disconnected') {
-    const who = metadata.endedByUsername ?? 'A player';
-    return `${who} disconnected and did not return in time.`;
-  }
-
-  const finalScore = metadata.finalScore;
-  if (!finalScore || !metadata.winnerUsername) {
-    return 'The Pong match finished.';
-  }
-
-  return `${metadata.winnerUsername} won ${finalScore.p1}-${finalScore.p2}.`;
-}
-
 export function ChatPanel({ onClose }: ChatPanelProps) {
   const [inputValue, setInputValue] = useState('');
   const [connected, setConnected] = useState(socket.connected);
@@ -116,7 +69,6 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
   const targetUsername = useChatStore((state) => state.targetUsername);
   const messagesByUser = useChatStore((s) => s.messagesByUser);
   const setMessagesForUser = useChatStore((s) => s.setMessagesForUser);
-  const appendMessageForUser = useChatStore((s) => s.appendMessageForUser);
   const clearTargetUsername = useChatStore((s) => s.clearTargetUsername);
   const clearUnreadForUser = useChatStore((s) => s.clearUnreadForUser);
   const markMessageDeleted = useChatStore((s) => s.markMessageDeleted);
@@ -254,30 +206,10 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
 
         if (!normalized) return;
 
-        const { chatMessage, otherUsername, senderUsername, recipientUsername } = normalized;
+        const { senderUsername } = normalized;
 
         if (activeTarget && senderUsername === activeTarget) {
           setIsTargetTyping(false);
-        }
-
-        if (otherUsername) {
-          appendMessageForUser(otherUsername, chatMessage);
-        }
-        if (chatMessage.isOwn) return;
-
-        if (activeTarget) {
-          const shouldShow = shouldShowMessageInActiveChat(
-            activeTarget,
-            senderUsername,
-            recipientUsername,
-          );
-
-          if (!shouldShow) {
-          } else {
-            if (otherUsername) clearUnreadForUser(otherUsername);
-          }
-
-          return;
         }
       } catch (e) {
         showToast('Error handling chat message', 'error');
@@ -319,7 +251,7 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
       socket.off('chat:typing', onChatTyping);
       socket.off('chat:message_deleted', onChatMessageDeleted);
     };
-  }, [appendMessageForUser, markMessageDeleted, meUsername]);
+  }, [markMessageDeleted, meUsername]);
 
   useEffect(() => {
     let mounted = true;
@@ -358,7 +290,7 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
     return () => {
       mounted = false;
     };
-  }, [meUsername, targetUsername, setMessagesForUser]);
+  }, [clearUnreadForUser, meUsername, targetUsername, setMessagesForUser]);
 
   const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -683,14 +615,14 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
                       <div className="flex min-w-[220px] flex-col gap-2">
                         <div className="flex items-center justify-between gap-3">
                           <p className="m-0 text-[13px] font-bold">
-                            {buildNotificationLabel(notificationMetadata)}
+                            {buildPongNotificationLabel(notificationMetadata)}
                           </p>
                           <span className="rounded-full bg-sky-900/10 px-2 py-1 text-[10px] font-bold tracking-[0.04em] text-sky-900">
                             PONG
                           </span>
                         </div>
                         <p className="m-0 text-[12px] leading-[1.5]">
-                          {buildNotificationCopy(notificationMetadata)}
+                          {buildPongNotificationCopy(notificationMetadata)}
                         </p>
                         {notificationMetadata.event === 'match_result' &&
                           notificationMetadata.finalScore && (

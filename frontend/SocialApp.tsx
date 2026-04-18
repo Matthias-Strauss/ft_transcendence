@@ -16,6 +16,8 @@ import Notifications from './pages/Notifications';
 import usePongStore from './utils/pongState';
 import useNotificationStore from './utils/notificationStore';
 import useFriendRequestStore from './utils/friendRequestStore';
+import { normalizeIncomingPayload, shouldShowMessageInActiveChat } from './chat/messages';
+import showToast from './utils/toast';
 
 const ROOT_TABS = new Set(['home', 'notifications', 'messages', 'friends', 'saved']);
 
@@ -158,36 +160,33 @@ export default function SocialApp() {
   }, [location.pathname]);
 
   useEffect(() => {
-    type ChatMessagePayload = {
-      sender?: { username?: string | null } | null;
-      username?: string | null;
-      recipient?: { username?: string | null } | null;
-      to?: string | null;
-    };
-
-    const onChatMessage = (payload: ChatMessagePayload) => {
+    const onChatMessage = (payload: any) => {
       try {
-        if (!payload) return;
-
         const me = useUserStore.getState().user?.username ?? null;
         if (!me) return;
 
-        const senderUsername = payload?.sender?.username ?? payload?.username ?? null;
-        const recipientUsername = payload?.recipient?.username ?? payload?.to ?? null;
+        const normalized = normalizeIncomingPayload(payload, me, socket.id);
+        if (!normalized) return;
 
-        if (!senderUsername || !recipientUsername) return;
+        const { chatMessage, otherUsername, senderUsername, recipientUsername } = normalized;
+        if (!otherUsername) return;
 
-        if (recipientUsername !== me) return;
-
-        const other = senderUsername;
         const state = useChatStore.getState();
-        const target = state.targetUsername;
-        const panelOpen = state.panelOpen;
 
-        if (panelOpen && target === other) {
-          state.clearUnreadForUser(other);
+        state.appendMessageForUser(otherUsername, chatMessage);
+
+        if (chatMessage.isOwn) {
+          return;
+        }
+
+        const isVisibleInActiveChat =
+          state.panelOpen &&
+          shouldShowMessageInActiveChat(state.targetUsername, senderUsername, recipientUsername);
+
+        if (isVisibleInActiveChat) {
+          state.clearUnreadForUser(otherUsername);
         } else {
-          state.incrementUnreadForUser(other, 1);
+          state.incrementUnreadForUser(otherUsername, 1);
         }
       } catch {}
     };
