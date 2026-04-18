@@ -700,10 +700,15 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
                               onClick={() => downloadFile(fileUrl, fileName)}
                             />
 
-                            <Trash2
-                              className="size-4 cursor-pointer text-red-500 transition hover:text-red-700"
-                              onClick={() => handleFileDelete({ fileId, message: msg })}
-                            />
+                            {msg.isOwn &&
+                              msg.metadata &&
+                              'fileId' in msg.metadata &&
+                              msg.metadata.fileId && (
+                                <Trash2
+                                  className="size-4 cursor-pointer text-red-500 transition hover:text-red-700"
+                                  onClick={() => handleFileDelete({ fileId, message: msg })}
+                                />
+                              )}
                           </div>
                         </div>
                       </div>

@@ -9,7 +9,8 @@ type FriendRequestState = {
 const useFriendRequestStore = create<FriendRequestState>((set) => ({
   incomingCount: 0,
   setIncomingCount: (n: number) => set({ incomingCount: n }),
-  incrementIncoming: (delta = 1) => set((s) => ({ incomingCount: Math.max(0, s.incomingCount + delta) })),
+  incrementIncoming: (delta = 1) =>
+    set((s) => ({ incomingCount: Math.max(0, s.incomingCount + delta) })),
 }));
 
 export default useFriendRequestStore;
