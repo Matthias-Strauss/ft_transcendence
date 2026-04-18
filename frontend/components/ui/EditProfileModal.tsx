@@ -180,6 +180,11 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
       return;
     }
 
+    if (payloadEmail !== null && !isValidEmail(payloadEmail)) {
+      showNotification('Invalid email address');
+      return;
+    }
+
     const patch: Partial<User> = {};
     if (payloadEmail !== (storeUser?.email ?? null)) patch.email = payloadEmail;
     if (displayTrim !== '' && displayTrim !== (storeUser?.displayname ?? ''))
@@ -234,6 +239,12 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
     const pwdErr = validatePassword(newPassword);
     if (pwdErr) {
       showNotification(pwdErr);
+      return;
+    }
+
+    const usernameToCheck = (storeUser?.username ?? user?.username ?? '').trim().toLowerCase();
+    if (usernameToCheck && newPassword.toLowerCase().includes(usernameToCheck)) {
+      showNotification('Password cannot contain username');
       return;
     }
 
