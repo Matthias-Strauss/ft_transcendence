@@ -52,34 +52,38 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (authStatus !== 'authenticated') {
-      return;
+    if (authStatus === 'authenticated') {
+      void connectSocket();
+
+      const refreshTimer = window.setInterval(() => {
+        void refreshSession({ force: true, logoutOnFailure: true });
+      }, SESSION_REFRESH_INTERVAL_MS);
+
+      const refreshVisibleSession = () => {
+        if (document.visibilityState === 'visible') {
+          void refreshSession({ force: true, logoutOnFailure: true });
+        }
+      };
+
+      const refreshOnFocus = () => {
+        void refreshSession({ force: true, logoutOnFailure: true });
+      };
+
+      document.addEventListener('visibilitychange', refreshVisibleSession);
+      window.addEventListener('focus', refreshOnFocus);
+      window.addEventListener('online', refreshOnFocus);
+
+      return () => {
+        window.clearInterval(refreshTimer);
+        document.removeEventListener('visibilitychange', refreshVisibleSession);
+        window.removeEventListener('focus', refreshOnFocus);
+        window.removeEventListener('online', refreshOnFocus);
+      };
     }
 
-    const refreshTimer = window.setInterval(() => {
-      void refreshSession({ force: true, logoutOnFailure: true });
-    }, SESSION_REFRESH_INTERVAL_MS);
-
-    const refreshVisibleSession = () => {
-      if (document.visibilityState === 'visible') {
-        void refreshSession({ force: true, logoutOnFailure: true });
-      }
-    };
-
-    const refreshOnFocus = () => {
-      void refreshSession({ force: true, logoutOnFailure: true });
-    };
-
-    document.addEventListener('visibilitychange', refreshVisibleSession);
-    window.addEventListener('focus', refreshOnFocus);
-    window.addEventListener('online', refreshOnFocus);
-
-    return () => {
-      window.clearInterval(refreshTimer);
-      document.removeEventListener('visibilitychange', refreshVisibleSession);
-      window.removeEventListener('focus', refreshOnFocus);
-      window.removeEventListener('online', refreshOnFocus);
-    };
+    if (authStatus === 'anonymous') {
+      disconnectSocket();
+    }
   }, [authStatus]);
 
   return (
