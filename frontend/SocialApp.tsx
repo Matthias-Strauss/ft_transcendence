@@ -270,7 +270,7 @@ export default function SocialApp() {
         const me = useUserStore.getState().user?.username ?? null;
         const recipientUsername = payload?.recipient?.username ?? null;
         if (!me || !recipientUsername || recipientUsername !== me) return;
- 
+
         useFriendRequestStore.getState().incrementIncoming(-1);
         window.dispatchEvent(new CustomEvent('friend:withdrawn', { detail: payload }));
 

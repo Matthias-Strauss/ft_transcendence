@@ -198,7 +198,13 @@ export default function UserProfile() {
         const accepterUsername = payload?.accepter?.username ?? null;
         if (!accepterUsername || accepterUsername !== user?.username) return;
 
-        setUser((prev) => ({ ...(prev ?? {}), isFriend: true, friendStatus: 'friend', friendRequestSentByMe: false, friendRequestIncoming: false }));
+        setUser((prev) => ({
+          ...(prev ?? {}),
+          isFriend: true,
+          friendStatus: 'friend',
+          friendRequestSentByMe: false,
+          friendRequestIncoming: false,
+        }));
       } catch {}
     };
 
@@ -208,7 +214,12 @@ export default function UserProfile() {
         const declinerUsername = payload?.decliner?.username ?? null;
         if (!declinerUsername || declinerUsername !== user?.username) return;
 
-        setUser((prev) => ({ ...(prev ?? {}), friendStatus: 'none', friendRequestSentByMe: false, friendRequestIncoming: false }));
+        setUser((prev) => ({
+          ...(prev ?? {}),
+          friendStatus: 'none',
+          friendRequestSentByMe: false,
+          friendRequestIncoming: false,
+        }));
       } catch {}
     };
 
@@ -218,7 +229,12 @@ export default function UserProfile() {
         const withdrawerUsername = payload?.withdrawer?.username ?? null;
         if (!withdrawerUsername || withdrawerUsername !== user?.username) return;
 
-        setUser((prev) => ({ ...(prev ?? {}), friendStatus: 'none', friendRequestIncoming: false, friendRequestSentByMe: false }));
+        setUser((prev) => ({
+          ...(prev ?? {}),
+          friendStatus: 'none',
+          friendRequestIncoming: false,
+          friendRequestSentByMe: false,
+        }));
       } catch {}
     };
 
