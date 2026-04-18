@@ -16,6 +16,12 @@ const Registration: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
 
+  function isValidEmail(value: string) {
+    const normalized = value.trim();
+    if (!normalized) return false;
+    return /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(normalized);
+  }
+
   function validate() {
     if (!username.trim()) return 'Choose a username';
     if (!displayname.trim()) return 'Choose a display name';
@@ -23,7 +29,7 @@ const Registration: React.FC = () => {
     if (!/^[a-zA-Z0-9._-]+( [a-zA-Z0-9._-]+)*$/.test(displayname.trim())) {
       return 'Display name may only use letters, numbers, spaces, dots, underscores, and hyphens';
     }
-    if (!email.trim()) return 'Enter a valid email';
+    if (!isValidEmail(email)) return 'Enter a valid email address';
     const pwdErr = validatePassword(password);
     if (pwdErr) return pwdErr;
     if (password.toLowerCase().includes(username.toLowerCase())) {
@@ -51,8 +57,8 @@ const Registration: React.FC = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          username,
-          email,
+          username: username.trim(),
+          email: email.trim().toLowerCase(),
           password,
           displayname: displayname.trim(),
           acceptedPrivacy,
@@ -137,7 +143,7 @@ const Registration: React.FC = () => {
 
               <div className="space-y-2">
                 <label htmlFor="email" className="text-sm font-medium text-slate-300">
-                  Email
+                  Email *
                 </label>
                 <input
                   id="email"
@@ -145,6 +151,7 @@ const Registration: React.FC = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   autoComplete="email"
+                  required
                   placeholder="you@example.com"
                   className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none transition duration-300 placeholder:text-slate-500 hover:border-white/20 focus:border-sky-400 focus:bg-white/8 focus:shadow-[0_0_0_1px_rgba(56,189,248,0.2),0_18px_45px_rgba(14,165,233,0.12)]"
                 />
