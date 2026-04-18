@@ -95,7 +95,14 @@ export function connectSocket(options: { forceReconnect?: boolean } = {}): Promi
   connectingPromise = (async () => {
     const sessionReady = await runBeforeConnectHook();
 
-    if (!sessionReady || reconnectsBlocked || !shouldMaintainSocketConnection) {
+    if (!sessionReady) {
+      if (shouldMaintainSocketConnection && !reconnectsBlocked) {
+        scheduleReconnect();
+      }
+      return false;
+    }
+
+    if (reconnectsBlocked || !shouldMaintainSocketConnection) {
       return false;
     }
 

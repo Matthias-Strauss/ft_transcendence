@@ -76,6 +76,8 @@ export default function PongGame() {
   const activeMatch = usePongStore((state) => state.activeMatch);
   const setActiveMatch = usePongStore((state) => state.setActiveMatch);
   const clearActiveMatch = usePongStore((state) => state.clearActiveMatch);
+  const restoredFromStorage = usePongStore((state) => state.restoredFromStorage);
+  const acknowledgeRestoredMatch = usePongStore((state) => state.acknowledgeRestoredMatch);
   const [mode, setMode] = useState<Mode>(activeMatch ? 'playing' : 'idle');
   const [connected, setConnected] = useState(socket.connected);
   const [opponent, setOpponent] = useState<string>(activeMatch?.opponent ?? '');
@@ -87,6 +89,7 @@ export default function PongGame() {
   const modeRef = useRef<Mode>(activeMatch ? 'playing' : 'idle');
   const youAreRef = useRef<Slot | null>(activeMatch?.youAre ?? null);
   const ignoreNextEndedRef = useRef(false);
+  const pageUnloadingRef = useRef(false);
 
   useEffect(() => {
     modeRef.current = mode;
@@ -112,15 +115,32 @@ export default function PongGame() {
   useEffect(() => {
     const emitLeaveIfActive = () => {
       if (!socket.connected) return;
+      if (pageUnloadingRef.current) return;
       if (modeRef.current !== 'waiting' && modeRef.current !== 'playing') return;
       socket.emit('pong:leave');
     };
 
+    const handlePageHide = () => {
+      pageUnloadingRef.current = true;
+    };
+
+    const handleBeforeUnload = () => {
+      pageUnloadingRef.current = true;
+    };
+
     const onConnect = () => {
       setConnected(true);
-      if (usePongStore.getState().activeMatch) {
-        socket.emit('pong:rejoin');
+
+      const pongState = usePongStore.getState();
+      if (!pongState.activeMatch) {
+        return;
       }
+
+      if (pongState.restoredFromStorage) {
+        pongState.acknowledgeRestoredMatch();
+      }
+
+      socket.emit('pong:rejoin');
     };
     const onDisconnect = () => setConnected(false);
     const onWaiting = () => {
@@ -216,7 +236,8 @@ export default function PongGame() {
     socket.on('pong:opponent_returned', onOpponentReturned);
     socket.on('pong:resumed', onResumed);
     socket.on('pong:rejoin_failed', onRejoinFailed);
-    window.addEventListener('pagehide', emitLeaveIfActive);
+    window.addEventListener('pagehide', handlePageHide);
+    window.addEventListener('beforeunload', handleBeforeUnload);
 
     return () => {
       socket.off('connect', onConnect);
@@ -229,8 +250,10 @@ export default function PongGame() {
       socket.off('pong:opponent_returned', onOpponentReturned);
       socket.off('pong:resumed', onResumed);
       socket.off('pong:rejoin_failed', onRejoinFailed);
-      window.removeEventListener('pagehide', emitLeaveIfActive);
+      window.removeEventListener('pagehide', handlePageHide);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
       emitLeaveIfActive();
+      pageUnloadingRef.current = false;
     };
   }, [clearActiveMatch, notifySnapshot, resetDebugHud, resetToIdle, setActiveMatch]);
 
@@ -247,6 +270,15 @@ export default function PongGame() {
     }, 250);
     return () => clearInterval(interval);
   }, [opponentGoneUntil]);
+
+  useEffect(() => {
+    if (!connected || !restoredFromStorage || !activeMatch) {
+      return;
+    }
+
+    acknowledgeRestoredMatch();
+    socket.emit('pong:rejoin');
+  }, [acknowledgeRestoredMatch, activeMatch, connected, restoredFromStorage]);
 
   const findMatch = () => {
     if (!socket.connected) return;
