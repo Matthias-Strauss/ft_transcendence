@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
-import { Send, FileUp, Ban, ShieldCheck } from 'lucide-react';
+import { Ban, Download, FileUp, MoreHorizontal, Send, ShieldCheck, Trash2 } from 'lucide-react';
 import { socket } from '../socket';
 import { apiFetch } from '../utils/api';
 import { uploadFile } from '../utils/send_file';
@@ -11,11 +11,9 @@ import useChatStore, {
 import useUserStore from '../utils/userStore';
 import showToast from '../utils/toast';
 import { AuthedFilePreview } from './ui/AuthedFilePreview';
-import { Download, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Dropdown from './ui/Dropdown';
 import { DropdownItem } from '../types/posts';
-import { MoreHorizontal } from 'lucide-react';
 import { handleSend } from '../chat/send';
 import {
   mapApiMessageToChatMessage,
@@ -121,8 +119,10 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
   const appendMessageForUser = useChatStore((s) => s.appendMessageForUser);
   const clearTargetUsername = useChatStore((s) => s.clearTargetUsername);
   const clearUnreadForUser = useChatStore((s) => s.clearUnreadForUser);
+  const markMessageDeleted = useChatStore((s) => s.markMessageDeleted);
 
   const meUsername = useUserStore((s) => s.user?.username ?? null);
+  const [deletingMessageIds, setDeletingMessageIds] = useState<string[]>([]);
 
   const activeMessages = targetUsername ? messagesByUser[targetUsername] ?? EMPTY_MESSAGES : EMPTY_MESSAGES;
   const inviteOutcomeById = useMemo(
@@ -295,18 +295,31 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
       setIsTargetTyping(Boolean(payload?.isTyping));
     };
 
+    const onChatMessageDeleted = (payload: any) => {
+      const messageId = typeof payload?.messageId === 'string' ? payload.messageId : null;
+
+      if (!messageId) {
+        return;
+      }
+
+      markMessageDeleted(messageId);
+      setDeletingMessageIds((current) => current.filter((id) => id !== messageId));
+    };
+
     socket.on('connect', onConnect);
     socket.on('disconnect', onDisconnect);
     socket.on('chat:message', onChatMessage);
     socket.on('chat:typing', onChatTyping);
+    socket.on('chat:message_deleted', onChatMessageDeleted);
 
     return () => {
       socket.off('connect', onConnect);
       socket.off('disconnect', onDisconnect);
       socket.off('chat:message', onChatMessage);
       socket.off('chat:typing', onChatTyping);
+      socket.off('chat:message_deleted', onChatMessageDeleted);
     };
-  }, [appendMessageForUser, meUsername]);
+  }, [appendMessageForUser, markMessageDeleted, meUsername]);
 
   useEffect(() => {
     let mounted = true;
@@ -399,40 +412,42 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
     });
   };
 
-  const markFileDeletedInState = (username: string, messageId: string) => {
-    const current = messagesByUser[username] ?? [];
-
-    const next = current.map((m) => {
-      if (m.id !== messageId) return m;
-      return {
-        ...m,
-        message: m.message?.trim() ? m.message : 'Attachment deleted',
-        metadata: undefined,
-      };
-    });
-
-    setMessagesForUser(username, next);
-  };
-
   const handleFileDelete = async ({
-    fileId,
+    messageId,
     message,
   }: {
-    fileId: string;
+    messageId: string;
     message: ChatMessage;
   }) => {
-    const res = await apiFetch(`/api/chat/conversations/${targetUsername}/files/${fileId}`, {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-    });
-
-    if (!res.ok) {
-      showToast('Failed to delete file', 'error');
+    if (!targetUsername || deletingMessageIds.includes(messageId)) {
       return;
     }
 
-    markFileDeletedInState(targetUsername, message.id);
-    showToast('File deleted', 'success');
+    setDeletingMessageIds((current) => [...new Set([...current, messageId])]);
+
+    try {
+      const res = await apiFetch(
+        `/api/chat/conversations/${encodeURIComponent(targetUsername)}/files/${encodeURIComponent(
+          messageId,
+        )}`,
+        {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+        },
+      );
+
+      if (!res.ok) {
+        showToast('Failed to delete file', 'error');
+        return;
+      }
+
+      markMessageDeleted(message.id);
+      showToast('File deleted', 'success');
+    } catch {
+      showToast('Failed to delete file', 'error');
+    } finally {
+      setDeletingMessageIds((current) => current.filter((id) => id !== messageId));
+    }
   };
 
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -585,7 +600,6 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
           <div className="flex flex-col gap-4">
             {activeMessages.map((msg) => {
               const fileUrl = msg.metadata?.fileUrl;
-              const fileId = msg.id;
               const fileName = msg.metadata?.originalName;
               const inviteMetadata = isPongInviteMetadata(msg.metadata) ? msg.metadata : null;
               const notificationMetadata = isPongNotificationMetadata(msg.metadata)
@@ -604,6 +618,7 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
                 !inviteExpired;
               const isResponding =
                 inviteMetadata && respondingInviteIds.includes(inviteMetadata.inviteId);
+              const isDeletingFile = deletingMessageIds.includes(msg.id);
               return (
                 <div
                   key={msg.id}
@@ -699,20 +714,30 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
                           />
 
                           <div className="flex items-center gap-3 pl-1">
-                            <Download
-                              className="size-4 cursor-pointer text-slate-500 transition hover:text-slate-900"
-                              onClick={() => downloadFile(fileUrl, fileName)}
-                            />
+                            <button
+                              type="button"
+                              className="inline-flex items-center justify-center rounded-full border border-slate-200 p-1.5 text-slate-500 transition hover:border-slate-300 hover:text-slate-900"
+                              onClick={() => void downloadFile(fileUrl, fileName)}
+                              aria-label={`Download ${fileName || 'attachment'}`}
+                              title="Download file"
+                            >
+                              <Download className="size-4" />
+                            </button>
 
-                            {msg.isOwn &&
-                              msg.metadata &&
-                              'fileId' in msg.metadata &&
-                              msg.metadata.fileId && (
-                                <Trash2
-                                  className="size-4 cursor-pointer text-red-500 transition hover:text-red-700"
-                                  onClick={() => handleFileDelete({ fileId, message: msg })}
-                                />
-                              )}
+                            {msg.isOwn && (
+                              <button
+                                type="button"
+                                className="inline-flex items-center justify-center rounded-full border border-red-200 p-1.5 text-red-500 transition hover:border-red-300 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                onClick={() =>
+                                  void handleFileDelete({ messageId: msg.id, message: msg })
+                                }
+                                aria-label={`Delete ${fileName || 'attachment'}`}
+                                title="Delete file"
+                                disabled={isDeletingFile}
+                              >
+                                <Trash2 className="size-4" />
+                              </button>
+                            )}
                           </div>
                         </div>
                       </div>

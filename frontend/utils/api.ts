@@ -382,6 +382,7 @@ export async function fetchAuthedFileURL(src: string): Promise<string> {
       `[fetchFile] Failed to fetch file: ${response.status} ${response.statusText}`,
       'error',
     );
+    return '';
   }
 
   const blob = await response.blob();

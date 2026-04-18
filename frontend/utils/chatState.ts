@@ -69,6 +69,7 @@ interface ChatState {
   setMessagesForUser: (username: string, msgs: ChatMessage[]) => void;
   appendMessageForUser: (username: string, msg: ChatMessage) => void;
   clearMessagesForUser: (username: string) => void;
+  markMessageDeleted: (messageId: string, replacementText?: string) => void;
   incrementUnreadForUser: (username: string, by?: number) => void;
   setUnreadForUser: (username: string, count: number) => void;
   clearUnreadForUser: (username: string) => void;
@@ -112,6 +113,37 @@ const useChatStore = create<ChatState>()((set, get) => ({
       const next = { ...state.messagesByUser };
       delete next[username];
       return { messagesByUser: next };
+    }),
+  markMessageDeleted: (messageId, replacementText = 'Attachment deleted') =>
+    set((state) => {
+      let changed = false;
+      const nextMessagesByUser = Object.fromEntries(
+        Object.entries(state.messagesByUser).map(([username, messages]) => {
+          const nextMessages = messages.map((message) => {
+            if (message.id !== messageId) {
+              return message;
+            }
+
+            changed = true;
+
+            return {
+              ...message,
+              message: message.message?.trim() ? message.message : replacementText,
+              metadata: undefined,
+            };
+          });
+
+          return [username, nextMessages];
+        }),
+      );
+
+      if (!changed) {
+        return state;
+      }
+
+      return {
+        messagesByUser: nextMessagesByUser,
+      };
     }),
   incrementUnreadForUser: (username, by = 1) =>
     set((state) => ({
