@@ -19,6 +19,8 @@ import usePongStore from './utils/pongState';
 import useNotificationStore from './utils/notificationStore';
 import useFriendRequestStore from './utils/friendRequestStore';
 
+const ROOT_TABS = new Set(['home', 'notifications', 'messages', 'friends', 'saved']);
+
 export default function SocialApp() {
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const shouldFocusComposerRef = useRef(false);
@@ -31,6 +33,15 @@ export default function SocialApp() {
   const viewingUser = location.pathname.startsWith('/users/');
   const viewingGame = location.pathname === '/game';
   const showingNestedRoute = viewingUser || viewingGame;
+  const handleTabChange = useCallback(
+    (tab: string) => {
+      if (ROOT_TABS.has(tab) && location.pathname !== '/') {
+        navigate('/');
+      }
+      setActiveTab(tab);
+    },
+    [location.pathname, navigate],
+  );
 
   const handleNewPost = () => {
     shouldFocusComposerRef.current = true;
@@ -415,7 +426,7 @@ export default function SocialApp() {
 
       <LeftSidebar
         activeTab={activeTab}
-        onTabChange={setActiveTab}
+        onTabChange={handleTabChange}
         onNewPost={handleNewPost}
         mobileOpen={mobileSidebarOpen}
         onMobileClose={() => setMobileSidebarOpen(false)}
