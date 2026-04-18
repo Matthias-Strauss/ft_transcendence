@@ -285,3 +285,118 @@ _Note: if your VSCode is not rendering the above mermaid diagram, install follow
 
 ---
 
+## 🧩 Modules
+
+| Category                   | Module                                                                      | Type  | Points | Rationale + Implementation                                                                                                                                                                                                                                                           | Contributor(s)                        |
+| :------------------------- | :-------------------------------------------------------------------------- | :---- | :----- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------ |
+| Web                        | Framework for frontend + backend                                            | Major | 2      | Chosen to build the project as a maintainable full-stack web app rather than disconnected scripts or services. Implemented as a TypeScript-based stack with a React 19 + Vite frontend and an Express backend, all containerized together.                                           | mstrauss, jmuhlber, kruseva, vmamoten |
+| Web                        | Real-time features                                                          | Major | 2      | Chosen because chat, live notifications, and multiplayer Pong are central to the product experience. Implemented with Socket.IO for message delivery, typing indicators, unread state, notifications, and live Pong state updates.                                                   | mstrauss, jmuhlber, kruseva, vmamoten |
+| Web                        | User interaction                                                            | Major | 2      | Chosen because the project is built as a social platform and therefore depends on direct user-to-user interaction. Implemented through profiles, friendships, direct messages, user blocking, and feed interaction flows.                                                            | jmuhlber, kruseva, vmamoten, mstrauss |
+| Web                        | ORM                                                                         | Minor | 1      | Chosen to keep the growing relational data model manageable and type-safe across backend features. Implemented with Prisma for schema management, migrations, seeds, and typed database access across auth, social, chat, and game features.                                         | jmuhlber, vmamoten, mstrauss          |
+| Web                        | Custom design system                                                        | Minor | 1      | Chosen to keep the interface consistent across the social app, chat, profile flows, and game shell. Implemented as a reusable component system for navigation, forms, dialogs, toasts, feed cards, and shared layout patterns, documented in `docs/DESIGN_SYSTEM.md`.                | kruseva, vmamoten, jmuhlber, mstrauss |
+| User Management            | Standard user management and authentication                                 | Major | 2      | Chosen because identity, profiles, and controlled access are foundational to every other social and game feature. Implemented with JWT access tokens, refresh-cookie rotation, protected routes, profile editing, password changes, avatar management, and privacy-aware user flows. | jmuhlber, vmamoten, kruseva, mstrauss |
+| Gaming and User Experience | Complete web-based game                                                     | Major | 2      | Chosen to give the platform a clear interactive game core that integrates with the surrounding social features. Implemented as a browser-playable 3D Pong experience with matchmaking, score handling, reconnect support, and access from the app shell.                             | mstrauss, jmuhlber                    |
+| Gaming and User Experience | Remote players                                                              | Major | 2      | Chosen to make the game module meaningful as a real multiplayer experience rather than only a local demo. Implemented with synchronized server-driven Pong matches over WebSockets, including reconnect-aware online play between separate users.                                    | mstrauss, jmuhlber, vmamoten, kruseva |
+| Gaming and User Experience | Advanced 3D graphics                                                        | Major | 2      | Chosen to make the game visually distinct and to justify a more technically ambitious browser game experience. Implemented with Babylon.js using a 3D arena, camera work, lighting, effects, and performance-focused rendering adjustments.                                          | mstrauss, jmuhlber, kruseva           |
+| Gaming and User Experience | Advanced chat features                                                      | Minor | 1      | Chosen because chat is a central bridge between the social platform and the game layer. Implemented with unread state, typing indicators, file sharing, inline PDF preview, blocking, and Pong invite/result flows inside conversations.                                             | mstrauss, jmuhlber, kruseva, vmamoten |
+| Web                        | Complete notification system for all creation, update, and deletion actions | Minor | 1      | Chosen to make social actions visible across the app and keep users informed without constant manual refresh. Implemented as in-app notifications for post and friend-request activity with live delivery, unread counts, and a dedicated notifications view.                        | vmamoten, kruseva                     |
+| Web                        | Advanced search with filters, sorting, and pagination                       | Minor | 1      | Chosen to keep a growing social dataset navigable and usable once users, posts, and profile content increase. Implemented through user discovery/search and cursor-based pagination for feeds and profile-related content.                                                           | vmamoten, jmuhlber, kruseva           |
+| Web                        | File upload and management system                                           | Minor | 1      | Chosen because avatars, post media, and chat attachments are important to both the social and messaging parts of the project. Implemented with validation, protected file access, previews, and deletion flows for avatars, post images, and chat files.                             | jmuhlber, vmamoten, kruseva           |
+
+**Total claimed points: 20**
+
+---
+
+## ✨ Features List & Assignment
+
+| Feature                                      | Owner    | Collaborator(s)                       | Description                                                                                                                              |
+| :------------------------------------------- | :------- | :------------------------------------ | :--------------------------------------------------------------------------------------------------------------------------------------- |
+| **Authentication and Session Management**    | jmuhlber | jmuhlber, vmamoten, kruseva, mstrauss | User registration and login flow with JWT-based authentication, refresh-cookie sessions, protected routes, and logout/session handling.  |
+| **Profile Management and Avatar Uploads**    | vmamoten | jmuhlber, vmamoten, kruseva           | Users can edit profile information, change password and email, upload or reset avatars, and view profile-related counts and media.       |
+| **Friend System and User Discovery**         | vmamoten | jmuhlber, vmamoten, kruseva           | Users can search for other users, send and respond to friend requests, view friend lists, and see relationship status on profiles.       |
+| **Social Feed**                              | kruseva  | jmuhlber, kruseva, vmamoten           | The home feed supports post creation, visibility control, timeline rendering, and profile-specific post views.                           |
+| **Comments, Likes, Shares, and Bookmarks**   | kruseva  | jmuhlber, kruseva, vmamoten           | Posts support comments, comment likes, post likes, shares, bookmarks, and saved-post views with updated counters.                        |
+| **Notifications**                            | vmamoten | vmamoten, kruseva                     | The application delivers in-app notifications for social activity such as likes, comments, saves, and friend-request-related actions.    |
+| **Real-Time Chat**                           | mstrauss | mstrauss, jmuhlber, kruseva, vmamoten | Users can exchange direct messages with live delivery, unread tracking, conversation history, typing indicators, and read-state updates. |
+| **Advanced Chat Actions**                    | mstrauss | mstrauss, jmuhlber, kruseva           | Chat supports user blocking, profile access from conversations, file attachments, inline PDF preview, and message/file deletion flows.   |
+| **Pong Multiplayer Game**                    | mstrauss | mstrauss, jmuhlber                    | The project includes a browser-playable Pong game with matchmaking, live synchronized gameplay, score handling, and reconnect support.   |
+| **Pong Game Invites Through Chat**           | mstrauss | mstrauss, kruseva                     | Users can invite other users to Pong matches directly from chat and receive in-chat invite status and match-result messages.             |
+| **Protected File Handling**                  | jmuhlber | jmuhlber, vmamoten, kruseva           | Avatars, post images, and chat files are validated, stored on the backend, and served through authenticated access rules.                |
+| **Containerized Deployment and Proxy Setup** | jmuhlber | jmuhlber, vmamoten, mstrauss          | The application stack runs through Docker Compose with separate frontend, backend, database, and Nginx proxy services.                   |
+
+---
+
+## 👷 Individual Contributions
+
+### mstrauss
+
+- **Modules:** Real-time features, complete web-based game, remote players, advanced 3D graphics, advanced chat features.
+- **Contribution:** Implemented the Pong game foundation and 3D rendering setup, backend game simulation and matchmaking flow, reconnect handling, in-chat Pong invites, and chat-side game result integration.
+- **Challenges:** Keeping live Pong gameplay responsive while sharing the same real-time stack with chat required repeated performance tuning, reconnection logic work, and careful synchronization between game and messaging state.
+
+### kruseva
+
+- **Modules:** Framework for frontend + backend, user interaction, custom design system, advanced chat features, file upload and management system.
+- **Contribution:** Built and refined major parts of the frontend UI, including chat UX, feed interactions, saved-post views, responsive layout work, reusable components, and several user-facing file and interaction flows.
+- **Challenges:** Keeping the interface consistent while the app structure evolved required repeated refactors of component layout, styling migration, and adapting the chat and feed UI to changing backend behavior.
+
+### jmuhlber
+
+- **Modules:** Standard user management and authentication, ORM, file upload and management system, framework for frontend + backend.
+- **Contribution:** Implemented core backend architecture for authentication, refresh-token session handling, Prisma-backed data access, upload handling, protected file access, pagination support, and several API and Docker/network fixes.
+- **Challenges:** Coordinating secure auth, protected media access, and schema-driven backend changes across multiple features required careful handling of cookies, access rights, migrations, and runtime configuration.
+
+### vmamoten
+
+- **Modules:** User interaction, complete notification system, advanced search with filters/sorting/pagination, profile and friends flows.
+- **Contribution:** Implemented notifications, unread and badge state, friend-request workflows, user discovery/search, profile settings flows, pagination improvements, and protected frontend file handling integration.
+- **Challenges:** Synchronizing frontend state across friends, notifications, chat, and profile screens required resolving race conditions, keeping stores in sync with live events, and making UI updates react correctly to async backend responses.
+
+---
+
+## 📚 Resources & AI Usage
+
+### 🔖 Documentation
+
+- **Frontend**
+  - [React Documentation](https://react.dev/)
+  - [Vite Documentation](https://vite.dev/)
+  - [React Router Documentation](https://reactrouter.com/)
+  - [Tailwind CSS Documentation](https://tailwindcss.com/docs)
+  - [Zustand Documentation](https://zustand.docs.pmnd.rs/)
+  - [Babylon.js Documentation](https://doc.babylonjs.com/)
+
+- **Backend**
+  - [Express Documentation](https://expressjs.com/)
+  - [Socket.IO Documentation](https://socket.io/docs/v4/)
+  - [Zod Documentation](https://zod.dev/)
+  - [JOSE Documentation](https://github.com/panva/jose)
+  - [Argon2 Documentation](https://github.com/ranisalt/node-argon2)
+  - [Multer Documentation](https://github.com/expressjs/multer)
+
+- **Database and Infrastructure**
+  - [PostgreSQL Documentation](https://www.postgresql.org/docs/)
+  - [Prisma Documentation](https://www.prisma.io/docs)
+  - [Docker Documentation](https://docs.docker.com/)
+  - [Docker Compose Documentation](https://docs.docker.com/compose/)
+  - [Nginx Documentation](https://nginx.org/en/docs/)
+  - [Adminer Documentation](https://www.adminer.org/)
+
+### 🤖 AI Usage
+
+_As per the subject requirements, we transparently declare our use of AI tools:_
+
+- **Tools Used:** Gemini
+- **Use Cases:**
+  - _Project Planning:_
+    - Extracting key information from the subject.pdf and making it digestible.
+    - Ranking Complexity of Topics.
+    - Checking for module dependency issues.
+    - Quick formatting.
+  - _Debugging:_
+    - Used to explain cryptic error messages in the backend.
+  - _Learning new Tech:_ Used "Guided learning" mode to develop long lastiung understanding about the technologies used that are new to us.
+  - _Tests:_ Tests were generated with AI assistance in order to support rapid development.
+  - Pre-Commit Review: run local diffs through an AI instructed to critique code for quality, readability, naming convention, security, redundancy, edge case detection, dependencies.
+  - Assisting in writing this README.md :)
+  - Checking for subject compliance
