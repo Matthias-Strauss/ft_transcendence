@@ -10,40 +10,146 @@ export const socket = io(socketBaseUrl, {
   withCredentials: true,
   transports: ['websocket'],
   autoConnect: false,
+  reconnection: false,
 });
 
-let currentSocketToken: string | null = null;
+const RECONNECT_DELAY_MS = 3000;
 
-export function connectSocketWithToken(token: string): void {
-  const tokenChanged = currentSocketToken !== token;
-  currentSocketToken = token;
-  socket.auth = { token };
+let shouldMaintainSocketConnection = false;
+let reconnectsBlocked = false;
+let reconnectTimer: number | null = null;
+let beforeSocketConnect: (() => Promise<boolean>) | null = null;
+let connectingPromise: Promise<boolean> | null = null;
+let resettingSocketConnection = false;
 
-  if (socket.connected) {
-    if (tokenChanged) {
-      socket.disconnect();
-      socket.connect();
-    }
+function clearReconnectTimer() {
+  if (reconnectTimer !== null) {
+    window.clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+  }
+}
+
+function scheduleReconnect(delayMs = RECONNECT_DELAY_MS) {
+  if (!shouldMaintainSocketConnection || reconnectsBlocked || reconnectTimer !== null) {
     return;
   }
 
-  socket.connect();
+  reconnectTimer = window.setTimeout(() => {
+    reconnectTimer = null;
+    void connectSocket({ forceReconnect: true });
+  }, delayMs);
 }
 
-export function connectSocketFromStorage(): boolean {
-  const token = localStorage.getItem('accessToken');
-
-  if (!token) {
-    disconnectSocket();
-    return false;
+async function runBeforeConnectHook(): Promise<boolean> {
+  if (!beforeSocketConnect) {
+    return true;
   }
 
-  connectSocketWithToken(token);
-  return true;
+  try {
+    return await beforeSocketConnect();
+  } catch {
+    return false;
+  }
+}
+
+export function setBeforeSocketConnectHook(hook: (() => Promise<boolean>) | null): void {
+  beforeSocketConnect = hook;
+}
+
+export function checkSocketConnectionIsUsd(): boolean {
+  return shouldMaintainSocketConnection;
+}
+
+export function blockSocketReconnects(): void {
+  reconnectsBlocked = true;
+  clearReconnectTimer();
+}
+
+export function unblockSocketReconnects(): void {
+  reconnectsBlocked = false;
+
+  if (shouldMaintainSocketConnection && !socket.connected) {
+    scheduleReconnect(0);
+  }
+}
+
+export function connectSocket(options: { forceReconnect?: boolean } = {}): Promise<boolean> {
+  shouldMaintainSocketConnection = true;
+
+  if (reconnectsBlocked) {
+    return Promise.resolve(false);
+  }
+
+  if (socket.connected) {
+    if (options.forceReconnect) {
+      socket.disconnect();
+    } else {
+      return Promise.resolve(true);
+    }
+  }
+
+  if (connectingPromise) {
+    return connectingPromise;
+  }
+
+  connectingPromise = (async () => {
+    const sessionReady = await runBeforeConnectHook();
+
+    if (!sessionReady || reconnectsBlocked || !shouldMaintainSocketConnection) {
+      return false;
+    }
+
+    clearReconnectTimer();
+
+    if (socket.active && !socket.connected) {
+      resettingSocketConnection = true;
+      socket.disconnect();
+      resettingSocketConnection = false;
+    }
+
+    socket.connect();
+    return true;
+  })();
+
+  connectingPromise.finally(() => {
+    connectingPromise = null;
+  });
+
+  return connectingPromise;
 }
 
 export function disconnectSocket(): void {
-  currentSocketToken = null;
-  socket.auth = {};
+  shouldMaintainSocketConnection = false;
+  clearReconnectTimer();
   socket.disconnect();
 }
+
+socket.on('connect', () => {
+  clearReconnectTimer();
+});
+
+socket.on('disconnect', () => {
+  if (resettingSocketConnection || !shouldMaintainSocketConnection || reconnectsBlocked) {
+    return;
+  }
+
+  scheduleReconnect();
+});
+
+socket.on('connect_error', () => {
+  if (!shouldMaintainSocketConnection || reconnectsBlocked || socket.connected) {
+    return;
+  }
+
+  scheduleReconnect();
+});
+
+function handleBrowserOnline() {
+  if (!shouldMaintainSocketConnection || reconnectsBlocked || socket.connected) {
+    return;
+  }
+
+  scheduleReconnect(0);
+}
+
+window.addEventListener('online', handleBrowserOnline);

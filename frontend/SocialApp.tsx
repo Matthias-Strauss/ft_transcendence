@@ -7,14 +7,12 @@ import { LeftSidebar } from './components/LeftSidebar';
 import { HomeFeed } from './pages/HomeFeed';
 import { FriendsPage } from './pages/FriendsPage';
 import { ProfilePage } from './pages/ProfilePage';
-import { setLogoutHandler, setAccessTokenListener, apiFetch } from './utils/api';
+import { setLogoutHandler, apiFetch } from './utils/api';
 import useChatStore from './utils/chatState';
 import useUserStore from './utils/userStore';
 import { socket } from './socket';
 import { Bookmarked } from './pages/Bookmarked';
 import Notifications from './pages/Notifications';
-import showToast from './utils/toast';
-import { clearClientSession } from './utils/api';
 import usePongStore from './utils/pongState';
 import useNotificationStore from './utils/notificationStore';
 import useFriendRequestStore from './utils/friendRequestStore';
@@ -57,46 +55,6 @@ export default function SocialApp() {
 
   useEffect(() => {
     setLogoutHandler(() => navigate('/login', { replace: true }));
-
-    let timer: ReturnType<typeof setTimeout> | null = null;
-
-    function clearTimer() {
-      if (timer) {
-        clearTimeout(timer);
-        timer = null;
-      }
-    }
-
-    function scheduleForToken(token: string | null) {
-      clearTimer();
-      if (!token) return;
-      try {
-        const parts = token.split('.');
-        if (parts.length < 2) return;
-        const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
-        const exp = payload.exp;
-        if (!exp) return;
-        const expMs = exp * 1000;
-        const now = Date.now();
-        const msLeft = expMs - now;
-        if (msLeft <= 0) {
-          showToast('[tokenWatcher] token already expired — logging out', 'info');
-          clearClientSession();
-          navigate('/login', { replace: true });
-          return;
-        }
-        showToast(`[tokenWatcher] scheduling logout in ${msLeft}ms`, 'info');
-        timer = setTimeout(() => {
-          showToast('[tokenWatcher] token expired — logging out', 'info');
-          clearClientSession();
-          navigate('/login', { replace: true });
-        }, msLeft + 500);
-      } catch {}
-    }
-
-    scheduleForToken(localStorage.getItem('accessToken'));
-
-    setAccessTokenListener((t) => scheduleForToken(t));
   }, [navigate]);
 
   const chatPanelOpen = useChatStore((state) => state.panelOpen);
@@ -189,7 +147,7 @@ export default function SocialApp() {
         } else {
           state.incrementUnreadForUser(other, 1);
         }
-      } catch (err) {}
+      } catch {}
     };
 
     socket.on('chat:message', onChatMessage);

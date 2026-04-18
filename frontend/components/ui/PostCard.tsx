@@ -26,7 +26,6 @@ export function PostCard({ post, onDeleted }: PostCardProps) {
   if (currentUser?.id === post.authorId) {
     items.push({ id: 2, text: 'Delete', icon: <Trash /> });
   }
-  const token = localStorage.getItem('accessToken');
   const [isOpen, setIsOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -111,7 +110,7 @@ export function PostCard({ post, onDeleted }: PostCardProps) {
   }
 
   const handlePostLike = async () => {
-    if (isLikePending || !token) {
+    if (isLikePending) {
       return;
     }
 

@@ -9,26 +9,88 @@ import PongGame from './pages/PongGame';
 import NotFound from './pages/NotFound';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfService from './pages/TermsOfService';
-import { connectSocketFromStorage, disconnectSocket, socket } from './socket';
+import { connectSocket, disconnectSocket, setBeforeSocketConnectHook, socket } from './socket';
 import { Toast } from './components/ui/Toast';
-import { clearClientSession } from './utils/api';
+import {
+  clearClientSession,
+  ensureAuthenticatedSession,
+  refreshSession,
+  restoreSession,
+} from './utils/api';
+import useAuthStore from './utils/authStore';
+
+const SESSION_REFRESH_INTERVAL_MS = 14 * 60 * 1000; // 14 minute
 
 export default function App() {
+  const authStatus = useAuthStore((state) => state.status);
+
   useEffect(() => {
     const onConnectError = (err: Error) => {
-      if (err.message === 'Unauthorized' || err.message === 'No token provided') {
-        clearClientSession();
+      if (err.message !== 'Unauthorized' && err.message !== 'No token provided') {
+        return;
       }
+
+      void refreshSession({ force: true }).then((refreshed) => {
+        if (refreshed) {
+          void connectSocket({ forceReconnect: true });
+          return;
+        }
+
+        clearClientSession();
+      });
     };
 
     socket.on('connect_error', onConnectError);
-    connectSocketFromStorage();
+    setBeforeSocketConnectHook(() => ensureAuthenticatedSession({ logoutOnFailure: true }));
+    void restoreSession();
 
     return () => {
       socket.off('connect_error', onConnectError);
+      setBeforeSocketConnectHook(null);
       disconnectSocket();
     };
   }, []);
+
+  useEffect(() => {
+    if (authStatus === 'authenticated') {
+      const recoverRealtimeConnection = () => {
+        void refreshSession({ force: true, logoutOnFailure: true }).then((refreshed) => {
+          if (refreshed) {
+            void connectSocket();
+          }
+        });
+      };
+
+      const refreshTimer = window.setInterval(() => {
+        recoverRealtimeConnection();
+      }, SESSION_REFRESH_INTERVAL_MS);
+
+      const refreshVisibleSession = () => {
+        if (document.visibilityState === 'visible') {
+          recoverRealtimeConnection();
+        }
+      };
+
+      const refreshOnFocus = () => {
+        recoverRealtimeConnection();
+      };
+
+      document.addEventListener('visibilitychange', refreshVisibleSession);
+      window.addEventListener('focus', refreshOnFocus);
+      window.addEventListener('online', refreshOnFocus);
+
+      return () => {
+        window.clearInterval(refreshTimer);
+        document.removeEventListener('visibilitychange', refreshVisibleSession);
+        window.removeEventListener('focus', refreshOnFocus);
+        window.removeEventListener('online', refreshOnFocus);
+      };
+    }
+
+    if (authStatus === 'anonymous') {
+      disconnectSocket();
+    }
+  }, [authStatus]);
 
   return (
     <>

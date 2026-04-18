@@ -37,14 +37,7 @@ export function ProfilePage() {
   }, [me?.avatarUrl, me?.username]);
 
   useEffect(() => {
-    const token = localStorage.getItem('accessToken');
-
     async function load() {
-      if (!token) {
-        setLoading(false);
-        return;
-      }
-
       try {
         const meRes = await apiFetch('/api/me');
         if (meRes.ok) {
@@ -58,26 +51,17 @@ export function ProfilePage() {
           const payload = await postRes.json();
           setPosts(payload.items || []);
         }
-      } catch (err) {
+      } catch {
         showToast('Failed to load profile. Please try again.', 'error');
       } finally {
         setLoading(false);
       }
     }
-    load();
+    void load();
   }, []);
 
   if (loading) {
     return <div className="p-8 text-[#8b98a5]">Loading profile...</div>;
-  }
-
-  const token = localStorage.getItem('accessToken');
-  if (!token) {
-    return (
-      <div className="p-8 text-[#8b98a5]">
-        Please log in to view your profile. Open the Login page to continue.
-      </div>
-    );
   }
 
   return (
@@ -114,7 +98,7 @@ export function ProfilePage() {
                 onClick={async () => {
                   try {
                     await logout();
-                  } catch (e) {
+                  } catch {
                     showToast('Logout failed. Please try again.', 'error');
                   } finally {
                     showToast('Logged out successfully!', 'success');

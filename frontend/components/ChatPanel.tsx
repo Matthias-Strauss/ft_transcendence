@@ -628,7 +628,9 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
                           </span>
                         </div>
                         <p className="m-0 text-[12px] leading-[1.5]">
-                          {msg.isOwn ? 'You challenged this player to a match.' : `${msg.user} challenged you to a match.`}
+                          {msg.isOwn
+                            ? 'You challenged this player to a match.'
+                            : `${msg.user} challenged you to a match.`}
                         </p>
                         <p className="m-0 text-[12px] leading-[1.5] opacity-80">
                           {formatInviteExpiry(inviteMetadata.expiresAt)}
@@ -638,7 +640,9 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
                             <button
                               type="button"
                               className="rounded-full bg-emerald-600 px-3 py-1.5 text-[11px] font-bold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-slate-400"
-                              onClick={() => handleInviteResponse(inviteMetadata.inviteId, 'accept')}
+                              onClick={() =>
+                                handleInviteResponse(inviteMetadata.inviteId, 'accept')
+                              }
                               disabled={Boolean(isResponding)}
                             >
                               Accept

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { AuthShowcase } from './auth/AuthShowcase';
-import { apiFetch } from '../utils/api';
+import { publicApiFetch } from '../utils/api';
 import { validatePassword } from '../utils/password';
 import showToast from '../utils/toast';
 
@@ -18,6 +18,11 @@ const Registration: React.FC = () => {
 
   function validate() {
     if (!username.trim()) return 'Choose a username';
+    if (!displayname.trim()) return 'Choose a display name';
+    if (displayname.trim().length > 30) return 'Display name must be 30 characters or fewer';
+    if (!/^[a-zA-Z0-9._-]+( [a-zA-Z0-9._-]+)*$/.test(displayname.trim())) {
+      return 'Display name may only use letters, numbers, spaces, dots, underscores, and hyphens';
+    }
     if (!email.trim()) return 'Enter a valid email';
     const pwdErr = validatePassword(password);
     if (pwdErr) return pwdErr;
@@ -42,14 +47,14 @@ const Registration: React.FC = () => {
 
     setSubmitting(true);
     try {
-      const res = await apiFetch('/api/auth/register', {
+      const res = await publicApiFetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           username,
           email,
           password,
-          displayname,
+          displayname: displayname.trim(),
           acceptedPrivacy,
           acceptedTerms,
         }),
@@ -61,7 +66,10 @@ const Registration: React.FC = () => {
       }
 
       const payload = await res.json().catch(() => null);
-      setError(payload?.message || 'Registration failed');
+      const detailMessage = Array.isArray(payload?.details)
+        ? payload.details.find((detail: { message?: string } | null) => detail?.message)?.message
+        : null;
+      setError(detailMessage || payload?.message || 'Registration failed');
     } catch {
       showToast('Registration failed', 'error');
       setError('Network error — try again');

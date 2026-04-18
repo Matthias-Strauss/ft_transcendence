@@ -45,11 +45,6 @@ const CreatePostForm = forwardRef<HTMLTextAreaElement, CreatePostFormProps>(
 
     const handleSubmit = async () => {
       try {
-        const token = localStorage.getItem('accessToken');
-        if (!token) {
-          throw new Error('Access token missing');
-        }
-
         const formData = new FormData();
         formData.append('content', content);
         formData.append('visibility', visibility);
@@ -73,7 +68,7 @@ const CreatePostForm = forwardRef<HTMLTextAreaElement, CreatePostFormProps>(
         setGameTag('');
         onPostCreated?.();
         showToast('Post created successfully!', 'success');
-      } catch (error) {
+      } catch {
         showToast('Error creating post. Please try again.', 'error');
       }
     };
