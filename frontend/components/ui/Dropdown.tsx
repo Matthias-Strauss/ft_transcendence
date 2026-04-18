@@ -33,11 +33,6 @@ async function handleAction({
     bookmarkedByMe?: boolean;
   };
 }> {
-  const token = localStorage.getItem('accessToken');
-  if (!token) {
-    return { ok: false };
-  }
-
   switch (action) {
     case 'Save': {
       const response = await apiFetch(`/api/posts/${postId}/bookmark`, {
