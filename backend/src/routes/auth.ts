@@ -103,7 +103,9 @@ authRouter.post(
   asyncHandler(async (req, res) => {
     const refreshToken: string | undefined = req.cookies?.[REFRESH_COOKIE_NAME];
     if (!refreshToken) {
-      throw AuthErrors.missingRefreshToken();
+      clearSessionCookie(req, res);
+      clearRefreshCookie(req, res);
+      return res.json({ ok: false });
     }
 
     const tokenHash = hashRefreshToken(refreshToken);
@@ -114,7 +116,7 @@ authRouter.post(
     if (!stored || stored.revokedAt) {
       clearSessionCookie(req, res);
       clearRefreshCookie(req, res);
-      throw AuthErrors.invalidRefreshToken();
+      return res.json({ ok: false });
     }
 
     if (stored.expiresAt.getTime() < Date.now()) {
@@ -124,7 +126,7 @@ authRouter.post(
       });
       clearSessionCookie(req, res);
       clearRefreshCookie(req, res);
-      throw AuthErrors.refreshTokenExpired();
+      return res.json({ ok: false });
     }
 
     const newRefresh = generateRefreshToken();
@@ -151,7 +153,7 @@ authRouter.post(
 
     setSessionCookie(req, res, accessToken);
 
-    res.json({ ok: true });
+    return res.json({ ok: true });
   }),
 );
 

@@ -17,6 +17,10 @@ type RefreshSessionOptions = {
   logoutOnFailure?: boolean;
 };
 
+type RefreshSessionResponse = {
+  ok?: boolean;
+};
+
 const SESSION_TTL_MS = 15 * 60 * 1000;
 const SESSION_REFRESH_LEEWAY_MS = 2 * 60 * 1000;
 
@@ -35,6 +39,23 @@ function fetchWithSession(input: RequestInfo | URL, init?: RequestInit): Promise
     ...init,
     credentials: 'include',
   });
+}
+
+async function readRefreshSessionResult(response: Response): Promise<boolean> {
+  if (!response.ok) {
+    return false;
+  }
+
+  try {
+    const payload = (await response.json()) as RefreshSessionResponse;
+    return payload.ok !== false;
+  } catch {
+    return true;
+  }
+}
+
+export function publicApiFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  return fetchWithSession(input, init);
 }
 
 function sythUnauthorizedResponse(): Response {
@@ -132,13 +153,16 @@ export async function refreshSession(options: RefreshSessionOptions = {}): Promi
   blockSocketReconnects();
 
   refreshing = (async () => {
+    let reconnectSocketAfterRefresh = false;
+
     try {
       const response = await fetchWithSession('/api/auth/refresh', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       });
+      const refreshed = await readRefreshSessionResult(response);
 
-      if (!response.ok) {
+      if (!refreshed) {
         if (sessionVersion === startedAtVersion) {
           clearClientSession();
         }
@@ -156,10 +180,10 @@ export async function refreshSession(options: RefreshSessionOptions = {}): Promi
 
       sessionVersion += 1;
       markAuthenticated();
-
-      if (shouldReconnectSocket) {
-        await connectSocket();
-      }
+      reconnectSocketAfterRefresh = shouldReconnectSocket;
+      // if (shouldReconnectSocket) {
+      //   await connectSocket();
+      // }
 
       return true;
     } catch {
@@ -167,6 +191,10 @@ export async function refreshSession(options: RefreshSessionOptions = {}): Promi
     } finally {
       useAuthStore.getState().setRefreshing(false);
       unblockSocketReconnects();
+      
+      if (reconnectSocketAfterRefresh && !loggingOut && checkSocketConnectionIsUsd()) {
+        void connectSocket({ forceReconnect: true });
+      }
     }
   })();
 

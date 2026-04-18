@@ -20,6 +20,7 @@ let reconnectsBlocked = false;
 let reconnectTimer: number | null = null;
 let beforeSocketConnect: (() => Promise<boolean>) | null = null;
 let connectingPromise: Promise<boolean> | null = null;
+let resettingSocketConnection = false;
 
 function clearReconnectTimer() {
   if (reconnectTimer !== null) {
@@ -35,7 +36,7 @@ function scheduleReconnect(delayMs = RECONNECT_DELAY_MS) {
 
   reconnectTimer = window.setTimeout(() => {
     reconnectTimer = null;
-    void connectSocket();
+    void connectSocket({ forceReconnect: true });
   }, delayMs);
 }
 
@@ -67,7 +68,7 @@ export function blockSocketReconnects(): void {
 export function unblockSocketReconnects(): void {
   reconnectsBlocked = false;
 
-  if (shouldMaintainSocketConnection && !socket.connected && !socket.active) {
+  if (shouldMaintainSocketConnection && !socket.connected) {
     scheduleReconnect(0);
   }
 }
@@ -87,10 +88,6 @@ export function connectSocket(options: { forceReconnect?: boolean } = {}): Promi
     }
   }
 
-  if (socket.active) {
-    return Promise.resolve(true);
-  }
-
   if (connectingPromise) {
     return connectingPromise;
   }
@@ -103,6 +100,13 @@ export function connectSocket(options: { forceReconnect?: boolean } = {}): Promi
     }
 
     clearReconnectTimer();
+
+    if (socket.active && !socket.connected) {
+      resettingSocketConnection = true;
+      socket.disconnect();
+      resettingSocketConnection = false;
+    }
+
     socket.connect();
     return true;
   })();
@@ -125,7 +129,7 @@ socket.on('connect', () => {
 });
 
 socket.on('disconnect', () => {
-  if (!shouldMaintainSocketConnection || reconnectsBlocked) {
+  if (resettingSocketConnection || !shouldMaintainSocketConnection || reconnectsBlocked) {
     return;
   }
 
@@ -139,3 +143,13 @@ socket.on('connect_error', () => {
 
   scheduleReconnect();
 });
+
+function handleBrowserOnline() {
+  if (!shouldMaintainSocketConnection || reconnectsBlocked || socket.connected) {
+    return;
+  }
+
+  scheduleReconnect(0);
+}
+
+window.addEventListener('online', handleBrowserOnline);

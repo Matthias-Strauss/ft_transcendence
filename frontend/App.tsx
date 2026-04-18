@@ -19,7 +19,7 @@ import {
 } from './utils/api';
 import useAuthStore from './utils/authStore';
 
-const SESSION_REFRESH_INTERVAL_MS = 1 * 60 * 1000; // 1 minute
+const SESSION_REFRESH_INTERVAL_MS = 14 * 60 * 1000; // 14 minute
 
 export default function App() {
   const authStatus = useAuthStore((state) => state.status);
@@ -53,20 +53,26 @@ export default function App() {
 
   useEffect(() => {
     if (authStatus === 'authenticated') {
-      void connectSocket();
+      const recoverRealtimeConnection = () => {
+        void refreshSession({ force: true, logoutOnFailure: true }).then((refreshed) => {
+          if (refreshed) {
+            void connectSocket();
+          }
+        });
+      };
 
       const refreshTimer = window.setInterval(() => {
-        void refreshSession({ force: true, logoutOnFailure: true });
+        recoverRealtimeConnection();
       }, SESSION_REFRESH_INTERVAL_MS);
 
       const refreshVisibleSession = () => {
         if (document.visibilityState === 'visible') {
-          void refreshSession({ force: true, logoutOnFailure: true });
+          recoverRealtimeConnection();
         }
       };
 
       const refreshOnFocus = () => {
-        void refreshSession({ force: true, logoutOnFailure: true });
+        recoverRealtimeConnection();
       };
 
       document.addEventListener('visibilitychange', refreshVisibleSession);
