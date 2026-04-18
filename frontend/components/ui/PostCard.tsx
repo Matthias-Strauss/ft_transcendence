@@ -26,7 +26,6 @@ export function PostCard({ post, onDeleted }: PostCardProps) {
   if (currentUser?.id === post.authorId) {
     items.push({ id: 2, text: 'Delete', icon: <Trash /> });
   }
-  const token = localStorage.getItem('accessToken');
   const [isOpen, setIsOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -111,7 +110,7 @@ export function PostCard({ post, onDeleted }: PostCardProps) {
   }
 
   const handlePostLike = async () => {
-    if (isLikePending || !token) {
+    if (isLikePending) {
       return;
     }
 
@@ -204,8 +203,12 @@ export function PostCard({ post, onDeleted }: PostCardProps) {
             {post.content}
           </p>
           {post.imageUrl && (
-            <div className="mb-3 rounded-2xl overflow-hidden border border-[#39444d]">
-              <AuthedImage src={post.imageUrl} alt="Post image" className="w-full h-auto" />
+            <div className="mb-3 rounded-2xl overflow-hidden border border-[#39444d] w-full max-w-2xl">
+              <AuthedImage
+                src={post.imageUrl}
+                alt="Post image"
+                className="w-full h-auto max-h-[420px] object-contain"
+              />
             </div>
           )}
 
@@ -254,8 +257,15 @@ export function PostCard({ post, onDeleted }: PostCardProps) {
               <span className="text-[13px] text-[#8b98a5]">{bookmarkCount}</span>
             </div>
           </div>
-          {commentOpen && <CommentSection post={post} onCommentCreated={handleCommentCreated} />}
+          {commentOpen && !post.imageUrl ? (
+            <CommentSection post={post} onCommentCreated={handleCommentCreated} />
+          ) : null}
         </div>
+        {commentOpen && post.imageUrl ? (
+          <aside className="self-start mt-3 md:mt-6">
+            <CommentSection post={post} onCommentCreated={handleCommentCreated} />
+          </aside>
+        ) : null}
       </div>
     </div>
   );

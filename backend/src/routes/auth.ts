@@ -9,7 +9,14 @@ import {
   hashRefreshToken,
   refreshExpiresAt,
 } from '../auth/jwt.js';
-import { REFRESH_COOKIE_NAME, setRefreshCookie, clearRefreshCookie } from '../auth/refresh.js';
+import {
+  REFRESH_COOKIE_NAME,
+  setSessionCookie,
+  clearSessionCookie,
+  setRefreshCookie,
+  clearRefreshCookie,
+} from '../auth/refresh.js';
+import { requireAuth, type AuthedRequest } from '../auth/middleware.js';
 import { asyncHandler } from '../errors/asyncHandler.js';
 import { AuthErrors, RequestErrors } from '../errors/catalog.js';
 import { validatePassword } from '../utils/passwordValidator.js';
@@ -60,9 +67,12 @@ authRouter.post(
       },
     });
 
+    setSessionCookie(req, res, accessToken);
     setRefreshCookie(req, res, refreshToken);
 
-    res.json({ accessToken });
+    console.log(`User logged in: ${userExists.username}`);
+
+    res.json({ ok: true });
   }),
 );
 
@@ -80,6 +90,7 @@ authRouter.post(
       });
     }
 
+    clearSessionCookie(req, res);
     clearRefreshCookie(req, res);
 
     return res.json({ ok: true });
@@ -92,7 +103,9 @@ authRouter.post(
   asyncHandler(async (req, res) => {
     const refreshToken: string | undefined = req.cookies?.[REFRESH_COOKIE_NAME];
     if (!refreshToken) {
-      throw AuthErrors.missingRefreshToken();
+      clearSessionCookie(req, res);
+      clearRefreshCookie(req, res);
+      return res.json({ ok: false });
     }
 
     const tokenHash = hashRefreshToken(refreshToken);
@@ -101,8 +114,9 @@ authRouter.post(
       include: { user: true },
     });
     if (!stored || stored.revokedAt) {
+      clearSessionCookie(req, res);
       clearRefreshCookie(req, res);
-      throw AuthErrors.invalidRefreshToken();
+      return res.json({ ok: false });
     }
 
     if (stored.expiresAt.getTime() < Date.now()) {
@@ -110,8 +124,9 @@ authRouter.post(
         where: { id: stored.id },
         data: { revokedAt: new Date() },
       });
+      clearSessionCookie(req, res);
       clearRefreshCookie(req, res);
-      throw AuthErrors.refreshTokenExpired();
+      return res.json({ ok: false });
     }
 
     const newRefresh = generateRefreshToken();
@@ -136,7 +151,27 @@ authRouter.post(
       username: stored.user.username,
     });
 
-    res.json({ accessToken });
+    setSessionCookie(req, res, accessToken);
+
+    return res.json({ ok: true });
+  }),
+);
+
+authRouter.get(
+  '/auth/session',
+  requireAuth,
+  asyncHandler(async (req: AuthedRequest, res) => {
+    if (!req.userId || !req.username) {
+      throw AuthErrors.invalidToken();
+    }
+
+    return res.json({
+      ok: true,
+      user: {
+        id: req.userId,
+        username: req.username,
+      },
+    });
   }),
 );
 
