@@ -21,6 +21,37 @@ import useFriendRequestStore from './utils/friendRequestStore';
 
 const ROOT_TABS = new Set(['home', 'notifications', 'messages', 'friends', 'saved']);
 
+type UserRef = {
+  username?: string | null;
+  displayname?: string | null;
+};
+
+type NotificationPayload = {
+  recipient?: UserRef | null;
+};
+
+type FriendRequestEventPayload = {
+  recipient?: UserRef | null;
+  accepter?: UserRef | null;
+  decliner?: UserRef | null;
+  withdrawer?: UserRef | null;
+};
+
+type PongScore = {
+  p1: number;
+  p2: number;
+};
+
+type PongMatchPayload = {
+  matchId?: string;
+  youAre?: string;
+  opponent?: string;
+};
+
+type PongResumedPayload = PongMatchPayload & {
+  score?: PongScore;
+};
+
 export default function SocialApp() {
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const shouldFocusComposerRef = useRef(false);
@@ -200,7 +231,7 @@ export default function SocialApp() {
         } else {
           state.incrementUnreadForUser(other, 1);
         }
-      } catch (err) {}
+      } catch {}
     };
 
     socket.on('chat:message', onChatMessage);
@@ -210,7 +241,7 @@ export default function SocialApp() {
   }, []);
 
   useEffect(() => {
-    const onNotification = (payload: any) => {
+    const onNotification = (payload: NotificationPayload) => {
       try {
         const me = useUserStore.getState().user?.username ?? null;
         if (!me) return;
@@ -230,7 +261,7 @@ export default function SocialApp() {
   }, [activeTab]);
 
   useEffect(() => {
-    const onFriendRequest = (payload: any) => {
+    const onFriendRequest = (payload: FriendRequestEventPayload) => {
       try {
         const me = useUserStore.getState().user?.username ?? null;
         const recipientUsername = payload?.recipient?.username ?? null;
@@ -250,7 +281,7 @@ export default function SocialApp() {
   }, []);
 
   useEffect(() => {
-    const onFriendAccepted = (payload: any) => {
+    const onFriendAccepted = (payload: FriendRequestEventPayload) => {
       try {
         const me = useUserStore.getState().user?.username ?? null;
         const recipientUsername = payload?.recipient?.username ?? null;
@@ -263,7 +294,7 @@ export default function SocialApp() {
       } catch {}
     };
 
-    const onFriendDeclined = (payload: any) => {
+    const onFriendDeclined = (payload: FriendRequestEventPayload) => {
       try {
         const me = useUserStore.getState().user?.username ?? null;
         const recipientUsername = payload?.recipient?.username ?? null;
@@ -276,12 +307,12 @@ export default function SocialApp() {
       } catch {}
     };
 
-    const onFriendWithdrawn = (payload: any) => {
+    const onFriendWithdrawn = (payload: FriendRequestEventPayload) => {
       try {
         const me = useUserStore.getState().user?.username ?? null;
         const recipientUsername = payload?.recipient?.username ?? null;
         if (!me || !recipientUsername || recipientUsername !== me) return;
- 
+
         useFriendRequestStore.getState().incrementIncoming(-1);
         window.dispatchEvent(new CustomEvent('friend:withdrawn', { detail: payload }));
 
@@ -333,7 +364,7 @@ export default function SocialApp() {
   }, []);
 
   useEffect(() => {
-    const onMatched = (payload: any) => {
+    const onMatched = (payload: PongMatchPayload) => {
       if (!payload?.matchId || !payload?.youAre || !payload?.opponent) {
         return;
       }
@@ -352,7 +383,7 @@ export default function SocialApp() {
       }
     };
 
-    const onResumed = (payload: any) => {
+    const onResumed = (payload: PongResumedPayload) => {
       if (!payload?.matchId || !payload?.youAre || !payload?.opponent || !payload?.score) {
         return;
       }
