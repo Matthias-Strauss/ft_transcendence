@@ -8,7 +8,7 @@ import { asyncHandler } from '../errors/asyncHandler.js';
 import { AuthErrors, RequestErrors, UserErrors } from '../errors/catalog.js';
 import { hashPassword, verifyPassword } from '../auth/password.js';
 import { validatePassword } from '../utils/passwordValidator.js';
-import { clearRefreshCookie } from '../auth/refresh.js';
+import { clearSessionCookie, clearRefreshCookie } from '../auth/refresh.js';
 import { getAvatarUrlFromPath } from '../files/avatars.js';
 import { getPostViewerContext, postAuthorInclude, serializePost } from '../utils/postUtils.js';
 import { prismaUniqueToUserError } from '../utils/meUtils.js';
@@ -435,6 +435,7 @@ meRouter.put(
       }),
     ]);
 
+    clearSessionCookie(req, res);
     clearRefreshCookie(req, res);
 
     return res.json({ ok: true });

@@ -13,11 +13,6 @@ interface PostProp {
 }
 
 async function getComment({ postId }: { postId: string }): Promise<CommentsResponse> {
-  const token = localStorage.getItem('accessToken');
-  if (!token) {
-    throw new Error('Access token is invalid');
-  }
-
   const res = await apiFetch(`/api/posts/${postId}/comments`, {
     method: 'GET',
   });
@@ -37,12 +32,6 @@ export default function CommentSection({ post, onCommentCreated }: PostProp) {
   const handleCommentSubmit = async () => {
     const content = commentInput.trim();
     if (!content) {
-      return;
-    }
-
-    const token = localStorage.getItem('accessToken');
-    if (!token) {
-      showToast('Access token is invalid', 'error');
       return;
     }
 
@@ -91,7 +80,7 @@ export default function CommentSection({ post, onCommentCreated }: PostProp) {
       try {
         const data = await getComment({ postId: post.id });
         setComments(data);
-      } catch (error) {
+      } catch {
         showToast('Failed to load comments', 'error');
       }
     }

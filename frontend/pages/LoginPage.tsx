@@ -1,19 +1,23 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { AuthShowcase } from '../components/auth/AuthShowcase';
-import { connectSocketWithToken } from '../socket';
+import useAuthStore from '../utils/authStore';
+import { markSessionAuthenticated } from '../utils/api';
 import showToast from '../utils/toast';
-
-interface LoginResponse {
-  accessToken: string;
-}
 
 export default function LoginPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const authStatus = useAuthStore((state) => state.status);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (authStatus === 'authenticated') {
+      navigate('/', { replace: true });
+    }
+  }, [authStatus, navigate]);
 
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -38,10 +42,8 @@ export default function LoginPage() {
         return;
       }
 
-      const data: LoginResponse = await res.json();
-      localStorage.setItem('accessToken', data.accessToken);
-      connectSocketWithToken(data.accessToken);
-      navigate('/');
+      markSessionAuthenticated();
+      navigate('/', { replace: true });
       showToast('Login successful! Welcome back.', 'success');
     } catch {
       setError('Network error. Please try again.');
