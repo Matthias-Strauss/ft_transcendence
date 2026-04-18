@@ -258,8 +258,15 @@ export function PostCard({ post, onDeleted }: PostCardProps) {
               <span className="text-[13px] text-[#8b98a5]">{bookmarkCount}</span>
             </div>
           </div>
-          {commentOpen && <CommentSection post={post} onCommentCreated={handleCommentCreated} />}
+          {commentOpen && !post.imageUrl ? (
+            <CommentSection post={post} onCommentCreated={handleCommentCreated} />
+          ) : null}
         </div>
+        {commentOpen && post.imageUrl ? (
+          <aside className="self-start mt-3 md:mt-6">
+            <CommentSection post={post} onCommentCreated={handleCommentCreated} />
+          </aside>
+        ) : null}
       </div>
     </div>
   );
