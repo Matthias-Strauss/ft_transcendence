@@ -23,6 +23,9 @@ import {
   shouldShowMessageInActiveChat,
 } from '../chat/messages';
 import type { UploadedFileMeta } from '../chat/types';
+
+const EMPTY_MESSAGES: ChatMessage[] = [];
+
 interface ChatPanelProps {
   onClose?: () => void;
 }
@@ -121,7 +124,7 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
 
   const meUsername = useUserStore((s) => s.user?.username ?? null);
 
-  const activeMessages = targetUsername ? messagesByUser[targetUsername] ?? [] : [];
+  const activeMessages = targetUsername ? messagesByUser[targetUsername] ?? EMPTY_MESSAGES : EMPTY_MESSAGES;
   const inviteOutcomeById = useMemo(
     () =>
       activeMessages.reduce<Record<string, 'ACCEPTED' | 'DECLINED'>>((acc, msg) => {
@@ -489,9 +492,10 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
   };
 
   useEffect(() => {
-    setRespondingInviteIds((current) =>
-      current.filter((inviteId) => !(inviteId in inviteOutcomeById)),
-    );
+    setRespondingInviteIds((current) => {
+      const next = current.filter((inviteId) => !(inviteId in inviteOutcomeById));
+      return next.length === current.length ? current : next;
+    });
   }, [inviteOutcomeById]);
 
   useEffect(() => {
