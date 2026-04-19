@@ -80,6 +80,27 @@ export function PostCard({ post, onDeleted }: PostCardProps) {
     }
   };
 
+  const removePost = async () => {
+    {
+      const response = await apiFetch(`/api/posts/${post.id}/bookmark`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        return { ok: false };
+      }
+
+      const data = (await response.json()) as {
+        bookmarkCount?: number;
+        bookmarkedByMe?: boolean;
+      };
+
+      showToast('Post removed from saved.', 'success');
+
+      return { ok: true, data };
+    }
+  };
+
   const handleDropdownActionSuccess = (
     action: string,
     data?: {
@@ -255,7 +276,7 @@ export function PostCard({ post, onDeleted }: PostCardProps) {
                   className={`
     size-[18px] transition-colors stroke-current
     ${isLiked ? 'text-[var(--color-2)]' : 'text-[#8b98a5] group-hover:text-[var(--color-2)]'}
-  `}
+    `}
                 />
               </div>
 
@@ -274,7 +295,11 @@ export function PostCard({ post, onDeleted }: PostCardProps) {
               onClick={() => {
                 setIsBookmarked((prev) => !prev);
                 setBookmarkCount((prev) => prev + (isBookmarked ? -1 : 1));
-                void savePost();
+                if (isBookmarked) {
+                  void removePost();
+                } else {
+                  void savePost();
+                }
               }}
             >
               <Bookmark
@@ -285,16 +310,19 @@ export function PostCard({ post, onDeleted }: PostCardProps) {
             </button>
           </div>
 
-          {commentOpen && !post.imageUrl ? (
-            <CommentSection post={post} onCommentCreated={handleCommentCreated} />
-          ) : null}
+          <div className="flex flex-col 2xl:flex-row gap-6">
+            {commentOpen && (
+              <div className={`xl:hidden ${post.imageUrl ? 'w-full' : 'w-full max-w-md'}`}>
+                <CommentSection post={post} onCommentCreated={handleCommentCreated} />
+              </div>
+            )}
+          </div>
         </div>
-
-        {commentOpen && post.imageUrl ? (
-          <aside className="self-start mt-3 md:mt-6">
+        {commentOpen && post.imageUrl && (
+          <aside className="hidden 2xl:block w-96 self-start mt-6">
             <CommentSection post={post} onCommentCreated={handleCommentCreated} />
           </aside>
-        ) : null}
+        )}
       </div>
     </div>
   );
