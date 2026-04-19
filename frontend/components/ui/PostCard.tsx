@@ -237,7 +237,7 @@ export function PostCard({ post, onDeleted }: PostCardProps) {
             </div>
           )}
 
-          <p className="text-[15px] text-[#f7f9f9] leading-5 mb-3 whitespace-pre-wrap">
+          <p className="text-[15px] text-[#f7f9f9] leading-5 mb-3 whitespace-pre-wrap overflow-hidden break-words">
             {post.content}
           </p>
           {post.imageUrl && (

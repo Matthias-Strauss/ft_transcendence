@@ -586,7 +586,7 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
                   </div>
 
                   <div
-                    className={`max-w-[82%] rounded-2xl px-3 py-2 text-sm leading-6 ${
+                    className={`max-w-[82%] rounded-2xl px-3 py-2 text-sm leading-6 break-words ${
                       msg.isOwn
                         ? 'rounded-br-md bg-sky-600 text-white'
                         : 'rounded-bl-md border border-slate-200 bg-slate-100 text-slate-900'
