@@ -205,12 +205,13 @@ function minutesAgo(minutes: number): Date {
   return new Date(Date.now() - minutes * 60 * 1000);
 }
 
-async function syncPostCommentLikeShareCounter(postIds: string[]) {
+async function syncPostCounters(postIds: string[]) {
   for (const postId of postIds) {
-    const [likeCount, commentCount, shareCount] = await Promise.all([
+    const [likeCount, commentCount, shareCount, bookmarkCount] = await Promise.all([
       prisma.postLike.count({ where: { postId } }),
       prisma.comment.count({ where: { postId } }),
       prisma.postShare.count({ where: { postId } }),
+      prisma.postBookmark.count({ where: { postId } }),
     ]);
 
     await prisma.post.update({
@@ -219,6 +220,7 @@ async function syncPostCommentLikeShareCounter(postIds: string[]) {
         likeCount,
         commentCount,
         shareCount,
+        bookmarkCount,
       },
     });
 
@@ -369,7 +371,7 @@ async function main() {
   await seedBookmark('seed-post-3', seagullUser.id);
   await seedBookmark('seed-post-4', testUser.id);
 
-  await syncPostCommentLikeShareCounter([
+  await syncPostCounters([
     'seed-post-1',
     'seed-post-2',
     'seed-post-3',
