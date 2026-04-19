@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { AuthShowcase } from '../components/auth/AuthShowcase';
 import useAuthStore from '../utils/authStore';
-import { markSessionAuthenticated } from '../utils/api';
+import { restoreSession } from '../utils/api';
 import showToast from '../utils/toast';
 
 export default function LoginPage() {
@@ -42,7 +42,16 @@ export default function LoginPage() {
         return;
       }
 
-      markSessionAuthenticated();
+      const sessionReady = await restoreSession();
+
+      if (!sessionReady) {
+        setError(
+          'Login succeeded, but the browser did not keep your session. Open the app via https://localhost and allow cookies for this site.',
+        );
+        showToast('Session cookie was not persisted after login.', 'error');
+        return;
+      }
+
       navigate('/', { replace: true });
       showToast('Login successful! Welcome back.', 'success');
     } catch {
