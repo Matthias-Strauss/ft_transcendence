@@ -97,6 +97,8 @@ export default function CommentSection({ post, onCommentCreated }: PostProp) {
           </div>
           <div className="flex-1 flex gap-2">
             <input
+              id="comment-input"
+              name="comment-input"
               type="text"
               placeholder="Write a comment..."
               value={commentInput}

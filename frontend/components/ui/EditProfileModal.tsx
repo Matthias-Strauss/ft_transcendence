@@ -412,7 +412,9 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
           <div className="flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <input
+                id="avatar-file"
                 ref={fileRef}
+                name="avatar-file"
                 type="file"
                 accept="image/png,image/jpeg"
                 onChange={onFileChange}
@@ -451,6 +453,8 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
                 <div>
                   <label className="text-[12px] text-[#8b98a5] block mb-1">Display name</label>
                   <input
+                    id="profile-displayname"
+                    name="profile-displayname"
                     type="text"
                     value={displayname}
                     onChange={(e) => setDisplayname(e.target.value)}
@@ -462,6 +466,8 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
                 <div>
                   <label className="text-[12px] text-[#8b98a5] block mb-1">Username</label>
                   <input
+                    id="profile-username"
+                    name="username"
                     type="text"
                     value={usernameState}
                     onChange={(e) => setUsernameState(e.target.value)}
@@ -473,6 +479,8 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
                 <div>
                   <label className="text-[12px] text-[#8b98a5] block mb-1">Email</label>
                   <input
+                    id="profile-email"
+                    name="email"
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
@@ -506,6 +514,8 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
               <div className="flex flex-col gap-2">
                 <div className="flex items-center gap-2">
                   <input
+                    id="current-password"
+                    name="current-password"
                     type={showCurrent ? 'text' : 'password'}
                     value={currentPassword}
                     onChange={(e) => setCurrentPassword(e.target.value)}
@@ -529,6 +539,8 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
 
                 <div className="flex items-center gap-2">
                   <input
+                    id="new-password"
+                    name="new-password"
                     type={showNew ? 'text' : 'password'}
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
@@ -552,6 +564,8 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
 
                 <div className="flex items-center gap-2">
                   <input
+                    id="confirm-password"
+                    name="confirm-password"
                     type={showConfirm ? 'text' : 'password'}
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}

@@ -80,6 +80,8 @@ const CreatePostForm = forwardRef<HTMLTextAreaElement, CreatePostFormProps>(
 
           <div className="flex-1">
             <textarea
+              id="new-post-content"
+              name="new-post-content"
               placeholder="What's happening in your game?"
               className="w-full bg-transparent text-[20px] text-[#f7f9f9] placeholder:text-[#8b98a5] resize-none outline-none mb-3"
               value={content}
@@ -112,6 +114,8 @@ const CreatePostForm = forwardRef<HTMLTextAreaElement, CreatePostFormProps>(
                 <label className="cursor-pointer text-xl hover:opacity-80 transition">
                   <ImagePlus className="size-6 text-[#8b98a5]" />
                   <input
+                    id="new-post-image"
+                    name="new-post-image"
                     type="file"
                     accept="image/*"
                     onChange={handleImageChange}

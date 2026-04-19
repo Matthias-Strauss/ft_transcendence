@@ -695,6 +695,8 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
         <div className="mt-auto border-t border-slate-200 bg-white px-3 py-3">
           <div className="flex h-11 w-full items-center gap-2">
             <input
+              id="chat-message-input"
+              name="chat-message"
               type="text"
               placeholder="Type a message..."
               value={inputValue}
@@ -719,6 +721,8 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
             >
               <FileUp className="size-5" />
               <input
+                id="chat-pdf-upload"
+                name="chat-pdf-upload"
                 type="file"
                 accept=".pdf"
                 onChange={handleFileChange}
