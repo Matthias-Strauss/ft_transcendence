@@ -7,6 +7,16 @@ import { Eye, EyeOff } from 'lucide-react';
 import type { UserStore, User } from '../../utils/userStore';
 import showToast from '../../utils/toast';
 
+const AVATAR_MIME_MAP = {
+  'image/jpeg': '.jpg',
+  'image/png': '.png',
+} as const;
+
+const AVATAR_MAX_BYTES =
+  Number((import.meta as any).env.VITE_AVATAR_MAX_FILE_SIZE_BYTES) || 2097152;
+
+const AVATAR_ACCEPT = [...Object.keys(AVATAR_MIME_MAP), '.jpg', '.jpeg', '.png'].join(',');
+
 interface Props {
   user?: User | null;
   onClose: () => void;
@@ -110,6 +120,28 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
 
   function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0] ?? null;
+    if (!f) {
+      setSelectedFile(null);
+      return;
+    }
+
+    if (f.size > AVATAR_MAX_BYTES) {
+      showNotification(
+        `Image is too large. Maximum size is ${Math.round(AVATAR_MAX_BYTES / 1024 / 1024)} MB.`,
+      );
+      if (fileRef.current) fileRef.current.value = '';
+      return;
+    }
+
+    const allowed = Object.keys(AVATAR_MIME_MAP);
+    const allowedExts = ['jpg', 'jpeg', 'png'];
+    const ext = f.name.split('.').pop()?.toLowerCase() ?? '';
+    if (!allowed.includes(f.type) && !allowedExts.includes(ext)) {
+      showNotification('Only JPEG and PNG images are allowed.');
+      if (fileRef.current) fileRef.current.value = '';
+      return;
+    }
+
     setSelectedFile(f);
   }
 
@@ -434,7 +466,7 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
                 ref={fileRef}
                 name="avatar-file"
                 type="file"
-                accept="image/png,image/jpeg"
+                accept={AVATAR_ACCEPT}
                 onChange={onFileChange}
                 className="hidden"
                 style={{ display: 'none' }}
