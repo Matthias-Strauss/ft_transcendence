@@ -44,8 +44,7 @@ export default function CommentSection({ post, onCommentCreated }: PostProp) {
     });
 
     if (!res.ok) {
-      const errorText = await res.text();
-      showToast(`Failed to submit comment: ${res.status} ${errorText}`, 'error');
+      showToast('Failed to submit comment', 'error');
       return;
     }
 

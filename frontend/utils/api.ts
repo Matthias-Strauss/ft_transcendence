@@ -113,7 +113,7 @@ function handleLogout() {
     try {
       logoutHandler();
     } catch {
-      showToast('[apiFetch] logoutHandler error', 'error');
+      showToast('An error occurred during logout', 'error');
     }
     return;
   }
@@ -289,7 +289,7 @@ export async function apiFetch(input: RequestInfo | URL, init?: RequestInit): Pr
   try {
     response = await fetchWithSession(input, init);
   } catch (error) {
-    showToast('[apiFetch] Network error', 'error');
+    showToast('Network error', 'error');
     throw error;
   }
 
@@ -308,7 +308,7 @@ export async function apiFetch(input: RequestInfo | URL, init?: RequestInit): Pr
   try {
     return await fetchWithSession(input, init);
   } catch (error) {
-    showToast('[apiFetch] Network error on retry', 'error');
+    showToast('Network error on retry', 'error');
     throw error;
   }
 }
@@ -325,7 +325,7 @@ export async function logout(): Promise<void> {
         headers: { 'Content-Type': 'application/json' },
       });
     } catch {
-      showToast('[api] logout request failed', 'error');
+      showToast('Failed to submit logout request', 'error');
     }
 
     handleLogout();
@@ -379,7 +379,7 @@ export async function fetchAuthedFileURL(src: string): Promise<string> {
 
   if (!response.ok) {
     showToast(
-      `[fetchFile] Failed to fetch file: ${response.status} ${response.statusText}`,
+      'Failed to fetch file',
       'error',
     );
     return '';

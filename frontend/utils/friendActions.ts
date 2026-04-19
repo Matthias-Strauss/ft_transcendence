@@ -17,11 +17,10 @@ export async function runFriendAction(
         onSuccess?.(undefined);
       }
     } else {
-      const text = await res.text().catch(() => '<no body>');
-      showToast(`[runFriendAction] request failed ${res.status} ${text}`, 'error');
+      showToast('Failed to perform friend action', 'error');
     }
   } catch (e) {
-    showToast('[runFriendAction] error', 'error');
+    showToast('An error occurred while performing friend action', 'error');
   } finally {
     setBusy(false);
   }
