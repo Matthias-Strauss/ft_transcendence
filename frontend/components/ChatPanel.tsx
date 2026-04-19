@@ -296,6 +296,12 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
     const selectedFile = e.target.files?.[0];
     if (!selectedFile) return;
 
+    if (!connected || !targetUsername) {
+      showToast('You must be online to upload a PDF', 'error');
+      e.target.value = '';
+      return;
+    }
+
     if (meUsername && targetUsername === meUsername) {
       showToast('You cannot chat with yourself', 'error');
       e.target.value = '';
@@ -323,6 +329,8 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
     }
     e.target.value = '';
   };
+
+  const isFileUploadDisabled = !connected || !targetUsername || isUploading;
 
   const onSend = () => {
     handleSend({
@@ -642,7 +650,7 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
                             src={fileUrl}
                             fileName={fileName || 'Attachment'}
                             mimeType={msg.metadata?.mimeType || 'application/pdf'}
-                            className="max-h-40 w-auto max-w-full rounded-lg object-contain"
+                            className="w-full max-w-full"
                           />
 
                           <div className="flex items-center gap-3 pl-1">
@@ -695,13 +703,27 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
               className="h-full flex-1 rounded-full border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-sky-500"
             />
 
-            <label className="inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-full border border-slate-300 text-slate-500 transition hover:bg-slate-50 hover:text-slate-700">
+            <label
+              className={`inline-flex h-11 w-11 items-center justify-center rounded-full border border-slate-300 text-slate-500 transition ${
+                isFileUploadDisabled
+                  ? 'cursor-not-allowed opacity-50'
+                  : 'cursor-pointer hover:bg-slate-50 hover:text-slate-700'
+              }`}
+              aria-disabled={isFileUploadDisabled}
+              title={isFileUploadDisabled ? 'Connect to upload a PDF' : 'Upload a PDF'}
+              onClick={(e) => {
+                if (isFileUploadDisabled) {
+                  e.preventDefault();
+                }
+              }}
+            >
               <FileUp className="size-5" />
               <input
                 type="file"
                 accept=".pdf"
                 onChange={handleFileChange}
                 style={{ display: 'none' }}
+                disabled={isFileUploadDisabled}
               />
             </label>
 
