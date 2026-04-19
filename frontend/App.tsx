@@ -53,7 +53,7 @@ export default function App() {
 
   useEffect(() => {
     if (authStatus === 'authenticated') {
-      const recoverRealtimeConnection = () => {
+      const refreshRealtimeSession = () => {
         void refreshSession({ force: true, logoutOnFailure: true }).then((refreshed) => {
           if (refreshed) {
             void connectSocket();
@@ -61,8 +61,18 @@ export default function App() {
         });
       };
 
+      const recoverRealtimeConnection = () => {
+        void ensureAuthenticatedSession({ logoutOnFailure: true }).then((sessionReady) => {
+          if (!sessionReady || socket.connected) {
+            return;
+          }
+
+          void connectSocket();
+        });
+      };
+
       const refreshTimer = window.setInterval(() => {
-        recoverRealtimeConnection();
+        refreshRealtimeSession();
       }, SESSION_REFRESH_INTERVAL_MS);
 
       const refreshVisibleSession = () => {
@@ -75,15 +85,19 @@ export default function App() {
         recoverRealtimeConnection();
       };
 
+      const refreshOnOnline = () => {
+        recoverRealtimeConnection();
+      };
+
       document.addEventListener('visibilitychange', refreshVisibleSession);
       window.addEventListener('focus', refreshOnFocus);
-      window.addEventListener('online', refreshOnFocus);
+      window.addEventListener('online', refreshOnOnline);
 
       return () => {
         window.clearInterval(refreshTimer);
         document.removeEventListener('visibilitychange', refreshVisibleSession);
         window.removeEventListener('focus', refreshOnFocus);
-        window.removeEventListener('online', refreshOnFocus);
+        window.removeEventListener('online', refreshOnOnline);
       };
     }
 
