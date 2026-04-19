@@ -44,11 +44,9 @@ This project uses Docker for the full application stack, including the frontend,
    ```
 
    Review the following values before starting the stack:
-   - `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`
    - `JWT_SECRET`
-   - `PROXY_HTTP_PORT`, `PROXY_HTTPS_PORT`
+   - `PROXY_HTTP_PORT`, `PROXY_HTTPS_PORT` (should be 8080 and 8443 on 42 machines)
    - `TLS_CERT_HOSTS`
-   - `APP_ORIGIN`
    - `CORS_ALLOWED_ORIGINS`
 
    If you want to access the app from another machine on your network, append your host IP or domain to `TLS_CERT_HOSTS` and add the matching `https://...` origin to `CORS_ALLOWED_ORIGINS`. If you change the proxy ports or hostnames, update `APP_ORIGIN`, `TLS_CERT_HOSTS`, and `CORS_ALLOWED_ORIGINS` so they stay consistent.
@@ -386,7 +384,7 @@ _Note: if your VSCode is not rendering the above mermaid diagram, install follow
 
 _As per the subject requirements, we transparently declare our use of AI tools:_
 
-- **Tools Used:** Gemini
+- **Tools Used:** Gemini, Copilot
 - **Use Cases:**
   - _Project Planning:_
     - Extracting key information from the subject.pdf and making it digestible.
@@ -400,3 +398,4 @@ _As per the subject requirements, we transparently declare our use of AI tools:_
   - Pre-Commit Review: run local diffs through an AI instructed to critique code for quality, readability, naming convention, security, redundancy, edge case detection, dependencies.
   - Assisting in writing this README.md :)
   - Checking for subject compliance
+  - Inline suggestions during development
