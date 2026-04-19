@@ -17,6 +17,8 @@ const POST_IMAGE_MAX_BYTES =
 
 const ACCEPT_ATTR = [...Object.keys(AVATAR_MIME_MAP), '.jpg', '.jpeg', '.png'].join(',');
 
+const POST_MAX_CHARS = 500;
+
 const CreatePostForm = forwardRef<HTMLTextAreaElement, CreatePostFormProps>(
   ({ onPostCreated }, ref) => {
     const [content, setContent] = useState('');
@@ -26,7 +28,8 @@ const CreatePostForm = forwardRef<HTMLTextAreaElement, CreatePostFormProps>(
     const [visibility, setVisibility] = useState<'PUBLIC' | 'FRIENDS'>('FRIENDS');
 
     const handleContentChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
-      const value = e.target.value;
+      const raw = e.target.value;
+      const value = raw.slice(0, POST_MAX_CHARS);
 
       setContent(value);
 
@@ -247,16 +250,27 @@ const CreatePostForm = forwardRef<HTMLTextAreaElement, CreatePostFormProps>(
                 </div>
               </div>
 
-              <button
-                className="px-6 py-2 rounded-full font-bold text-[15px] transition-colors"
-                style={{
-                  background: 'var(--color-1)',
-                  color: '#f7f9f9',
-                }}
-                onClick={handleSubmit}
-              >
-                Post
-              </button>
+              <div className="flex items-center gap-3">
+                <span
+                  className={`text-sm ${
+                    content.length > POST_MAX_CHARS ? 'text-red-400' : 'text-[#8b98a5]'
+                  }`}
+                >
+                  {content.length}/{POST_MAX_CHARS}
+                </span>
+
+                <button
+                  className="px-6 py-2 rounded-full font-bold text-[15px] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  style={{
+                    background: 'var(--color-1)',
+                    color: '#f7f9f9',
+                  }}
+                  onClick={handleSubmit}
+                  disabled={content.trim().length === 0 || content.length > POST_MAX_CHARS}
+                >
+                  Post
+                </button>
+              </div>
             </div>
           </div>
         </div>
