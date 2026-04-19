@@ -116,7 +116,11 @@ export default function CommentSection({ post, onCommentCreated }: PostProp) {
               }}
               className="flex-1 bg-transparent border-b border-[#39444d] py-2 text-[15px] text-[#f7f9f9] placeholder:text-[#8b98a5] focus:outline-none focus:border-[var(--color-1)] transition-colors"
             />
-            <span className={`text-sm ${commentInput.length > COMMENT_MAX_CHARS ? 'text-red-400' : 'text-[#8b98a5]'}`}>
+            <span
+              className={`text-sm ${
+                commentInput.length > COMMENT_MAX_CHARS ? 'text-red-400' : 'text-[#8b98a5]'
+              }`}
+            >
               {commentInput.length}/{COMMENT_MAX_CHARS}
             </span>
             <button

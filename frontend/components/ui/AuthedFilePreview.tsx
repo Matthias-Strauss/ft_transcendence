@@ -151,6 +151,7 @@ export function AuthedFilePreview({
 
         const task = page.render({
           canvasContext: context,
+          canvas,
           viewport,
         });
 

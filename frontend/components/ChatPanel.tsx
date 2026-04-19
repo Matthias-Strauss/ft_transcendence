@@ -5,6 +5,7 @@ import { apiFetch } from '../utils/api';
 import { uploadFile } from '../utils/send_file';
 import useChatStore, {
   type ChatMessage,
+  type ChatFileMetadata,
   type PongInviteMetadata,
   type PongNotificationMetadata,
 } from '../utils/chatState';
@@ -26,13 +27,16 @@ interface ChatPanelProps {
 }
 
 function isPongInviteMetadata(metadata: ChatMessage['metadata']): metadata is PongInviteMetadata {
-  return metadata?.kind === 'pong_invite' && metadata.game === 'pong';
+  return metadata?.kind === 'pong_invite' && (metadata as PongInviteMetadata)?.game === 'pong';
 }
 
 function isPongNotificationMetadata(
   metadata: ChatMessage['metadata'],
 ): metadata is PongNotificationMetadata {
-  return metadata?.kind === 'pong_notification' && metadata.game === 'pong';
+  return (
+    metadata?.kind === 'pong_notification' &&
+    (metadata as PongNotificationMetadata)?.game === 'pong'
+  );
 }
 
 function formatInviteExpiry(expiresAt: string) {
@@ -538,17 +542,28 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
         <div className="flex-1 overflow-y-auto bg-white px-4 py-4">
           <div className="flex flex-col gap-4">
             {activeMessages.map((msg) => {
-              const fileUrl = msg.metadata?.fileUrl;
-              const fileName = msg.metadata?.originalName;
+              const isChatFile = msg.metadata?.kind === 'chat_pdf';
+              const fileUrl = isChatFile ? (msg.metadata as ChatFileMetadata)?.fileUrl : undefined;
+              const fileName = isChatFile
+                ? (msg.metadata as ChatFileMetadata)?.originalName
+                : undefined;
               const inviteMetadata = isPongInviteMetadata(msg.metadata) ? msg.metadata : null;
               const notificationMetadata = isPongNotificationMetadata(msg.metadata)
                 ? msg.metadata
                 : null;
               const inviteExpired =
                 inviteMetadata && new Date(inviteMetadata.expiresAt).getTime() <= Date.now();
-              const inviteOutcome = inviteMetadata
-                ? inviteOutcomeById[inviteMetadata.inviteId] ??
-                  (inviteExpired ? 'EXPIRED' : inviteMetadata.status)
+              const statusFromOutcome = inviteMetadata
+                ? inviteOutcomeById[inviteMetadata.inviteId]
+                : undefined;
+              const inviteOutcome:
+                | 'PENDING'
+                | 'ACCEPTED'
+                | 'DECLINED'
+                | 'EXPIRED'
+                | 'CANCELED'
+                | null = inviteMetadata
+                ? statusFromOutcome || (inviteExpired ? 'EXPIRED' : inviteMetadata.status)
                 : null;
               const canRespond =
                 Boolean(inviteMetadata) &&
@@ -648,7 +663,11 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
                           <AuthedFilePreview
                             src={fileUrl}
                             fileName={fileName || 'Attachment'}
-                            mimeType={msg.metadata?.mimeType || 'application/pdf'}
+                            mimeType={
+                              isChatFile
+                                ? (msg.metadata as ChatFileMetadata)?.mimeType
+                                : 'application/pdf'
+                            }
                             className="w-full max-w-full"
                           />
 

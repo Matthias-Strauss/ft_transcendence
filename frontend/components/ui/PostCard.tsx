@@ -1,7 +1,7 @@
-import { Heart, MessageCircle, Share2, MoreHorizontal, Trash } from 'lucide-react';
+import { Heart, MessageCircle, MoreHorizontal, Trash } from 'lucide-react';
 import type { Post, DropdownItem } from '../../types/posts';
 import { User } from './User';
-import { Bookmark, Repeat2 } from 'lucide-react';
+import { Bookmark } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import ConfirmDialog from './ConfirmDialog';
 import { useUserStore } from '../../utils/userStore';
@@ -36,13 +36,11 @@ export function PostCard({ post, onDeleted }: PostCardProps) {
   const [likeCount, setLikeCount] = useState(post.likeCount ?? 0);
   const [isLiked, setLiked] = useState(post.likedByMe);
   const [isLikePending, setIsLikePending] = useState(false);
-  const [shareCount, setShared] = useState(post.shareCount ?? 0);
 
   useEffect(() => {
     setCommentCount(post.commentCount ?? post.comments?.meta?.total ?? 0);
     setLikeCount(post.likeCount ?? 0);
     setLiked(post.likedByMe);
-    setShared(post.shareCount ?? 0);
     setIsBookmarked(post.bookmarkedByMe ?? false);
     setBookmarkCount(post.bookmarkCount ?? 0);
   }, [
@@ -69,10 +67,6 @@ export function PostCard({ post, onDeleted }: PostCardProps) {
     },
   ) => {
     if (action === 'Share') {
-      if (typeof data?.shareCount === 'number') {
-        setShared(data.shareCount);
-      }
-
       if (data?.incremented) {
         showToast('Post shared successfully.', 'success');
       } else {
