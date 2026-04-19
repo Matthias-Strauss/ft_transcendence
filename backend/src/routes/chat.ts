@@ -190,7 +190,7 @@ chatRouter.get(
         ],
       },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-      take: parsedQuery.data.limit ?? 100,
+      take: parsedQuery.data.limit ?? 1000,
       include: directMessageInclude,
     });
 
