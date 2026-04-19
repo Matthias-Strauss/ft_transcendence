@@ -58,8 +58,14 @@ write_adminer_location_block() {
         proxy_set_header X-Forwarded-For    $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Host   $host;
         proxy_set_header X-Forwarded-Port   $server_port;
+        proxy_set_header X-Forwarded-Prefix /adminer;
         proxy_set_header X-Forwarded-Proto  https;
-        proxy_redirect off;
+        proxy_redirect ~^(/.*)$ /adminer$1;
+        proxy_set_header Accept-Encoding    "";
+        sub_filter_once off;
+        sub_filter_types text/html;
+        sub_filter 'href="/?' 'href="/adminer/?';
+        sub_filter 'action="/' 'action="/adminer/';
     }
 EOF
       ;;

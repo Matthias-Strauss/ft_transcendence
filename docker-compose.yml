@@ -5,6 +5,8 @@ services:
       context: ./proxy
     container_name: transcendence-proxy-nginx
     depends_on:
+      adminer:
+        condition: service_started
       backend:
         condition: service_healthy
       frontend:
