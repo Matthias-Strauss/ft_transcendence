@@ -378,10 +378,7 @@ export async function fetchAuthedFileURL(src: string): Promise<string> {
   const response = await apiFetch(src);
 
   if (!response.ok) {
-    showToast(
-      'Failed to fetch file',
-      'error',
-    );
+    showToast('Failed to fetch file', 'error');
     return '';
   }
 

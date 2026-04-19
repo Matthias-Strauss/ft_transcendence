@@ -112,7 +112,6 @@ export default function App() {
         >
           <Route path="game" element={<PongGame />} />
           <Route path="users/:username" element={<UserProfile />} />
-          <Route path="*" element={<NotFound />} />
         </Route>
         <Route path="*" element={<NotFound />} />
       </Routes>
