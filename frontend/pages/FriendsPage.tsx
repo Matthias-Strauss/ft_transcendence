@@ -87,6 +87,8 @@ export function FriendsPage() {
         <div className="border-b border-slate-700/80 bg-slate-950/80 p-3 backdrop-blur-xl">
           <div className="relative mx-auto w-full max-w-[420px]">
             <input
+              id="friend-search"
+              name="friend-search"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search by nickname"

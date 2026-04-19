@@ -65,6 +65,8 @@ export default function SocketTestPage() {
 
       <form onSubmit={sendMessage} style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
         <input
+          id="socket-test-message"
+          name="socket-test-message"
           type="text"
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
