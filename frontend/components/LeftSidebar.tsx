@@ -1,20 +1,25 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { apiFetch } from '../utils/api';
 import {
   Home,
   Gamepad2,
-  Trophy,
   Users,
   Bell,
   MessageSquare,
   Bookmark,
   User as UserIcon,
-  MoreHorizontal,
+  ShieldCheck,
+  FileText,
 } from 'lucide-react';
 
 import { SidebarItem } from './ui/SidebarItem';
 import { AuthedImage } from './ui/AuthedImage';
+import { useUserStore } from '../utils/userStore';
+import type { UserStore } from '../utils/userStore';
+import useChatStore from '../utils/chatState';
+import useNotificationStore from '../utils/notificationStore';
+import useFriendRequestStore from '../utils/friendRequestStore';
 
 function Logo() {
   return (
@@ -28,23 +33,51 @@ interface LeftSidebarProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
   onNewPost: () => void;
+  mobileOpen?: boolean;
+  onMobileClose?: () => void;
 }
 
-export function LeftSidebar({ activeTab, onTabChange, onNewPost }: LeftSidebarProps) {
+export function LeftSidebar({
+  activeTab,
+  onTabChange,
+  onNewPost,
+  mobileOpen = false,
+  onMobileClose,
+}: LeftSidebarProps) {
   interface MeResponse {
     id?: string;
     username?: string;
-    displayname?: string;
+    displayname?: string | null;
     avatarUrl?: string | null;
   }
 
   const [me, setMe] = useState<MeResponse | null>(null);
   const navigate = useNavigate();
+  const location = useLocation();
+  const setUser = useUserStore((s: UserStore) => s.setUser);
+  const storeUser = useUserStore((s: UserStore) => s.user);
+  const effectiveMe = (storeUser as MeResponse | null) ?? me;
+  const notifUnread = useNotificationStore((s) => s.unreadCount);
+  const totalUnread = useChatStore((s) => Object.values(s.unreadByUser).reduce((a, b) => a + b, 0));
+  const incomingRequests = useFriendRequestStore((s) => s.incomingCount);
+  const onRootRoute = location.pathname === '/';
+  const onGameRoute = location.pathname === '/game';
+  const onProfileRoute = location.pathname.startsWith('/users/');
+
+  const closeMobile = () => {
+    onMobileClose?.();
+  };
+
+  const handleTabClick = (tab: string) => {
+    onTabChange(tab);
+    closeMobile();
+  };
 
   const handleProfileNavigate = async () => {
     onTabChange('profile');
-    if (me?.username) {
-      navigate(`/users/${me.username}`);
+    if (effectiveMe?.username) {
+      navigate(`/users/${effectiveMe.username}`);
+      closeMobile();
       return;
     }
 
@@ -53,8 +86,10 @@ export function LeftSidebar({ activeTab, onTabChange, onNewPost }: LeftSidebarPr
       if (res.ok) {
         const data = await res.json();
         if (data?.username) navigate(`/users/${data.username}`);
+        setUser(data);
+        closeMobile();
       }
-    } catch (e) {}
+    } catch {}
   };
 
   useEffect(() => {
@@ -64,77 +99,141 @@ export function LeftSidebar({ activeTab, onTabChange, onNewPost }: LeftSidebarPr
         if (res.ok) {
           const data = await res.json();
           setMe(data);
+          setUser(data);
         }
-      } catch (err) {}
+      } catch {}
     }
 
     void load();
+  }, [setUser]);
+
+  useEffect(() => {
+    let mounted = true;
+    async function fetchUnread() {
+      try {
+        const res = await apiFetch('/api/notifications/unread_count');
+        if (!mounted || !res.ok) return;
+        const data = await res.json();
+        useNotificationStore.getState().setUnreadCount(data.unreadCount ?? 0);
+      } catch {}
+    }
+
+    void fetchUnread();
+
+    async function fetchFriendRequests() {
+      try {
+        const res = await apiFetch('/api/me/friends/requests');
+        if (!mounted || !res.ok) return;
+        const data = await res.json();
+        const count = (data.items || []).filter((it: any) => it.friendRequestIncoming).length;
+        useFriendRequestStore.getState().setIncomingCount(count);
+      } catch {}
+    }
+
+    void fetchFriendRequests();
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   return (
-    <div className="bg-[#0f172a] flex flex-col gap-3 h-screen fixed left-0 top-0 w-[220px] px-4 pt-0 pb-4 border-r border-[#39444d]">
+    <div
+      className={`fixed left-0 top-0 z-[1200] flex h-screen w-[220px] flex-col gap-3 overflow-y-auto border-r border-[#39444d] bg-[#0f172a] px-4 pb-4 pt-0 transition-transform duration-300 md:translate-x-0 ${
+        mobileOpen ? 'translate-x-0' : '-translate-x-full'
+      }`}
+    >
       <Logo />
 
       <div className="flex flex-col gap-1">
         <SidebarItem
           icon={<Home className="size-6" />}
           label="Home"
-          active={activeTab === 'home'}
+          active={onRootRoute && activeTab === 'home'}
           to="/"
-          onClick={() => onTabChange('home')}
+          onClick={() => handleTabClick('home')}
         />
         <SidebarItem
-          icon={<Trophy className="size-6" />}
-          label="Leaderboard"
-          active={activeTab === 'leaderboard'}
-          to="/"
-          onClick={() => onTabChange('leaderboard')}
+          icon={<Gamepad2 className="size-6" />}
+          label="Game"
+          active={onGameRoute}
+          to="/game"
+          onClick={() => handleTabClick('home')}
         />
         <SidebarItem
           icon={<Bell className="size-6" />}
           label="Notifications"
-          active={activeTab === 'notifications'}
-          to="/"
-          onClick={() => onTabChange('notifications')}
+          active={activeTab === 'notifications' || location.pathname === '/notifications'}
+          onClick={() => handleTabClick('notifications')}
+          badge={
+            notifUnread > 0 ? (
+              <div className="bg-red-600 text-[#f7f9f9] text-xs px-2 py-0.5 rounded-full min-w-[20px] text-center">
+                {notifUnread}
+              </div>
+            ) : undefined
+          }
         />
         <SidebarItem
           icon={<MessageSquare className="size-6" />}
           label="Messages"
-          active={activeTab === 'messages'}
+          active={onRootRoute && activeTab === 'messages'}
           to="/"
-          onClick={() => onTabChange('messages')}
+          onClick={() => handleTabClick('messages')}
+          badge={
+            totalUnread > 0 ? (
+              <div className="bg-red-600 text-[#f7f9f9] text-xs px-2 py-0.5 rounded-full min-w-[20px] text-center">
+                {totalUnread}
+              </div>
+            ) : undefined
+          }
         />
         <SidebarItem
           icon={<Users className="size-6" />}
           label="Friends"
-          active={activeTab === 'friends'}
+          active={onRootRoute && activeTab === 'friends'}
           to="/"
-          onClick={() => onTabChange('friends')}
+          onClick={() => handleTabClick('friends')}
+          badge={
+            incomingRequests > 0 ? (
+              <div className="bg-red-600 text-[#f7f9f9] text-xs px-2 py-0.5 rounded-full min-w-[20px] text-center">
+                {incomingRequests}
+              </div>
+            ) : undefined
+          }
         />
         <SidebarItem
           icon={<Bookmark className="size-6" />}
           label="Saved"
-          active={activeTab === 'saved'}
+          active={onRootRoute && activeTab === 'saved'}
           to="/"
-          onClick={() => onTabChange('saved')}
+          onClick={() => handleTabClick('saved')}
         />
         <SidebarItem
           icon={<UserIcon className="size-6" />}
           label="Profile"
-          active={activeTab === 'profile'}
+          active={onProfileRoute}
           onClick={handleProfileNavigate}
         />
         <SidebarItem
-          icon={<MoreHorizontal className="size-6" />}
-          label="More"
-          active={activeTab === 'more'}
-          to="/"
-          onClick={() => onTabChange('more')}
+          icon={<ShieldCheck className="size-6" />}
+          label="Privacy"
+          active={location.pathname === '/privacy'}
+          to="/privacy"
+          onClick={() => handleTabClick('privacy')}
+        />
+        <SidebarItem
+          icon={<FileText className="size-6" />}
+          label="Terms"
+          active={location.pathname === '/terms'}
+          to="/terms"
+          onClick={() => handleTabClick('terms')}
         />
       </div>
 
       <button
-        onClick={onNewPost}
+        onClick={() => {
+          onNewPost();
+          closeMobile();
+        }}
         className="bg-[var(--color-1)] hover:bg-[var(--color-1)]/90 text-[#f7f9f9] rounded-full py-3 px-6 transition-colors mt-2"
       >
         <span className="font-bold text-[15px]">Write a post</span>
@@ -149,8 +248,8 @@ export function LeftSidebar({ activeTab, onTabChange, onNewPost }: LeftSidebarPr
           {me?.avatarUrl ? (
             <div className="size-10 rounded-full overflow-hidden shrink-0">
               <AuthedImage
-                src={me.avatarUrl ?? '/uploads/avatars/default.png'}
-                alt={me.displayname ?? me.username ?? ''}
+                src={effectiveMe?.avatarUrl ?? '/uploads/avatars/default.png'}
+                alt={effectiveMe?.displayname ?? effectiveMe?.username ?? ''}
                 className="w-full h-full object-cover"
               />
             </div>
@@ -162,11 +261,11 @@ export function LeftSidebar({ activeTab, onTabChange, onNewPost }: LeftSidebarPr
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1">
               <p className="font-bold text-[15px] text-[#f7f9f9] truncate">
-                {me?.displayname ?? 'Player One'}
+                {effectiveMe?.displayname ?? 'Player One'}
               </p>
             </div>
             <p className="text-[13px] text-[#8b98a5] truncate">
-              {me?.username ? `@${me.username}` : '@playerone'}
+              {effectiveMe?.username ? `@${effectiveMe.username}` : '@playerone'}
             </p>
           </div>
         </div>

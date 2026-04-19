@@ -1,9 +1,19 @@
 import type { DropdownItem } from '../../types/posts';
 import { apiFetch } from '../../utils/api';
+import showToast from '../../utils/toast';
 
 interface DropdownProps {
   items: DropdownItem[];
-  onActionSuccess?: (action: string) => void;
+  onActionSuccess?: (
+    action: string,
+    data?: {
+      shareCount?: number;
+      incremented?: boolean;
+      bookmarkCount?: number;
+      bookmarkedByMe?: boolean;
+    },
+  ) => void;
+  onRequestAction?: (action: string) => void;
 }
 
 async function handleAction({
@@ -14,12 +24,15 @@ async function handleAction({
   action: string;
   postId: string;
   authorId: string;
-}): Promise<boolean> {
-  const token = localStorage.getItem('accessToken');
-  if (!token) {
-    return false;
-  }
-
+}): Promise<{
+  ok: boolean;
+  data?: {
+    shareCount?: number;
+    incremented?: boolean;
+    bookmarkCount?: number;
+    bookmarkedByMe?: boolean;
+  };
+}> {
   switch (action) {
     case 'Save': {
       const response = await apiFetch(`/api/posts/${postId}/bookmark`, {
@@ -29,8 +42,35 @@ async function handleAction({
         },
         body: JSON.stringify({ postId, authorId }),
       });
+      if (!response.ok) {
+        return { ok: false };
+      }
 
-      return response.ok;
+      const data = (await response.json()) as {
+        bookmarkCount?: number;
+        bookmarkedByMe?: boolean;
+      };
+
+      showToast('Post saved.', 'success');
+      return { ok: true, data };
+    }
+    case 'Remove': {
+      const response = await apiFetch(`/api/posts/${postId}/bookmark`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        return { ok: false };
+      }
+
+      const data = (await response.json()) as {
+        bookmarkCount?: number;
+        bookmarkedByMe?: boolean;
+      };
+
+      showToast('Post removed from saved.', 'success');
+
+      return { ok: true, data };
     }
     case 'Share': {
       const response = await apiFetch(`/api/posts/${postId}/share`, {
@@ -41,10 +81,45 @@ async function handleAction({
         body: JSON.stringify({ postId, authorId }),
       });
 
-      return response.ok;
+      if (!response.ok) {
+        return { ok: false };
+      }
+
+      const data = (await response.json()) as {
+        shareCount?: number;
+        incremented?: boolean;
+      };
+
+      return { ok: true, data };
+    }
+    case 'Block User': {
+      const response = await apiFetch(`/api/chat/block/${authorId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userId: authorId }),
+      });
+
+      if (response.ok) {
+        showToast('User blocked', 'success');
+      }
+
+      return { ok: response.ok };
+    }
+    case 'Unblock User': {
+      const response = await apiFetch(`/api/chat/block/${authorId}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        showToast('User unblocked', 'success');
+      }
+
+      return { ok: response.ok };
     }
     default:
-      return false;
+      return { ok: false };
   }
 }
 
@@ -55,6 +130,7 @@ export default function Dropdown({
   postId,
   authorId,
   onActionSuccess,
+  onRequestAction,
 }: DropdownProps & {
   isOpen: boolean;
   setIsOpen: (v: boolean) => void;
@@ -72,10 +148,16 @@ export default function Dropdown({
                 className="flex items-center justify-between px-3 py-2 bg-[#1b1f23] hover:bg-[#272d33]"
                 onClick={async () => {
                   setIsOpen(false);
-                  const success = await handleAction({ action: item.text, postId, authorId });
 
-                  if (success) {
-                    onActionSuccess?.(item.text);
+                  if (item.text === 'Delete') {
+                    onRequestAction?.(item.text);
+                    return;
+                  }
+
+                  const result = await handleAction({ action: item.text, postId, authorId });
+
+                  if (result.ok) {
+                    onActionSuccess?.(item.text, result.data);
                   }
                 }}
               >

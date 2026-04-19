@@ -12,6 +12,8 @@ import {
 } from '../utils/api';
 import { runFriendAction } from '../utils/friendActions';
 import { AuthedImage } from '../components/ui/AuthedImage';
+import showToast from '../utils/toast';
+import useFriendRequestStore from '../utils/friendRequestStore';
 
 export function FriendsPage() {
   const [activeTab, setActiveTab] = useState<'friends' | 'requests'>('friends');
@@ -19,7 +21,7 @@ export function FriendsPage() {
   const [searchResults, setSearchResults] = useState<
     {
       username: string;
-      displayname?: string;
+      displayname?: string | null;
       avatarUrl?: string | null;
       postsCount?: number;
       friendsCount?: number;
@@ -47,7 +49,7 @@ export function FriendsPage() {
           setSearchResults([]);
         }
       } catch (e) {
-        console.error('Search failed', e);
+        showToast('Search failed', 'error');
         setSearchResults([]);
       } finally {
         setSearchLoading(false);
@@ -86,48 +88,56 @@ export function FriendsPage() {
             Following Requests
           </button>
         </div>
-        <div className="p-3 border-b border-[#39444d] bg-[#0f172a]/80">
-          <div className="user-search-wrap">
+        <div className="border-b border-slate-700/80 bg-slate-950/80 p-3 backdrop-blur-xl">
+          <div className="relative mx-auto w-full max-w-[420px]">
             <input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search by nickname"
-              className="w-full rounded-md border border-[#39444d] bg-[#071026] px-3 py-2 text-sm text-[#f7f9f9] outline-none"
+              className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-sky-400"
             />
 
             {searchLoading && (searchQuery ?? '').trim().length >= 2 && (
-              <div className="user-search-status">Searching...</div>
+              <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-[9999] rounded-2xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-400 shadow-[0_20px_40px_rgba(0,0,0,0.35)]">
+                Searching...
+              </div>
             )}
 
             {(searchQuery ?? '').trim().length >= 2 && !searchLoading && (
-              <div className="user-search-dropdown">
+              <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-[9999] overflow-hidden rounded-2xl border border-slate-700 bg-slate-950 shadow-[0_20px_40px_rgba(0,0,0,0.35)]">
                 {searchResults.length === 0 ? (
-                  <div className="p-3 text-[#8b98a5]">No users found</div>
+                  <div className="px-3 py-3 text-sm text-slate-400">No users found</div>
                 ) : (
                   searchResults.map((r) => (
                     <button
                       key={r.username}
-                      className="user-search-item"
+                      className="flex w-full items-center gap-3 border-b border-slate-800 px-3 py-3 text-left transition last:border-b-0 hover:bg-slate-900"
                       onClick={() => {
                         setSearchQuery('');
                         setSearchResults([]);
                         navigate(`/users/${r.username}`);
                       }}
                     >
-                      <div className="user-search-avatar">
+                      <div className="size-8 overflow-hidden rounded-full border border-slate-700 bg-slate-900">
                         <AuthedImage
                           src={r.avatarUrl ?? '/uploads/avatars/default.png'}
                           alt={r.displayname ?? r.username}
                         />
                       </div>
 
-                      <div className="user-search-main">
-                        <div className="user-search-name">{r.displayname ?? r.username}</div>
-                        <div className="user-search-username">@{r.username}</div>
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-sm font-medium text-white">
+                          {r.displayname ?? r.username}
+                        </div>
+                        <div className="truncate text-xs text-slate-400">@{r.username}</div>
                       </div>
 
-                      <div className="user-search-meta">{r.postsCount ?? 0} posts</div>
-                      <div className="user-search-meta">{r.friendsCount ?? 0} friends</div>
+                      <div className="whitespace-nowrap text-xs text-slate-400">
+                        {r.postsCount ?? 0} posts
+                      </div>
+                      <div className="whitespace-nowrap text-xs text-slate-400">
+                        {r.friendsCount ?? 0} friends
+                      </div>
                     </button>
                   ))
                 )}
@@ -158,7 +168,7 @@ function FriendsList() {
           if (mounted) setFriends([]);
         }
       } catch (e) {
-        console.error('Failed to load friends', e);
+        showToast('Failed to load friends', 'error');
         if (mounted) setFriends([]);
       } finally {
         if (mounted) setLoading(false);
@@ -205,7 +215,8 @@ function RequestsList() {
   useEffect(() => {
     let mounted = true;
 
-    async function load() {
+    async function loadRequests() {
+      if (!mounted) return;
       setLoading(true);
       try {
         const res = await apiFetch('/api/me/friends/requests');
@@ -216,16 +227,31 @@ function RequestsList() {
           if (mounted) setRequests([]);
         }
       } catch (e) {
-        console.error('Failed to load requests', e);
+        showToast('Failed to load requests', 'error');
         if (mounted) setRequests([]);
       } finally {
         if (mounted) setLoading(false);
       }
     }
 
-    void load();
+    void loadRequests();
+
+    const onAccepted = () => void loadRequests();
+    const onDeclined = () => void loadRequests();
+    const onWithdrawn = () => void loadRequests();
+    const onRequested = () => void loadRequests();
+
+    window.addEventListener('friend:accepted', onAccepted as EventListener);
+    window.addEventListener('friend:declined', onDeclined as EventListener);
+    window.addEventListener('friend:withdrawn', onWithdrawn as EventListener);
+    window.addEventListener('friend:request', onRequested as EventListener);
+
     return () => {
       mounted = false;
+      window.removeEventListener('friend:accepted', onAccepted as EventListener);
+      window.removeEventListener('friend:declined', onDeclined as EventListener);
+      window.removeEventListener('friend:withdrawn', onWithdrawn as EventListener);
+      window.removeEventListener('friend:request', onRequested as EventListener);
     };
   }, []);
 
@@ -239,6 +265,8 @@ function RequestsList() {
       (v) => setProcessingFlag(username, v),
       () => setRequests((prev) => prev.filter((r) => r.username !== username)),
     );
+    useFriendRequestStore.getState().incrementIncoming(-1);
+    showToast('Friend request accepted!', 'success');
   };
 
   const handleDecline = async (username: string) => {
@@ -248,6 +276,8 @@ function RequestsList() {
       (v) => setProcessingFlag(username, v),
       () => setRequests((prev) => prev.filter((r) => r.username !== username)),
     );
+    useFriendRequestStore.getState().incrementIncoming(-1);
+    showToast('Friend request declined.', 'info');
   };
 
   const handleWithdraw = async (username: string) => {
@@ -261,9 +291,6 @@ function RequestsList() {
 
   const incoming = requests.filter((r) => Boolean(r.friendRequestIncoming));
   const outgoing = requests.filter((r) => Boolean(r.friendRequestSentByMe));
-
-  const incomingFiltered = incoming;
-  const outgoingFiltered = outgoing;
 
   return (
     <div className="p-4 space-y-6">

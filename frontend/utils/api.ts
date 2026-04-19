@@ -1,70 +1,200 @@
+import showToast from './toast';
+import {
+  blockSocketReconnects,
+  connectSocket,
+  disconnectSocket,
+  checkSocketConnectionIsUsd,
+  unblockSocketReconnects,
+} from '../socket';
+import useAuthStore from './authStore';
+import useChatStore from './chatState';
+import useUserStore from './userStore';
+
 type LogoutHandler = () => void;
 
+type RefreshSessionOptions = {
+  force?: boolean;
+  logoutOnFailure?: boolean;
+};
+
+type RefreshSessionResponse = {
+  ok?: boolean;
+};
+
+const SESSION_TTL_MS = 15 * 60 * 1000;
+const SESSION_REFRESH_LEEWAY_MS = 2 * 60 * 1000;
+
 let logoutHandler: LogoutHandler | null = null;
+let refreshing: Promise<boolean> | null = null;
+let restoring: Promise<boolean> | null = null;
+let sessionVersion = 0;
+let loggingOut = false;
 
 export function setLogoutHandler(handler: LogoutHandler) {
   logoutHandler = handler;
 }
 
-let accessTokenListener: ((token: string | null) => void) | null = null;
-export function setAccessTokenListener(fn: (token: string | null) => void) {
-  accessTokenListener = fn;
+function fetchWithSession(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  return fetch(input, {
+    ...init,
+    credentials: 'include',
+  });
 }
 
-let refreshing: Promise<string | null> | null = null;
+async function readRefreshSessionResult(response: Response): Promise<boolean> {
+  if (!response.ok) {
+    return false;
+  }
 
-function handleTokenUpdate(token: string | null) {
-  if (accessTokenListener) {
-    try {
-      accessTokenListener(token);
-    } catch (e) {
-      console.error('[apiFetch] accessTokenListener error', e);
-    }
+  try {
+    const payload = (await response.json()) as RefreshSessionResponse;
+    return payload.ok !== false;
+  } catch {
+    return true;
   }
 }
 
+export function publicApiFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  return fetchWithSession(input, init);
+}
+
+function sythUnauthorizedResponse(): Response {
+  return new Response(null, {
+    status: 401,
+    statusText: 'Unauthorized',
+  });
+}
+
+function resetClientStores() {
+  useUserStore.getState().clear();
+  useChatStore.setState({
+    targetUsername: null,
+    panelOpen: false,
+    messagesByUser: {},
+    unreadByUser: {},
+  });
+}
+
+function markAuthenticated(refreshedAt = Date.now()) {
+  useAuthStore.getState().markAuthenticated(refreshedAt);
+}
+
+function isSessionRefreshDue(force = false): boolean {
+  if (force) {
+    return true;
+  }
+
+  const { status, lastSessionRefreshAt } = useAuthStore.getState();
+
+  if (status !== 'authenticated' || !lastSessionRefreshAt) {
+    return false;
+  }
+
+  return Date.now() >= lastSessionRefreshAt + SESSION_TTL_MS - SESSION_REFRESH_LEEWAY_MS;
+}
+
+export function markSessionAuthenticated() {
+  sessionVersion += 1;
+  markAuthenticated();
+  void connectSocket();
+}
+
+export function clearClientSession() {
+  sessionVersion += 1;
+  disconnectSocket();
+  resetClientStores();
+  useAuthStore.getState().markAnonymous();
+}
+
 function handleLogout() {
-  localStorage.removeItem('accessToken');
-  handleTokenUpdate(null);
+  clearClientSession();
 
   if (logoutHandler) {
     try {
       logoutHandler();
-    } catch (e) {
-      console.error('[apiFetch] logoutHandler error', e);
+    } catch {
+      showToast('[apiFetch] logoutHandler error', 'error');
     }
-  } else {
-    window.location.replace('/login');
+    return;
+  }
+
+  window.location.replace('/login');
+}
+
+async function waitForOngoingRefresh(): Promise<boolean> {
+  if (!refreshing) {
+    return true;
+  }
+
+  try {
+    return await refreshing;
+  } catch {
+    return false;
   }
 }
 
-async function doRefresh(): Promise<string | null> {
+export async function refreshSession(options: RefreshSessionOptions = {}): Promise<boolean> {
+  if (loggingOut) {
+    return false;
+  }
+
+  if (!options.force && !refreshing && !isSessionRefreshDue(false)) {
+    return useAuthStore.getState().status === 'authenticated';
+  }
+
   if (refreshing) {
     return refreshing;
   }
 
+  const startedAtVersion = sessionVersion;
+  const shouldReconnectSocket = checkSocketConnectionIsUsd();
+
+  useAuthStore.getState().setRefreshing(true);
+  blockSocketReconnects();
+
   refreshing = (async () => {
+    let reconnectSocketAfterRefresh = false;
+
     try {
-      const res = await fetch('/api/auth/refresh', {
+      const response = await fetchWithSession('/api/auth/refresh', {
         method: 'POST',
-        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
       });
+      const refreshed = await readRefreshSessionResult(response);
 
-      if (!res.ok) return null;
+      if (!refreshed) {
+        if (sessionVersion === startedAtVersion) {
+          clearClientSession();
+        }
 
-      const data = await res.json();
+        if (options.logoutOnFailure) {
+          handleLogout();
+        }
 
-      if (data?.accessToken) {
-        localStorage.setItem('accessToken', data.accessToken);
-        handleTokenUpdate(data.accessToken);
-        return data.accessToken;
+        return false;
       }
 
-      return null;
-    } catch (e) {
-      console.error('[apiFetch] Error while refreshing token', e);
-      return null;
+      if (sessionVersion !== startedAtVersion || loggingOut) {
+        return false;
+      }
+
+      sessionVersion += 1;
+      markAuthenticated();
+      reconnectSocketAfterRefresh = shouldReconnectSocket;
+      // if (shouldReconnectSocket) {
+      //   await connectSocket();
+      // }
+
+      return true;
+    } catch {
+      return useAuthStore.getState().status === 'authenticated';
+    } finally {
+      useAuthStore.getState().setRefreshing(false);
+      unblockSocketReconnects();
+      
+      if (reconnectSocketAfterRefresh && !loggingOut && checkSocketConnectionIsUsd()) {
+        void connectSocket({ forceReconnect: true });
+      }
     }
   })();
 
@@ -75,65 +205,133 @@ async function doRefresh(): Promise<string | null> {
   return refreshing;
 }
 
-export async function apiFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
-  const token = localStorage.getItem('accessToken');
-
-  const headers = new Headers(init?.headers ?? {});
-  if (token && !headers.has('Authorization')) {
-    headers.set('Authorization', `Bearer ${token}`);
+export async function restoreSession(): Promise<boolean> {
+  if (loggingOut) {
+    clearClientSession();
+    return false;
   }
+
+  if (restoring) {
+    return restoring;
+  }
+
+  const startedAtVersion = sessionVersion;
+  useAuthStore.getState().setStatus('loading');
+
+  restoring = (async () => {
+    const refreshed = await refreshSession({ force: true });
+
+    if (refreshed) {
+      return true;
+    }
+
+    if (sessionVersion !== startedAtVersion) {
+      return useAuthStore.getState().status === 'authenticated';
+    }
+
+    clearClientSession();
+    return false;
+  })();
+
+  restoring.finally(() => {
+    restoring = null;
+  });
+
+  return restoring;
+}
+
+export async function ensureAuthenticatedSession(
+  options: RefreshSessionOptions = {},
+): Promise<boolean> {
+  if (loggingOut) {
+    return false;
+  }
+
+  const authState = useAuthStore.getState();
+
+  if (authState.isRefreshing) {
+    return waitForOngoingRefresh();
+  }
+
+  if (authState.status === 'authenticated') {
+    if (isSessionRefreshDue(options.force)) {
+      return refreshSession({
+        force: true,
+        logoutOnFailure: options.logoutOnFailure,
+      });
+    }
+
+    return true;
+  }
+
+  if (authState.status === 'loading') {
+    if (restoring) {
+      return restoring;
+    }
+
+    return restoreSession();
+  }
+
+  return restoreSession();
+}
+
+export async function apiFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  const sessionReady = await ensureAuthenticatedSession({ logoutOnFailure: true });
+
+  if (!sessionReady) {
+    return sythUnauthorizedResponse();
+  }
+
+  await waitForOngoingRefresh();
 
   let response: Response;
 
   try {
-    response = await fetch(input, { ...init, headers });
-  } catch (e) {
-    console.error('[apiFetch] Network error', e);
-    throw e;
+    response = await fetchWithSession(input, init);
+  } catch (error) {
+    showToast('[apiFetch] Network error', 'error');
+    throw error;
   }
 
   if (response.status !== 401) {
     return response;
   }
 
-  const newToken = await doRefresh();
+  const refreshed = await refreshSession({ force: true, logoutOnFailure: true });
 
-  if (!newToken) {
-    handleLogout();
-    return response;
+  if (!refreshed) {
+    return sythUnauthorizedResponse();
   }
 
-  const retryHeaders = new Headers(init?.headers ?? {});
-  retryHeaders.set('Authorization', `Bearer ${newToken}`);
-
-  let retryResponse: Response;
+  await waitForOngoingRefresh();
 
   try {
-    retryResponse = await fetch(input, { ...init, headers: retryHeaders });
-  } catch (e) {
-    console.error('[apiFetch] Network error on retry', e);
-    throw e;
+    return await fetchWithSession(input, init);
+  } catch (error) {
+    showToast('[apiFetch] Network error on retry', 'error');
+    throw error;
   }
-
-  if (retryResponse.status === 401) {
-    handleLogout();
-  }
-
-  return retryResponse;
 }
 
 export async function logout(): Promise<void> {
+  loggingOut = true;
+
   try {
-    const res = await fetch('/api/auth/logout', {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-    });
-    console.log('[api] logout response', res.status);
-  } catch (e) {
-    console.error('[api] logout request failed', e);
+    await waitForOngoingRefresh();
+
+    try {
+      await fetchWithSession('/api/auth/logout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+    } catch {
+      showToast('[api] logout request failed', 'error');
+    }
+
+    handleLogout();
+  } finally {
+    loggingOut = false;
   }
-  handleLogout();
 }
 
 export async function sendFriendRequest(username: string): Promise<Response> {
@@ -176,14 +374,51 @@ export async function removeFriend(username: string): Promise<Response> {
   });
 }
 
-export async function fetchAuthedImageURL(src: string): Promise<string> {
-  const apiRes = await apiFetch(src);
+export async function fetchAuthedFileURL(src: string): Promise<string> {
+  const response = await apiFetch(src);
 
-  if (!apiRes.ok) {
-    console.error(`[fetchImage] Failed to fetch image: ${apiRes.status} ${apiRes.statusText}`);
-    throw new Error(`Failed to fetch image: ${apiRes.status} ${apiRes.statusText}`);
+  if (!response.ok) {
+    showToast(
+      `[fetchFile] Failed to fetch file: ${response.status} ${response.statusText}`,
+      'error',
+    );
   }
 
-  const blob = await apiRes.blob();
+  const blob = await response.blob();
   return URL.createObjectURL(blob);
+}
+
+export async function uploadAvatar(file: File): Promise<{ ok: boolean; avatarUrl?: string }> {
+  const formData = new FormData();
+  formData.append('avatar', file);
+
+  const response = await apiFetch('/api/uploads/avatar', {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!response.ok) {
+    return { ok: false };
+  }
+
+  const data = await response.json();
+  return { ok: true, avatarUrl: data?.avatarUrl };
+}
+
+export async function deleteAvatar(): Promise<{ ok: boolean; avatarUrl?: string }> {
+  const response = await apiFetch('/api/uploads/avatar', {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+  });
+
+  if (!response.ok) {
+    return { ok: false };
+  }
+
+  const data = await response.json();
+  return { ok: true, avatarUrl: data?.avatarUrl };
+}
+
+export async function fetchAuthedImageURL(src: string): Promise<string> {
+  return fetchAuthedFileURL(src);
 }

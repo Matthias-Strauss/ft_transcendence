@@ -1,24 +1,34 @@
-import { Heart, MessageCircle, Share2, MoreHorizontal } from 'lucide-react';
+import { Heart, MessageCircle, Share2, MoreHorizontal, Trash } from 'lucide-react';
 import type { Post, DropdownItem } from '../../types/posts';
 import { User } from './User';
 import { Bookmark, Repeat2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import ConfirmDialog from './ConfirmDialog';
+import { useUserStore } from '../../utils/userStore';
 import { apiFetch } from '../../utils/api';
 import Dropdown from './Dropdown';
 import CommentSection from './CommentSection';
 import { AuthedImage } from './AuthedImage';
+import showToast from '../../utils/toast';
 
 interface PostCardProps {
   post: Post;
+  onDeleted?: (id: string) => void;
 }
 
-export function PostCard({ post }: PostCardProps) {
+export function PostCard({ post, onDeleted }: PostCardProps) {
+  const currentUser = useUserStore((s) => s.user);
+  const [isBookmarked, setIsBookmarked] = useState(post.bookmarkedByMe ?? false);
+  const [bookmarkCount, setBookmarkCount] = useState(post.bookmarkCount ?? 0);
   const items: DropdownItem[] = [
-    { id: 0, text: 'Save', icon: <Bookmark /> },
-    { id: 1, text: 'Share', icon: <Repeat2 /> },
+    { id: 0, text: isBookmarked ? 'Remove' : 'Save', icon: <Bookmark /> },
   ];
-  const token = localStorage.getItem('accessToken');
+  if (currentUser?.id === post.authorId) {
+    items.push({ id: 2, text: 'Delete', icon: <Trash /> });
+  }
   const [isOpen, setIsOpen] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const [commentOpen, setCommentOpen] = useState(false);
   const [commentCount, setCommentCount] = useState(
     post.commentCount ?? post.comments?.meta?.total ?? 0,
@@ -33,26 +43,74 @@ export function PostCard({ post }: PostCardProps) {
     setLikeCount(post.likeCount ?? 0);
     setLiked(post.likedByMe);
     setShared(post.shareCount ?? 0);
+    setIsBookmarked(post.bookmarkedByMe ?? false);
+    setBookmarkCount(post.bookmarkCount ?? 0);
   }, [
     post.commentCount,
     post.comments?.meta?.total,
     post.likeCount,
     post.likedByMe,
     post.shareCount,
+    post.bookmarkedByMe,
+    post.bookmarkCount,
   ]);
 
   const handleCommentCreated = () => {
     setCommentCount((prev) => prev + 1);
   };
 
-  const handleDropdownActionSuccess = (action: string) => {
+  const handleDropdownActionSuccess = (
+    action: string,
+    data?: {
+      shareCount?: number;
+      incremented?: boolean;
+      bookmarkCount?: number;
+      bookmarkedByMe?: boolean;
+    },
+  ) => {
     if (action === 'Share') {
-      setShared((prev) => prev + 1);
+      if (typeof data?.shareCount === 'number') {
+        setShared(data.shareCount);
+      }
+
+      if (data?.incremented) {
+        showToast('Post shared successfully.', 'success');
+      } else {
+        showToast('You already shared this post.', 'info');
+      }
+    } else if (action === 'Save' || action === 'Remove') {
+      if (typeof data?.bookmarkCount === 'number') {
+        setBookmarkCount(data.bookmarkCount);
+      }
+
+      if (typeof data?.bookmarkedByMe === 'boolean') {
+        setIsBookmarked(data.bookmarkedByMe);
+      }
+    } else if (action === 'Delete') {
+      onDeleted?.(post.id);
     }
   };
 
+  async function performDelete() {
+    setDeleteLoading(true);
+    try {
+      const res = await apiFetch(`/api/posts/${post.id}`, { method: 'DELETE' });
+      if (res.ok) {
+        onDeleted?.(post.id);
+        showToast('Post deleted successfully.', 'success');
+      } else {
+        showToast('Failed to delete post', 'error');
+      }
+    } catch {
+      showToast('Failed to delete post', 'error');
+    } finally {
+      setDeleteLoading(false);
+      setPendingDelete(false);
+    }
+  }
+
   const handlePostLike = async () => {
-    if (isLikePending || !token) {
+    if (isLikePending) {
       return;
     }
 
@@ -115,9 +173,22 @@ export function PostCard({ post }: PostCardProps) {
                   postId={post.id}
                   authorId={post.authorId}
                   onActionSuccess={handleDropdownActionSuccess}
+                  onRequestAction={(action) => {
+                    if (action === 'Delete') setPendingDelete(true);
+                  }}
                 />
               )}
             </div>
+            <ConfirmDialog
+              isOpen={pendingDelete}
+              title="Delete post"
+              message="Are you sure you want to delete this post? This action cannot be undone."
+              confirmText="Delete"
+              cancelText="Cancel"
+              loading={deleteLoading}
+              onCancel={() => setPendingDelete(false)}
+              onConfirm={performDelete}
+            />
           </div>
 
           {post.gameTag && (
@@ -132,8 +203,12 @@ export function PostCard({ post }: PostCardProps) {
             {post.content}
           </p>
           {post.imageUrl && (
-            <div className="mb-3 rounded-2xl overflow-hidden border border-[#39444d]">
-              <AuthedImage src={post.imageUrl} alt="Post image" className="w-full h-auto" />
+            <div className="mb-3 rounded-2xl overflow-hidden border border-[#39444d] w-full max-w-2xl">
+              <AuthedImage
+                src={post.imageUrl}
+                alt="Post image"
+                className="w-full h-auto max-h-[420px] object-contain"
+              />
             </div>
           )}
 
@@ -177,15 +252,20 @@ export function PostCard({ post }: PostCardProps) {
               </span>
             </button>
 
-            <button className="flex items-center gap-2 group transition-colors">
-              <div className="p-2 rounded-full transition-colors">
-                <Share2 className="size-[18px] text-[#8b98a5]" />
-              </div>
-              <span className="text-[13px] text-[#8b98a5] ">{shareCount}</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <Bookmark className="size-[18px] text-[#8b98a5]" />
+              <span className="text-[13px] text-[#8b98a5]">{bookmarkCount}</span>
+            </div>
           </div>
-          {commentOpen && <CommentSection post={post} onCommentCreated={handleCommentCreated} />}
+          {commentOpen && !post.imageUrl ? (
+            <CommentSection post={post} onCommentCreated={handleCommentCreated} />
+          ) : null}
         </div>
+        {commentOpen && post.imageUrl ? (
+          <aside className="self-start mt-3 md:mt-6">
+            <CommentSection post={post} onCommentCreated={handleCommentCreated} />
+          </aside>
+        ) : null}
       </div>
     </div>
   );

@@ -9,9 +9,17 @@ import {
   hashRefreshToken,
   refreshExpiresAt,
 } from '../auth/jwt.js';
-import { REFRESH_COOKIE_NAME, setRefreshCookie, clearRefreshCookie } from '../auth/refresh.js';
+import {
+  REFRESH_COOKIE_NAME,
+  setSessionCookie,
+  clearSessionCookie,
+  setRefreshCookie,
+  clearRefreshCookie,
+} from '../auth/refresh.js';
+import { requireAuth, type AuthedRequest } from '../auth/middleware.js';
 import { asyncHandler } from '../errors/asyncHandler.js';
 import { AuthErrors, RequestErrors } from '../errors/catalog.js';
+import { validatePassword } from '../utils/passwordValidator.js';
 
 export const authRouter = Router();
 
@@ -59,9 +67,12 @@ authRouter.post(
       },
     });
 
+    setSessionCookie(req, res, accessToken);
     setRefreshCookie(req, res, refreshToken);
 
-    res.json({ accessToken });
+    console.log(`User logged in: ${userExists.username}`);
+
+    res.json({ ok: true });
   }),
 );
 
@@ -79,6 +90,7 @@ authRouter.post(
       });
     }
 
+    clearSessionCookie(req, res);
     clearRefreshCookie(req, res);
 
     return res.json({ ok: true });
@@ -91,7 +103,9 @@ authRouter.post(
   asyncHandler(async (req, res) => {
     const refreshToken: string | undefined = req.cookies?.[REFRESH_COOKIE_NAME];
     if (!refreshToken) {
-      throw AuthErrors.missingRefreshToken();
+      clearSessionCookie(req, res);
+      clearRefreshCookie(req, res);
+      return res.json({ ok: false });
     }
 
     const tokenHash = hashRefreshToken(refreshToken);
@@ -100,8 +114,9 @@ authRouter.post(
       include: { user: true },
     });
     if (!stored || stored.revokedAt) {
+      clearSessionCookie(req, res);
       clearRefreshCookie(req, res);
-      throw AuthErrors.invalidRefreshToken();
+      return res.json({ ok: false });
     }
 
     if (stored.expiresAt.getTime() < Date.now()) {
@@ -109,8 +124,9 @@ authRouter.post(
         where: { id: stored.id },
         data: { revokedAt: new Date() },
       });
+      clearSessionCookie(req, res);
       clearRefreshCookie(req, res);
-      throw AuthErrors.refreshTokenExpired();
+      return res.json({ ok: false });
     }
 
     const newRefresh = generateRefreshToken();
@@ -135,27 +151,65 @@ authRouter.post(
       username: stored.user.username,
     });
 
-    res.json({ accessToken });
+    setSessionCookie(req, res, accessToken);
+
+    return res.json({ ok: true });
+  }),
+);
+
+authRouter.get(
+  '/auth/session',
+  requireAuth,
+  asyncHandler(async (req: AuthedRequest, res) => {
+    if (!req.userId || !req.username) {
+      throw AuthErrors.invalidToken();
+    }
+
+    return res.json({
+      ok: true,
+      user: {
+        id: req.userId,
+        username: req.username,
+      },
+    });
   }),
 );
 
 // REGISTER
-const RegisterSchema = z.object({
-  displayname: z
-    .string()
-    .min(1)
-    .max(30)
-    .regex(/^[a-zA-Z0-9._-]+( [a-zA-Z0-9._-]+)*$/),
-  username: z
-    .string()
-    .trim()
-    .toLowerCase()
-    .min(3)
-    .max(30)
-    .regex(/^[a-z0-9._-]+$/),
-  email: z.email().optional(),
-  password: z.string().min(3).max(100),
-});
+const RegisterSchema = z
+  .object({
+    displayname: z
+      .string()
+      .min(1)
+      .max(30)
+      .regex(/^[a-zA-Z0-9._-]+( [a-zA-Z0-9._-]+)*$/),
+    username: z
+      .string()
+      .trim()
+      .toLowerCase()
+      .min(3)
+      .max(30)
+      .regex(/^[a-z0-9._-]+$/),
+    email: z.email().trim().toLowerCase(),
+    password: z.string().min(1).max(100),
+    acceptedPrivacy: z.literal(true),
+    acceptedTerms: z.literal(true),
+  })
+  .strict()
+  .superRefine((val, ctx) => {
+    const pwErr = validatePassword(val.password);
+    if (pwErr) {
+      ctx.addIssue({ code: 'custom', message: pwErr, path: ['password'] });
+    }
+
+    if (val.password.toLowerCase().includes(val.username.toLowerCase())) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Password cannot contain username',
+        path: ['password'],
+      });
+    }
+  });
 
 authRouter.post(
   '/auth/register',
@@ -167,9 +221,10 @@ authRouter.post(
 
     const displayname = parsed.data.displayname;
     const username = parsed.data.username;
+    const email = parsed.data.email;
     const userExists = await prisma.user.findFirst({
       where: {
-        OR: [{ username }, ...(parsed.data.email ? [{ email: parsed.data.email }] : [])],
+        OR: [{ username }, { email }],
       },
     });
     if (userExists) {
@@ -182,7 +237,7 @@ authRouter.post(
       data: {
         username,
         password: passwordHash,
-        email: parsed.data.email,
+        email,
         displayname,
       },
     });

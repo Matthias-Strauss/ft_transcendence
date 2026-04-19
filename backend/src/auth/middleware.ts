@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
 
 import { verifyAccessToken } from './jwt.js';
+import { SESSION_COOKIE_NAME } from './refresh.js';
 import { touch as touchPresence } from '../utils/presence.js';
 import { AuthErrors } from '../errors/catalog.js';
 
@@ -9,13 +10,20 @@ export type AuthedRequest = Request & {
   username?: string;
 };
 
-export async function requireAuth(req: AuthedRequest, res: Response, next: NextFunction) {
-  const auth = req.headers.authorization;
-  if (!auth?.startsWith('Bearer ')) {
-    return next(AuthErrors.missingToken());
+function getBearerToken(authorizationHeader: string | undefined): string | undefined {
+  if (!authorizationHeader?.startsWith('Bearer ')) {
+    return undefined;
   }
 
-  const token = auth.slice('Bearer '.length);
+  return authorizationHeader.slice('Bearer '.length);
+}
+
+export async function requireAuth(req: AuthedRequest, res: Response, next: NextFunction) {
+  const token = req.cookies?.[SESSION_COOKIE_NAME] ?? getBearerToken(req.headers.authorization);
+
+  if (!token) {
+    return next(AuthErrors.missingToken());
+  }
 
   try {
     const { payload } = await verifyAccessToken(token);

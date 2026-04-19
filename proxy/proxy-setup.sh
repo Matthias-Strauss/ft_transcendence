@@ -73,6 +73,34 @@ EOF
   esac
 }
 
+get_largest_file_size_limit_bytes() {
+  max_size=""
+
+  while IFS='=' read -r name value; do
+    case "$name" in
+      *_MAX_FILE_SIZE_BYTES)
+        case "$value" in
+          ''|*[!0-9]*)
+            continue
+            ;;
+        esac
+
+        if [ -z "$max_size" ] || [ "$value" -gt "$max_size" ]; then
+          max_size="$value"
+        fi
+        ;;
+    esac
+  done <<EOF
+$(printenv)
+EOF
+
+  if [ -z "$max_size" ]; then
+    max_size="${CHAT_PDF_MAX_FILE_SIZE_BYTES:-10485760}"
+  fi
+
+  echo "$max_size"
+}
+
 if [ ! -f "$CERT_FILE" ] || [ ! -f "$KEY_FILE" ]; then
   echo "Proxy-Setup: generating new self-signed certificate..."
   SAN_VALUE="$(build_san)"
@@ -95,10 +123,12 @@ TEMPLATE="/etc/nginx/templates/default.conf.template"
 TARGET="/etc/nginx/conf.d/default.conf"
 
 ADMINER_LOCATION_BLOCK="$(write_adminer_location_block)"
-export ADMINER_LOCATION_BLOCK
+PROXY_CLIENT_MAX_BODY_SIZE="$(get_largest_file_size_limit_bytes)"
+export ADMINER_LOCATION_BLOCK PROXY_CLIENT_MAX_BODY_SIZE
 echo "Proxy-Setup: adminer is $( [ "$(printf '%s' "$ENABLE_ADMINER" | tr '[:upper:]' '[:lower:]')" = "true" ] && echo enabled || echo disabled )"
+echo "Proxy-Setup: client_max_body_size = $PROXY_CLIENT_MAX_BODY_SIZE bytes"
 
-envsubst '${PROXY_HTTP_PORT} ${PROXY_HTTPS_PORT} ${TLS_CERT_FILE} ${TLS_KEY_FILE} ${FRONTEND_PORT} ${BACKEND_PORT} ${ADMINER_LOCATION_BLOCK}' \
+envsubst '${PROXY_HTTP_PORT} ${PROXY_HTTPS_PORT} ${TLS_CERT_FILE} ${TLS_KEY_FILE} ${FRONTEND_PORT} ${BACKEND_PORT} ${PROXY_CLIENT_MAX_BODY_SIZE} ${ADMINER_LOCATION_BLOCK}' \
   < "$TEMPLATE" > "$TARGET"
 
 echo "Proxy-Setup: complete. Start nginx..."

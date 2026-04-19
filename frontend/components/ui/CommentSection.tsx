@@ -1,8 +1,11 @@
 import type { Post, Comment, CommentsResponse } from '../../types/posts';
-import { Heart, Send } from 'lucide-react';
+import { Send } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { apiFetch } from '../../utils/api';
 import { AuthedImage } from './AuthedImage';
+import { useUserStore } from '../../utils/userStore';
+import type { UserStore } from '../../utils/userStore';
+import showToast from '../../utils/toast';
 
 interface PostProp {
   post: Post;
@@ -10,11 +13,6 @@ interface PostProp {
 }
 
 async function getComment({ postId }: { postId: string }): Promise<CommentsResponse> {
-  const token = localStorage.getItem('accessToken');
-  if (!token) {
-    throw new Error('Access token is invalid');
-  }
-
   const res = await apiFetch(`/api/posts/${postId}/comments`, {
     method: 'GET',
   });
@@ -29,16 +27,11 @@ async function getComment({ postId }: { postId: string }): Promise<CommentsRespo
 export default function CommentSection({ post, onCommentCreated }: PostProp) {
   const [commentInput, setCommentInput] = useState('');
   const [comments, setComments] = useState<CommentsResponse | null>(null);
+  const currentUser = useUserStore((s: UserStore) => s.user);
 
   const handleCommentSubmit = async () => {
     const content = commentInput.trim();
     if (!content) {
-      return;
-    }
-
-    const token = localStorage.getItem('accessToken');
-    if (!token) {
-      console.error('Access token is invalid');
       return;
     }
 
@@ -52,7 +45,7 @@ export default function CommentSection({ post, onCommentCreated }: PostProp) {
 
     if (!res.ok) {
       const errorText = await res.text();
-      console.error('Failed to submit comment:', res.status, errorText);
+      showToast(`Failed to submit comment: ${res.status} ${errorText}`, 'error');
       return;
     }
 
@@ -87,8 +80,8 @@ export default function CommentSection({ post, onCommentCreated }: PostProp) {
       try {
         const data = await getComment({ postId: post.id });
         setComments(data);
-      } catch (error) {
-        console.error('Failed to load comments:', error);
+      } catch {
+        showToast('Failed to load comments', 'error');
       }
     }
 
@@ -136,7 +129,13 @@ export default function CommentSection({ post, onCommentCreated }: PostProp) {
             <div className="flex gap-3">
               <div className="size-10 rounded-full overflow-hidden shrink-0">
                 <AuthedImage
-                  src={comment.author?.avatarUrl ?? '/uploads/avatars/default.png'}
+                  src={
+                    comment.author?.username && currentUser?.username === comment.author.username
+                      ? currentUser.avatarUrl ??
+                        comment.author?.avatarUrl ??
+                        '/uploads/avatars/default.png'
+                      : comment.author?.avatarUrl ?? '/uploads/avatars/default.png'
+                  }
                   alt={comment.author?.displayname ?? comment.author?.username ?? ''}
                   className="w-full h-full object-cover"
                 />

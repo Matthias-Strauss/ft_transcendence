@@ -41,10 +41,12 @@ export function initFileStorage() {
   const baseDir = getFilesDir();
   const avatarsDir = path.join(baseDir, 'avatars');
   const postsDir = path.join(baseDir, 'posts');
+  const chatPdfsDir = path.join(baseDir, 'chat-pdfs');
 
   fs.mkdirSync(baseDir, { recursive: true });
   fs.mkdirSync(avatarsDir, { recursive: true });
   fs.mkdirSync(postsDir, { recursive: true });
+  fs.mkdirSync(chatPdfsDir, { recursive: true });
 
   copyDefaultAvatar(avatarsDir);
   copySeedPostAssets(postsDir);

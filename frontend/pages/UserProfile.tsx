@@ -9,16 +9,19 @@ import {
   withdrawFriendRequest,
   removeFriend,
 } from '../utils/api';
+import EditProfileModal from '../components/ui/EditProfileModal';
 import { runFriendAction } from '../utils/friendActions';
 import { PostCard } from '../components/ui/PostCard';
 import type { Post } from '../types/posts';
 import ChatState from '../utils/chatState';
-import '../styles/UserProfile.css';
 import { AuthedImage } from '../components/ui/AuthedImage';
+import { useUserStore } from '../utils/userStore';
+import type { UserStore } from '../utils/userStore';
+import showToast from '../utils/toast';
 
 interface UserResponse {
   username?: string;
-  displayname?: string;
+  displayname?: string | null;
   avatarUrl?: string | null;
   postsCount?: number;
   friendsCount?: number;
@@ -30,7 +33,7 @@ interface UserResponse {
 
 interface UserSearchResult {
   username: string;
-  displayname?: string;
+  displayname?: string | null;
   avatarUrl?: string | null;
   postsCount?: number;
   friendsCount?: number;
@@ -42,44 +45,87 @@ export default function UserProfile() {
   const [user, setUser] = useState<UserResponse | null>(null);
   const [me, setMe] = useState<UserResponse | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
+  const [postsLoadingMore, setPostsLoadingMore] = useState(false);
+  const [postsHasMore, setPostsHasMore] = useState(false);
+  const [postsNextCursor, setPostsNextCursor] = useState<string | null>(null);
+  const POSTS_PAGE_SIZE = 10;
+  const storeUser = useUserStore((s: UserStore) => s.user);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<UserSearchResult[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [sendingRequest, setSendingRequest] = useState(false);
+  const [editing, setEditing] = useState(false);
 
   useEffect(() => {
     if (!username) return;
 
+    let cancelled = false;
+
     async function load() {
       setLoading(true);
+      setPosts([]);
+      setPostsNextCursor(null);
+      setPostsHasMore(false);
+
       try {
         const res = await apiFetch(`/api/users/${username}`);
         if (res.ok) {
           const data = await res.json();
-          setUser(data);
+          if (!cancelled) setUser(data);
         } else {
-          setUser(null);
+          if (!cancelled) setUser(null);
         }
 
-        const postsRes = await apiFetch(`/api/users/${username}/posts`);
+        const postsRes = await apiFetch(`/api/users/${username}/posts?limit=${POSTS_PAGE_SIZE}`);
         if (postsRes.ok) {
           const payload = await postsRes.json();
-          setPosts(payload.items || []);
+          if (!cancelled) {
+            setPosts(payload.items || []);
+            setPostsHasMore(Boolean(payload.meta?.hasMore));
+            setPostsNextCursor(payload.meta?.nextCursor ?? null);
+          }
         } else {
-          setPosts([]);
+          if (!cancelled) setPosts([]);
         }
       } catch (e) {
-        console.error('Failed to load user profile', e);
-        setUser(null);
-        setPosts([]);
+        showToast('Failed to load user profile', 'error');
+        if (!cancelled) {
+          setUser(null);
+          setPosts([]);
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
 
     void load();
+
+    return () => {
+      cancelled = true;
+    };
   }, [username]);
+
+  const loadMorePosts = async () => {
+    if (!postsHasMore || postsLoadingMore || !postsNextCursor || !username) return;
+    setPostsLoadingMore(true);
+    try {
+      const res = await apiFetch(
+        `/api/users/${username}/posts?limit=${POSTS_PAGE_SIZE}&cursor=${encodeURIComponent(
+          postsNextCursor,
+        )}`,
+      );
+      if (!res.ok) throw new Error('Failed to load more posts');
+      const payload = await res.json();
+      setPosts((prev) => [...prev, ...(payload.items || [])]);
+      setPostsHasMore(Boolean(payload.meta?.hasMore));
+      setPostsNextCursor(payload.meta?.nextCursor ?? null);
+    } catch (e) {
+      showToast('Failed to load more posts', 'error');
+    } finally {
+      setPostsLoadingMore(false);
+    }
+  };
 
   useEffect(() => {
     async function loadMe() {
@@ -88,14 +134,19 @@ export default function UserProfile() {
         if (res.ok) {
           const data = await res.json();
           setMe(data);
+          useUserStore.getState().setUser(data);
         }
       } catch (e) {
-        console.error('Failed to load current user', e);
+        showToast('Failed to load current user', 'error');
       }
     }
 
     void loadMe();
   }, []);
+
+  useEffect(() => {
+    if (storeUser) setMe(storeUser as UserResponse);
+  }, [storeUser]);
 
   useEffect(() => {
     if (searchQuery.trim().length < 2) {
@@ -116,7 +167,7 @@ export default function UserProfile() {
           setSearchResults([]);
         }
       } catch (e) {
-        console.error('Search failed', e);
+        showToast('Search failed', 'error');
         setSearchResults([]);
       } finally {
         setSearchLoading(false);
@@ -128,6 +179,75 @@ export default function UserProfile() {
 
   const normalize = (s?: string | null) => (s ?? '').toString().replace(/^@/, '').toLowerCase();
   const isMine = normalize(me?.username) === normalize(username as string | undefined);
+
+  useEffect(() => {
+    if (!user?.username || !user?.avatarUrl) return;
+    setPosts((prev) =>
+      prev.map((p) =>
+        p.author?.username === user.username
+          ? { ...p, author: { ...p.author, avatarUrl: user.avatarUrl } }
+          : p,
+      ),
+    );
+  }, [user?.avatarUrl, user?.username]);
+
+  useEffect(() => {
+    const onAccepted = (e: any) => {
+      try {
+        const payload = e?.detail ?? null;
+        const accepterUsername = payload?.accepter?.username ?? null;
+        if (!accepterUsername || accepterUsername !== user?.username) return;
+
+        setUser((prev) => ({
+          ...(prev ?? {}),
+          isFriend: true,
+          friendStatus: 'friend',
+          friendRequestSentByMe: false,
+          friendRequestIncoming: false,
+        }));
+      } catch {}
+    };
+
+    const onDeclined = (e: any) => {
+      try {
+        const payload = e?.detail ?? null;
+        const declinerUsername = payload?.decliner?.username ?? null;
+        if (!declinerUsername || declinerUsername !== user?.username) return;
+
+        setUser((prev) => ({
+          ...(prev ?? {}),
+          friendStatus: 'none',
+          friendRequestSentByMe: false,
+          friendRequestIncoming: false,
+        }));
+      } catch {}
+    };
+
+    const onWithdrawn = (e: any) => {
+      try {
+        const payload = e?.detail ?? null;
+        const withdrawerUsername = payload?.withdrawer?.username ?? null;
+        if (!withdrawerUsername || withdrawerUsername !== user?.username) return;
+
+        setUser((prev) => ({
+          ...(prev ?? {}),
+          friendStatus: 'none',
+          friendRequestIncoming: false,
+          friendRequestSentByMe: false,
+        }));
+      } catch {}
+    };
+
+    window.addEventListener('friend:accepted', onAccepted as EventListener);
+    window.addEventListener('friend:declined', onDeclined as EventListener);
+    window.addEventListener('friend:withdrawn', onWithdrawn as EventListener);
+
+    return () => {
+      window.removeEventListener('friend:accepted', onAccepted as EventListener);
+      window.removeEventListener('friend:declined', onDeclined as EventListener);
+      window.removeEventListener('friend:withdrawn', onWithdrawn as EventListener);
+    };
+  }, [user?.username]);
 
   const handleSendFriendRequest = async () => {
     if (!user?.username) return;
@@ -174,65 +294,99 @@ export default function UserProfile() {
 
   return (
     <div>
-      <div className="user-profile-header">
-        <div className="flex items-center justify-between p-4">
+      {editing && (
+        <EditProfileModal
+          user={user}
+          onClose={() => setEditing(false)}
+          onUpdated={(data) => {
+            setUser((prev) => ({ ...(prev ?? {}), ...data }));
+            setMe((prev) => ({ ...(prev ?? {}), ...data }));
+            if (data?.avatarUrl) {
+              setPosts((prev) =>
+                prev.map((p) =>
+                  p.author?.username === user?.username
+                    ? { ...p, author: { ...p.author, avatarUrl: data.avatarUrl } }
+                    : p,
+                ),
+              );
+            }
+            if (data?.username && data.username !== username) {
+              setEditing(false);
+              navigate(`/users/${data.username}`, { replace: true });
+              return;
+            }
+          }}
+        />
+      )}
+      <div className="sticky top-0 z-20 border-b border-slate-700/80 bg-slate-950/90 backdrop-blur-xl">
+        <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
           <h1 className="text-[20px] font-bold text-[#f7f9f9]">
             {user.displayname ?? user.username}
           </h1>
 
-          <div className="user-search-wrap">
+          <div className="relative w-full max-w-[420px]">
             <input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search by nickname"
-              className="w-full rounded-md border border-[#39444d] bg-[#071026] px-3 py-2 text-sm text-[#f7f9f9] outline-none"
+              className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-sky-400"
             />
 
             {searchLoading && searchQuery.trim().length >= 2 && (
-              <div className="user-search-status">Searching...</div>
+              <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-[9999] rounded-2xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-400 shadow-[0_20px_40px_rgba(0,0,0,0.35)]">
+                Searching...
+              </div>
             )}
 
             {!searchLoading && searchQuery.trim().length >= 2 && searchResults.length > 0 && (
-              <div className="user-search-dropdown">
+              <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-[9999] overflow-hidden rounded-2xl border border-slate-700 bg-slate-950 shadow-[0_20px_40px_rgba(0,0,0,0.35)]">
                 {searchResults.map((r) => (
                   <button
                     key={r.username}
                     type="button"
-                    className="user-search-item"
+                    className="flex w-full items-center gap-3 border-b border-slate-800 px-3 py-3 text-left transition last:border-b-0 hover:bg-slate-900"
                     onClick={() => {
                       setSearchQuery('');
                       setSearchResults([]);
                       navigate(`/users/${r.username}`);
                     }}
                   >
-                    <div className="user-search-avatar">
+                    <div className="size-8 overflow-hidden rounded-full border border-slate-700 bg-slate-900">
                       <AuthedImage
                         src={r.avatarUrl ?? '/uploads/avatars/default.png'}
                         alt={r.displayname ?? r.username}
                       />
                     </div>
 
-                    <div className="user-search-main">
-                      <div className="user-search-name">{r.displayname ?? r.username}</div>
-                      <div className="user-search-username">@{r.username}</div>
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-medium text-white">
+                        {r.displayname ?? r.username}
+                      </div>
+                      <div className="truncate text-xs text-slate-400">@{r.username}</div>
                     </div>
 
-                    <div className="user-search-meta">{r.postsCount ?? 0} posts</div>
+                    <div className="whitespace-nowrap text-xs text-slate-400">
+                      {r.postsCount ?? 0} posts
+                    </div>
 
-                    <div className="user-search-meta">{r.friendsCount ?? 0} friends</div>
+                    <div className="whitespace-nowrap text-xs text-slate-400">
+                      {r.friendsCount ?? 0} friends
+                    </div>
                   </button>
                 ))}
               </div>
             )}
 
             {!searchLoading && searchQuery.trim().length >= 2 && searchResults.length === 0 && (
-              <div className="user-search-status">No users found</div>
+              <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-[9999] rounded-2xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-400 shadow-[0_20px_40px_rgba(0,0,0,0.35)]">
+                No users found
+              </div>
             )}
           </div>
         </div>
       </div>
 
-      <div className="p-6 border-b border-[#39444d] flex gap-6 items-center">
+      <div className="flex flex-col items-start gap-4 border-b border-[#39444d] p-4 sm:flex-row sm:items-center sm:gap-6 sm:p-6">
         <div className="size-20 rounded-full overflow-hidden bg-[#0b1220]">
           <AuthedImage
             src={user.avatarUrl ?? '/uploads/avatars/default.png'}
@@ -242,7 +396,7 @@ export default function UserProfile() {
         </div>
 
         <div className="flex-1">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <div>
               <h2 className="text-[18px] font-bold text-[#f7f9f9]">
                 {user.displayname ?? 'Unknown'}
@@ -252,10 +406,13 @@ export default function UserProfile() {
               </div>
             </div>
 
-            <div className="ml-auto flex gap-2">
+            <div className="flex flex-wrap gap-2 sm:ml-auto">
               {isMine ? (
                 <>
-                  <button className="bg-[var(--color-1)] hover:bg-[var(--color-1)]/90 text-[#f7f9f9] rounded-full py-2 px-4 transition-colors">
+                  <button
+                    onClick={() => setEditing(true)}
+                    className="bg-[var(--color-1)] hover:bg-[var(--color-1)]/90 text-[#f7f9f9] rounded-full py-2 px-4 transition-colors"
+                  >
                     Edit profile
                   </button>
                   <button
@@ -263,7 +420,7 @@ export default function UserProfile() {
                       try {
                         await logout();
                       } catch (e) {
-                        console.error('Logout failed', e);
+                        showToast('Logout failed', 'error');
                       }
                     }}
                     className="bg-transparent border border-[#39444d] text-[#f7f9f9] rounded-full py-2 px-4 transition-colors"
@@ -352,7 +509,35 @@ export default function UserProfile() {
         {posts.length === 0 ? (
           <div className="p-8 text-[#8b98a5]">No posts yet</div>
         ) : (
-          posts.map((post) => <PostCard post={post} key={post.id} />)
+          <>
+            {posts.map((post) => (
+              <PostCard
+                post={post}
+                key={post.id}
+                onDeleted={(id) => {
+                  setPosts((prev) => prev.filter((p) => p.id !== id));
+                  setUser((prev) =>
+                    prev
+                      ? { ...(prev as any), postsCount: Math.max(0, (prev.postsCount ?? 0) - 1) }
+                      : prev,
+                  );
+                }}
+              />
+            ))}
+
+            {postsHasMore && (
+              <div className="mt-4 text-center">
+                <button
+                  type="button"
+                  onClick={loadMorePosts}
+                  disabled={postsLoadingMore}
+                  className="bg-[var(--color-1)] hover:bg-[var(--color-1)]/90 text-[#f7f9f9] rounded-full py-2 px-4 transition-colors disabled:opacity-40"
+                >
+                  {postsLoadingMore ? 'Loading...' : 'Load more'}
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

@@ -3,11 +3,14 @@ import { apiFetch, logout } from '../utils/api';
 import { PostCard } from '../components/ui/PostCard';
 import type { Post } from '../types/posts';
 import { AuthedImage } from '../components/ui/AuthedImage';
+import { useUserStore } from '../utils/userStore';
+import type { UserStore } from '../utils/userStore';
+import showToast from '../utils/toast';
 
 interface MeResponse {
   id?: string;
   username?: string;
-  displayname?: string;
+  displayname?: string | null;
   avatarUrl?: string | null;
 }
 
@@ -15,21 +18,32 @@ export function ProfilePage() {
   const [me, setMe] = useState<MeResponse | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
+  const setUser = useUserStore((s: UserStore) => s.setUser);
+  const storeUser = useUserStore((s: UserStore) => s.user);
 
   useEffect(() => {
-    const token = localStorage.getItem('accessToken');
+    if (storeUser) setMe(storeUser as MeResponse);
+  }, [storeUser]);
 
+  useEffect(() => {
+    if (!me?.username || !me?.avatarUrl) return;
+    setPosts((prev) =>
+      prev.map((p) =>
+        p.author?.username === me.username
+          ? { ...p, author: { ...p.author, avatarUrl: me.avatarUrl } }
+          : p,
+      ),
+    );
+  }, [me?.avatarUrl, me?.username]);
+
+  useEffect(() => {
     async function load() {
-      if (!token) {
-        setLoading(false);
-        return;
-      }
-
       try {
         const meRes = await apiFetch('/api/me');
         if (meRes.ok) {
           const data = await meRes.json();
           setMe(data);
+          setUser(data);
         }
 
         const postRes = await apiFetch('/api/me/posts');
@@ -37,25 +51,17 @@ export function ProfilePage() {
           const payload = await postRes.json();
           setPosts(payload.items || []);
         }
-      } catch (err) {
+      } catch {
+        showToast('Failed to load profile. Please try again.', 'error');
       } finally {
         setLoading(false);
       }
     }
-    load();
+    void load();
   }, []);
 
   if (loading) {
     return <div className="p-8 text-[#8b98a5]">Loading profile...</div>;
-  }
-
-  const token = localStorage.getItem('accessToken');
-  if (!token) {
-    return (
-      <div className="p-8 text-[#8b98a5]">
-        Please log in to view your profile. Open the Login page to continue.
-      </div>
-    );
   }
 
   return (
@@ -92,8 +98,10 @@ export function ProfilePage() {
                 onClick={async () => {
                   try {
                     await logout();
-                  } catch (e) {
-                    console.error('Logout failed', e);
+                  } catch {
+                    showToast('Logout failed. Please try again.', 'error');
+                  } finally {
+                    showToast('Logged out successfully!', 'success');
                   }
                 }}
                 className="bg-transparent border border-[#39444d] text-[#f7f9f9] rounded-full py-2 px-4 transition-colors"
@@ -112,7 +120,15 @@ export function ProfilePage() {
         {posts.length === 0 ? (
           <div className="p-8 text-[#8b98a5]">No posts yet</div>
         ) : (
-          posts.map((post) => <PostCard post={post} key={post.id} />)
+          posts.map((post) => (
+            <PostCard
+              post={post}
+              key={post.id}
+              onDeleted={(id) => {
+                setPosts((prev) => prev.filter((p) => p.id !== id));
+              }}
+            />
+          ))
         )}
       </div>
     </div>

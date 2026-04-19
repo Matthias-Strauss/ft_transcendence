@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useState } from 'react';
-import { connectSocketFromStorage, socket } from '../socket';
+import { connectSocket, socket } from '../socket';
 
 type ChatMessage = {
   text: string;
@@ -35,7 +35,7 @@ export default function SocketTestPage() {
     socket.on('disconnect', onDisconnect);
     socket.on('chat:message', onChatMessage);
     socket.on('welcome', onWelcome);
-    connectSocketFromStorage();
+    void connectSocket();
 
     return () => {
       socket.off('connect', onConnect);

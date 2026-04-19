@@ -7,7 +7,8 @@ import { requireAuth, AuthedRequest } from '../auth/middleware.js';
 import { asyncHandler } from '../errors/asyncHandler.js';
 import { AuthErrors, RequestErrors, UserErrors } from '../errors/catalog.js';
 import { hashPassword, verifyPassword } from '../auth/password.js';
-import { clearRefreshCookie } from '../auth/refresh.js';
+import { validatePassword } from '../utils/passwordValidator.js';
+import { clearSessionCookie, clearRefreshCookie } from '../auth/refresh.js';
 import { getAvatarUrlFromPath } from '../files/avatars.js';
 import { getPostViewerContext, postAuthorInclude, serializePost } from '../utils/postUtils.js';
 import { prismaUniqueToUserError } from '../utils/meUtils.js';
@@ -375,7 +376,7 @@ meRouter.patch(
 const ChangePasswordSchema = z
   .object({
     currentPassword: z.string().min(1).max(100),
-    newPassword: z.string().min(3).max(100),
+    newPassword: z.string().min(1).max(100),
   })
   .strict()
   .superRefine((val, ctx) => {
@@ -385,6 +386,11 @@ const ChangePasswordSchema = z
         message: 'New password must be different from current password',
         path: ['newPassword'],
       });
+    }
+
+    const pwErr = validatePassword(val.newPassword);
+    if (pwErr) {
+      ctx.addIssue({ code: 'custom', message: pwErr, path: ['newPassword'] });
     }
   });
 
@@ -429,6 +435,7 @@ meRouter.put(
       }),
     ]);
 
+    clearSessionCookie(req, res);
     clearRefreshCookie(req, res);
 
     return res.json({ ok: true });
