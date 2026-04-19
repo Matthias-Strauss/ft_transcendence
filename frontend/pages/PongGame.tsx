@@ -59,10 +59,36 @@ const CAMERA_Z = 60;
 const CAMERA_TARGET_Y = 3.4;
 const CAMERA_FOV = 1.12;
 
+let sharedBackgroundVideo: HTMLVideoElement | null = null;
+
+function getSharedBackgroundVideo(): HTMLVideoElement | null {
+  if (typeof document === 'undefined') {
+    return null;
+  }
+
+  if (!sharedBackgroundVideo) {
+    const video = document.createElement('video');
+    video.autoplay = true;
+    video.loop = true;
+    video.muted = true;
+    video.playsInline = true;
+    video.preload = 'auto';
+    video.src = VIDEO_DOME_URL;
+    video.className =
+      'pointer-events-none absolute inset-0 h-full w-full object-cover object-center brightness-[0.38] contrast-[1.05] saturate-[1.15]';
+    video.style.objectPosition = VIDEO_BACKGROUND_POSITION;
+    video.style.transform = `translateY(${VIDEO_BACKGROUND_OFFSET_Y}) scale(${VIDEO_BACKGROUND_SCALE})`;
+    sharedBackgroundVideo = video;
+  }
+
+  return sharedBackgroundVideo;
+}
+
 type TimedSnapshot = { t: number; snap: PongSnapshot };
 
 export default function PongGame() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const backgroundVideoHostRef = useRef<HTMLDivElement | null>(null);
   const snapshotBufferRef = useRef<TimedSnapshot[]>([]);
   const cameraRef = useRef<FreeCamera | null>(null);
   const engineRef = useRef<Engine | null>(null);
@@ -534,21 +560,24 @@ export default function PongGame() {
     cursor: 'pointer',
   };
 
+  useEffect(() => {
+    const host = backgroundVideoHostRef.current;
+    const video = getSharedBackgroundVideo();
+    if (!host || !video) return;
+
+    host.appendChild(video);
+    void video.play().catch(() => {});
+
+    return () => {
+      if (video.parentElement === host) {
+        host.removeChild(video);
+      }
+    };
+  }, []);
+
   return (
     <div className="relative h-[calc(100vh-2rem)] w-full overflow-hidden bg-[#191521]">
-      <video
-        autoPlay
-        loop
-        muted
-        playsInline
-        preload="auto"
-        src={VIDEO_DOME_URL}
-        className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center brightness-[0.38] contrast-[1.05] saturate-[1.15]"
-        style={{
-          objectPosition: VIDEO_BACKGROUND_POSITION,
-          transform: `translateY(${VIDEO_BACKGROUND_OFFSET_Y}) scale(${VIDEO_BACKGROUND_SCALE})`,
-        }}
-      />
+      <div ref={backgroundVideoHostRef} className="absolute inset-0" />
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(25,21,33,0.18)_0%,rgba(25,21,33,0.34)_44%,rgba(25,21,33,0.76)_100%)]" />
       <canvas ref={canvasRef} className="absolute inset-0 z-10 h-full w-full" />
       <div className="relative z-20 h-full w-full">
