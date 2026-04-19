@@ -29,6 +29,8 @@ export default function CommentSection({ post, onCommentCreated }: PostProp) {
   const [comments, setComments] = useState<CommentsResponse | null>(null);
   const currentUser = useUserStore((s: UserStore) => s.user);
 
+  const COMMENT_MAX_CHARS = 300;
+
   const handleCommentSubmit = async () => {
     const content = commentInput.trim();
     if (!content) {
@@ -101,18 +103,25 @@ export default function CommentSection({ post, onCommentCreated }: PostProp) {
               type="text"
               placeholder="Write a comment..."
               value={commentInput}
-              onChange={(e) => setCommentInput(e.target.value)}
+              maxLength={COMMENT_MAX_CHARS}
+              onChange={(e) => setCommentInput(e.target.value.slice(0, COMMENT_MAX_CHARS))}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault();
-                  void handleCommentSubmit();
+                  const len = commentInput.trim().length;
+                  if (len > 0 && len <= COMMENT_MAX_CHARS) {
+                    void handleCommentSubmit();
+                  }
                 }
               }}
               className="flex-1 bg-transparent border-b border-[#39444d] py-2 text-[15px] text-[#f7f9f9] placeholder:text-[#8b98a5] focus:outline-none focus:border-[var(--color-1)] transition-colors"
             />
+            <span className={`text-sm ${commentInput.length > COMMENT_MAX_CHARS ? 'text-red-400' : 'text-[#8b98a5]'}`}>
+              {commentInput.length}/{COMMENT_MAX_CHARS}
+            </span>
             <button
               onClick={() => void handleCommentSubmit()}
-              disabled={!commentInput.trim()}
+              disabled={!commentInput.trim() || commentInput.trim().length > COMMENT_MAX_CHARS}
               className="p-2 rounded-full transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--color-1)]/10"
             >
               <Send
