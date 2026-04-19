@@ -128,7 +128,7 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
       } else {
         showNotification('Failed to upload avatar. Please try again.');
       }
-    } catch (e) {
+    } catch {
       showNotification(
         'An unexpected error occurred while uploading the avatar. Please try again.',
       );
@@ -154,7 +154,7 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
       } else {
         showNotification('Failed to delete avatar. Please try again.');
       }
-    } catch (e) {
+    } catch {
       showNotification('An unexpected error occurred while deleting the avatar. Please try again.');
     } finally {
       setLoading(false);
@@ -165,7 +165,7 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
     if (loading) return;
 
     const normalizedEmail = (email ?? '').trim();
-    const payloadEmail = normalizedEmail === '' ? null : normalizedEmail;
+    const payloadEmail = normalizedEmail;
 
     const displayTrim = (displayname ?? '').trim();
     const usernameTrim = (usernameState ?? '').trim().toLowerCase();
@@ -180,7 +180,12 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
       return;
     }
 
-    if (payloadEmail !== null && !isValidEmail(payloadEmail)) {
+    if (payloadEmail.length === 0) {
+      showNotification('Email is required');
+      return;
+    }
+
+    if (!isValidEmail(payloadEmail)) {
       showNotification('Invalid email address');
       return;
     }
@@ -215,10 +220,10 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
       if (typeof data?.displayname !== 'undefined') updatePatch.displayname = data.displayname;
       if (typeof data?.username !== 'undefined') updatePatch.username = data.username;
 
-      updateUser(updatePatch as Partial<User>);
-      onUpdated?.(updatePatch as any);
+      updateUser(updatePatch);
+      onUpdated?.(updatePatch);
       showNotification('Profile saved successfully.', 'success');
-    } catch (e) {
+    } catch {
       showToast('Failed to update profile', 'error');
       showNotification('An unexpected error occurred while saving your profile. Please try again.');
     } finally {
@@ -269,7 +274,7 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
 
       showToast('Password changed successfully. You will be logged out.', 'success');
       await logout();
-    } catch (e) {
+    } catch {
       showToast('Failed to change password', 'error');
       showNotification(
         'An unexpected error occurred while changing your password. Please try again.',
@@ -280,18 +285,18 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
   }
 
   const normalizedEmail = (email ?? '').trim();
-  const payloadEmailNormalized = normalizedEmail === '' ? null : normalizedEmail;
+  const payloadEmailNormalized = normalizedEmail;
 
   const displayNameNormalized = (displayname ?? '').trim();
   const usernameNormalized = (usernameState ?? '').trim().toLowerCase();
 
-  const emailChanged = payloadEmailNormalized !== (storeUser?.email ?? null);
+  const emailChanged = payloadEmailNormalized !== (storeUser?.email ?? '');
   const displaynameChanged =
     displayNameNormalized !== '' && displayNameNormalized !== (storeUser?.displayname ?? '');
   const usernameChanged =
     usernameNormalized !== '' && usernameNormalized !== (storeUser?.username ?? '');
 
-  const emailInvalid = payloadEmailNormalized !== null && !isValidEmail(payloadEmailNormalized);
+  const emailInvalid = payloadEmailNormalized.length === 0 || !isValidEmail(payloadEmailNormalized);
   const displaynameInvalid = displaynameChanged && !isValidDisplayname(displayNameNormalized);
   const usernameInvalid = usernameChanged && !isValidUsername(usernameNormalized);
 
@@ -306,6 +311,8 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
     ? 'Saving...'
     : !emailChanged && !displaynameChanged && !usernameChanged
     ? 'No changes to save'
+    : payloadEmailNormalized.length === 0
+    ? 'Email is required'
     : emailInvalid
     ? 'Invalid email address'
     : displaynameInvalid
@@ -495,6 +502,7 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    required
                     placeholder="you@example.com"
                     className={panelInputClass}
                   />
