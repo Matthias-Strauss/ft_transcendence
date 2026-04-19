@@ -57,6 +57,29 @@ export function PostCard({ post, onDeleted }: PostCardProps) {
     setCommentCount((prev) => prev + 1);
   };
 
+  const savePost = async () => {
+    {
+      const response = await apiFetch(`/api/posts/${post.id}/bookmark`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ postId: post.id, authorId: post.authorId }),
+      });
+      if (!response.ok) {
+        return { ok: false };
+      }
+
+      const data = (await response.json()) as {
+        bookmarkCount?: number;
+        bookmarkedByMe?: boolean;
+      };
+
+      showToast('Post saved.', 'success');
+      return { ok: true, data };
+    }
+  };
+
   const handleDropdownActionSuccess = (
     action: string,
     data?: {
@@ -246,15 +269,27 @@ export function PostCard({ post, onDeleted }: PostCardProps) {
               </span>
             </button>
 
-            <div className="flex items-center gap-2">
-              <Bookmark className="size-[18px] text-[#8b98a5]" />
+            <button
+              className="flex items-center gap-2"
+              onClick={() => {
+                setIsBookmarked((prev) => !prev);
+                setBookmarkCount((prev) => prev + (isBookmarked ? -1 : 1));
+                void savePost();
+              }}
+            >
+              <Bookmark
+                className="size-[18px] text-[#8b98a5]"
+                fill={isBookmarked ? 'white' : 'none'}
+              />
               <span className="text-[13px] text-[#8b98a5]">{bookmarkCount}</span>
-            </div>
+            </button>
           </div>
+
           {commentOpen && !post.imageUrl ? (
             <CommentSection post={post} onCommentCreated={handleCommentCreated} />
           ) : null}
         </div>
+
         {commentOpen && post.imageUrl ? (
           <aside className="self-start mt-3 md:mt-6">
             <CommentSection post={post} onCommentCreated={handleCommentCreated} />

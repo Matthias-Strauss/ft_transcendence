@@ -17,10 +17,10 @@ export default function TermsOfService() {
         <p className="mb-6 text-sm text-slate-300">Effective date: 19 April 2026</p>
 
         <p className="mb-4 text-slate-300">
-          These Terms of Service (&quot;Terms&quot;) govern your access to and use of
-          Transcendence, including user profiles, posts, comments, direct messages, file uploads,
-          and multiplayer Pong features. By creating an account or using the service, you agree to
-          these Terms. If you do not agree, do not use the service.
+          These Terms of Service (&quot;Terms&quot;) govern your access to and use of Transcendence,
+          including user profiles, posts, comments, direct messages, file uploads, and multiplayer
+          Pong features. By creating an account or using the service, you agree to these Terms. If
+          you do not agree, do not use the service.
         </p>
 
         <h2 className="mb-2 mt-6 text-2xl font-semibold">Accounts and Access</h2>
@@ -33,8 +33,8 @@ export default function TermsOfService() {
 
         <h2 className="mb-2 mt-6 text-2xl font-semibold">Acceptable Use</h2>
         <p className="mb-3 text-slate-300">
-          You may use the service only for lawful, normal social and gameplay activity. You must
-          not harass other users, impersonate another person, send abusive or threatening messages,
+          You may use the service only for lawful, normal social and gameplay activity. You must not
+          harass other users, impersonate another person, send abusive or threatening messages,
           upload malicious files, attempt to scrape or disrupt the platform, exploit bugs, or use
           the game, chat, or social systems to spam, cheat, or manipulate other users.
         </p>

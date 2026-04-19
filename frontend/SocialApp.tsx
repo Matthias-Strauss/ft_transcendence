@@ -404,7 +404,7 @@ export default function SocialApp() {
         aria-expanded={mobileSidebarOpen}
         onClick={() => setMobileSidebarOpen((v) => !v)}
       >
-        {mobileSidebarOpen ? <X className="size-5" /> : <Menu className="size-5" />}
+        <Menu className="size-5" />
       </button>
 
       {mobileSidebarOpen && (
