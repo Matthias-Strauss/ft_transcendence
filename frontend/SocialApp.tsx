@@ -16,6 +16,7 @@ import Notifications from './pages/Notifications';
 import usePongStore from './utils/pongState';
 import useNotificationStore from './utils/notificationStore';
 import useFriendRequestStore from './utils/friendRequestStore';
+import showToast from './utils/toast';
 
 const ROOT_TABS = new Set(['home', 'notifications', 'messages', 'friends', 'saved']);
 
@@ -42,7 +43,7 @@ type PongScore = {
 
 type PongMatchPayload = {
   matchId?: string;
-  youAre?: string;
+  youAre?: 'p1' | 'p2';
   opponent?: string;
 };
 
@@ -323,9 +324,11 @@ export default function SocialApp() {
 
   useEffect(() => {
     const onMatched = (payload: PongMatchPayload) => {
-      if (!payload?.matchId || !payload?.youAre || !payload?.opponent) {
+      if (!payload?.matchId || !payload?.opponent) {
         return;
       }
+
+      if (payload.youAre !== 'p1' && payload.youAre !== 'p2') return;
 
       usePongStore.getState().setActiveMatch({
         matchId: payload.matchId,
@@ -342,9 +345,11 @@ export default function SocialApp() {
     };
 
     const onResumed = (payload: PongResumedPayload) => {
-      if (!payload?.matchId || !payload?.youAre || !payload?.opponent || !payload?.score) {
+      if (!payload?.matchId || !payload?.opponent || !payload?.score) {
         return;
       }
+
+      if (payload.youAre !== 'p1' && payload.youAre !== 'p2') return;
 
       usePongStore.getState().setActiveMatch({
         matchId: payload.matchId,
