@@ -21,6 +21,10 @@ type RefreshSessionResponse = {
   ok?: boolean;
 };
 
+type AuthSessionResponse = {
+  ok?: boolean;
+};
+
 const SESSION_TTL_MS = 15 * 60 * 1000;
 const SESSION_REFRESH_LEEWAY_MS = 2 * 60 * 1000;
 
@@ -51,6 +55,21 @@ async function readRefreshSessionResult(response: Response): Promise<boolean> {
     return payload.ok !== false;
   } catch {
     return true;
+  }
+}
+
+async function hasActiveServerSession(): Promise<boolean> {
+  try {
+    const response = await fetchWithSession('/api/auth/session');
+
+    if (!response.ok) {
+      return false;
+    }
+
+    const payload = (await response.json().catch(() => null)) as AuthSessionResponse | null;
+    return payload?.ok !== false;
+  } catch {
+    return false;
   }
 }
 
@@ -163,6 +182,19 @@ export async function refreshSession(options: RefreshSessionOptions = {}): Promi
       const refreshed = await readRefreshSessionResult(response);
 
       if (!refreshed) {
+        const sessionStillActive = await hasActiveServerSession();
+
+        if (sessionStillActive) {
+          if (sessionVersion !== startedAtVersion || loggingOut) {
+            return useAuthStore.getState().status === 'authenticated';
+          }
+
+          sessionVersion += 1;
+          markAuthenticated();
+          reconnectSocketAfterRefresh = shouldReconnectSocket;
+          return true;
+        }
+
         if (sessionVersion === startedAtVersion) {
           clearClientSession();
         }
@@ -191,7 +223,7 @@ export async function refreshSession(options: RefreshSessionOptions = {}): Promi
     } finally {
       useAuthStore.getState().setRefreshing(false);
       unblockSocketReconnects();
-      
+
       if (reconnectSocketAfterRefresh && !loggingOut && checkSocketConnectionIsUsd()) {
         void connectSocket({ forceReconnect: true });
       }
@@ -219,6 +251,18 @@ export async function restoreSession(): Promise<boolean> {
   useAuthStore.getState().setStatus('loading');
 
   restoring = (async () => {
+    const sessionStillActive = await hasActiveServerSession();
+
+    if (sessionStillActive) {
+      if (sessionVersion !== startedAtVersion || loggingOut) {
+        return useAuthStore.getState().status === 'authenticated';
+      }
+
+      sessionVersion += 1;
+      markAuthenticated();
+      return true;
+    }
+
     const refreshed = await refreshSession({ force: true });
 
     if (refreshed) {
