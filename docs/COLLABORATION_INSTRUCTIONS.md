@@ -3,7 +3,6 @@
 ## 🏁 Getting Started
 
 1. **Environment Setup:**
-
    - Create your local secrets file (never commit this!):
 
      ```bash
