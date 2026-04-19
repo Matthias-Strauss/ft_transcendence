@@ -20,6 +20,8 @@ import type { UserStore } from '../utils/userStore';
 import useChatStore from '../utils/chatState';
 import useNotificationStore from '../utils/notificationStore';
 import useFriendRequestStore from '../utils/friendRequestStore';
+import { logout } from '../utils/api';
+import showToast from '../utils/toast';
 
 function Logo() {
   return (
@@ -237,6 +239,20 @@ export function LeftSidebar({
         className="bg-[var(--color-1)] hover:bg-[var(--color-1)]/90 text-[#f7f9f9] rounded-full py-3 px-6 transition-colors mt-2"
       >
         <span className="font-bold text-[15px]">Write a post</span>
+      </button>
+      <button
+        onClick={async () => {
+          try {
+            await logout();
+          } catch {
+            showToast('Logout failed. Please try again.', 'error');
+          } finally {
+            showToast('Logged out successfully!', 'success');
+          }
+        }}
+        className="bg-transparent border border-[#39444d] text-[#f7f9f9] rounded-full py-2 px-4 transition-colors"
+      >
+        Logout
       </button>
 
       <div className="mt-auto">
