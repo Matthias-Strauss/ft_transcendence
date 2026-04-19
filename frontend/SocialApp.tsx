@@ -425,7 +425,7 @@ export default function SocialApp() {
       />
 
       <div className="ml-0 flex gap-3 px-2 pb-2 pt-14 md:ml-[220px] md:gap-6 md:px-4 md:py-4">
-        <main className="min-h-[calc(100vh-1rem)] flex-1 bg-[#0f172a] md:min-h-[calc(100vh-2rem)] md:border-x md:border-[#39444d]">
+        <main className="min-h-[calc(100vh-1rem)] flex-1 bg-[#0f172a] md:min-h-[calc(100vh-2rem)] md:border-x md:border-[#39444d] overflow-hidden">
           {!showingNestedRoute && <HomeFeed ref={inputRef} isVisible={activeTab === 'home'} />}
           {!showingNestedRoute && activeTab !== 'home' && renderContent()}
           {showingNestedRoute && <Outlet />}

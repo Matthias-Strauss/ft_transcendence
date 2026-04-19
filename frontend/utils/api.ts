@@ -191,7 +191,7 @@ export async function refreshSession(options: RefreshSessionOptions = {}): Promi
     } finally {
       useAuthStore.getState().setRefreshing(false);
       unblockSocketReconnects();
-      
+
       if (reconnectSocketAfterRefresh && !loggingOut && checkSocketConnectionIsUsd()) {
         void connectSocket({ forceReconnect: true });
       }

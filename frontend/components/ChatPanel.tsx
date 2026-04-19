@@ -16,10 +16,7 @@ import Dropdown from './ui/Dropdown';
 import { DropdownItem } from '../types/posts';
 import { handleSend } from '../chat/send';
 import { mapApiMessageToChatMessage, normalizeIncomingPayload } from '../chat/messages';
-import {
-  buildPongNotificationCopy,
-  buildPongNotificationLabel,
-} from '../chat/pongNotifications';
+import { buildPongNotificationCopy, buildPongNotificationLabel } from '../chat/pongNotifications';
 import type { UploadedFileMeta } from '../chat/types';
 
 const EMPTY_MESSAGES: ChatMessage[] = [];
@@ -76,7 +73,9 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
   const meUsername = useUserStore((s) => s.user?.username ?? null);
   const [deletingMessageIds, setDeletingMessageIds] = useState<string[]>([]);
 
-  const activeMessages = targetUsername ? messagesByUser[targetUsername] ?? EMPTY_MESSAGES : EMPTY_MESSAGES;
+  const activeMessages = targetUsername
+    ? messagesByUser[targetUsername] ?? EMPTY_MESSAGES
+    : EMPTY_MESSAGES;
   const inviteOutcomeById = useMemo(
     () =>
       activeMessages.reduce<Record<string, 'ACCEPTED' | 'DECLINED'>>((acc, msg) => {

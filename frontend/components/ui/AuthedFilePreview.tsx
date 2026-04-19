@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, FileText } from 'lucide-react';
-import { GlobalWorkerOptions, getDocument, type PDFDocumentProxy, type RenderTask } from 'pdfjs-dist';
+import {
+  GlobalWorkerOptions,
+  getDocument,
+  type PDFDocumentProxy,
+  type RenderTask,
+} from 'pdfjs-dist';
 import PdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?worker';
 import { apiFetch } from '../../utils/api';
 
@@ -188,7 +193,9 @@ export function AuthedFilePreview({
   if (!isPdf) {
     return (
       <div
-        className={`${className ?? ''} flex min-h-24 items-center justify-center border border-slate-200 bg-slate-50 px-4 py-3 text-center`}
+        className={`${
+          className ?? ''
+        } flex min-h-24 items-center justify-center border border-slate-200 bg-slate-50 px-4 py-3 text-center`}
         aria-label={title}
       >
         <div className="flex flex-col items-center gap-2 text-slate-600">
@@ -203,7 +210,9 @@ export function AuthedFilePreview({
   return (
     <div
       ref={frameRef}
-      className={`${className ?? ''} flex max-h-[26rem] flex-col overflow-hidden rounded-lg border border-slate-200 bg-slate-50`}
+      className={`${
+        className ?? ''
+      } flex max-h-[26rem] flex-col overflow-hidden rounded-lg border border-slate-200 bg-slate-50`}
       aria-label={title}
     >
       <div className="flex min-h-36 flex-1 items-center justify-center overflow-auto bg-white p-3">
@@ -212,7 +221,10 @@ export function AuthedFilePreview({
         ) : isLoading ? (
           <p className="m-0 text-sm text-slate-500">Loading preview…</p>
         ) : (
-          <canvas ref={canvasRef} className="max-w-full rounded border border-slate-200 shadow-sm" />
+          <canvas
+            ref={canvasRef}
+            className="max-w-full rounded border border-slate-200 shadow-sm"
+          />
         )}
       </div>
 
