@@ -103,7 +103,6 @@ authRouter.post(
   asyncHandler(async (req, res) => {
     const refreshToken: string | undefined = req.cookies?.[REFRESH_COOKIE_NAME];
     if (!refreshToken) {
-      clearSessionCookie(req, res);
       clearRefreshCookie(req, res);
       return res.json({ ok: false });
     }
@@ -114,7 +113,6 @@ authRouter.post(
       include: { user: true },
     });
     if (!stored || stored.revokedAt) {
-      clearSessionCookie(req, res);
       clearRefreshCookie(req, res);
       return res.json({ ok: false });
     }
@@ -124,7 +122,6 @@ authRouter.post(
         where: { id: stored.id },
         data: { revokedAt: new Date() },
       });
-      clearSessionCookie(req, res);
       clearRefreshCookie(req, res);
       return res.json({ ok: false });
     }
