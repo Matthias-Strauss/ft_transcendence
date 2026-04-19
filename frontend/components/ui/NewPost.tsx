@@ -7,6 +7,14 @@ interface CreatePostFormProps {
   onPostCreated?: () => void;
 }
 
+const AVATAR_MIME_MAP = {
+  'image/jpeg': '.jpg',
+  'image/png': '.png',
+} as const;
+
+const POST_IMAGE_MAX_BYTES =
+  Number((import.meta as any).env.VITE_POST_IMAGE_MAX_FILE_SIZE_BYTES) || 5242880;
+
 const CreatePostForm = forwardRef<HTMLTextAreaElement, CreatePostFormProps>(
   ({ onPostCreated }, ref) => {
     const [content, setContent] = useState('');
@@ -31,6 +39,23 @@ const CreatePostForm = forwardRef<HTMLTextAreaElement, CreatePostFormProps>(
     const handleImageChange = (e: ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (file) {
+        if (file.size > POST_IMAGE_MAX_BYTES) {
+          showToast(
+            `Image is too large. Maximum size is ${Math.round(
+              POST_IMAGE_MAX_BYTES / 1024 / 1024,
+            )} MB.`,
+            'error',
+          );
+          e.target.value = '';
+          return;
+        }
+        const allowedTypes = Object.keys(AVATAR_MIME_MAP);
+        if (!allowedTypes.includes(file.type)) {
+          showToast('Only JPEG and PNG images are allowed.', 'error');
+          e.target.value = '';
+          return;
+        }
+
         setImageFile(file);
         const reader = new FileReader();
         reader.onloadend = () => {
@@ -117,7 +142,8 @@ const CreatePostForm = forwardRef<HTMLTextAreaElement, CreatePostFormProps>(
                     id="new-post-image"
                     name="new-post-image"
                     type="file"
-                    accept="image/*"
+                    accept=
+                      {Object.keys(AVATAR_MIME_MAP).join(', ')}
                     onChange={handleImageChange}
                     style={{ display: 'none' }}
                   />
