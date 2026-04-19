@@ -50,7 +50,10 @@ const CreatePostForm = forwardRef<HTMLTextAreaElement, CreatePostFormProps>(
             types: [
               {
                 description: 'Images',
-                accept: { 'image/*': ['.jpg', '.jpeg', '.png'] },
+                accept: {
+                  'image/jpeg': ['.jpg', '.jpeg'],
+                  'image/png': ['.png'],
+                },
               },
             ],
             excludeAcceptAllOption: true,
@@ -70,7 +73,9 @@ const CreatePostForm = forwardRef<HTMLTextAreaElement, CreatePostFormProps>(
           }
 
           const allowedTypes = Object.keys(AVATAR_MIME_MAP);
-          if (!allowedTypes.includes(file.type)) {
+          const allowedExts = ['jpg', 'jpeg', 'png'];
+          const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
+          if (!allowedTypes.includes(file.type) && !allowedExts.includes(ext)) {
             showToast('Only JPEG and PNG images are allowed.', 'error');
             return;
           }
@@ -106,7 +111,9 @@ const CreatePostForm = forwardRef<HTMLTextAreaElement, CreatePostFormProps>(
           return;
         }
         const allowedTypes = Object.keys(AVATAR_MIME_MAP);
-        if (!allowedTypes.includes(file.type)) {
+        const allowedExts = ['jpg', 'jpeg', 'png'];
+        const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
+        if (!allowedTypes.includes(file.type) && !allowedExts.includes(ext)) {
           showToast('Only JPEG and PNG images are allowed.', 'error');
           e.target.value = '';
           return;
