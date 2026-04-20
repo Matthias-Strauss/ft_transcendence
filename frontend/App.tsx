@@ -53,8 +53,10 @@ export default function App() {
 
   useEffect(() => {
     if (authStatus === 'authenticated') {
-      const recoverRealtimeConnection = () => {
-        void refreshSession({ force: true, logoutOnFailure: true }).then((refreshed) => {
+      void connectSocket();
+
+      const refreshWSSession = (force = false) => {
+        void refreshSession({ force, logoutOnFailure: true }).then((refreshed) => {
           if (refreshed) {
             void connectSocket();
           }
@@ -62,17 +64,17 @@ export default function App() {
       };
 
       const refreshTimer = window.setInterval(() => {
-        recoverRealtimeConnection();
+        refreshWSSession(true);
       }, SESSION_REFRESH_INTERVAL_MS);
 
       const refreshVisibleSession = () => {
         if (document.visibilityState === 'visible') {
-          recoverRealtimeConnection();
+          refreshWSSession();
         }
       };
 
       const refreshOnFocus = () => {
-        recoverRealtimeConnection();
+        refreshWSSession();
       };
 
       document.addEventListener('visibilitychange', refreshVisibleSession);
@@ -110,7 +112,6 @@ export default function App() {
         >
           <Route path="game" element={<PongGame />} />
           <Route path="users/:username" element={<UserProfile />} />
-          <Route path="*" element={<NotFound />} />
         </Route>
         <Route path="*" element={<NotFound />} />
       </Routes>

@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { FriendsCard } from '../components/ui/FriendsCard';
 import { User } from '../components/ui/User';
 import type { FriendUser } from '../types/users';
-import { Sparkles } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   apiFetch,
@@ -64,9 +63,6 @@ export function FriendsPage() {
       <div className="sticky top-0 backdrop-blur-xl bg-[#0f172a]/80 border-b border-[#39444d] z-10">
         <div className="flex items-center justify-between p-4">
           <h1 className="font-bold text-[20px] text-[#f7f9f9]">Friends</h1>
-          <button className="p-2 hover:bg-[#1e293b] rounded-full transition-colors">
-            <Sparkles className="size-5" style={{ color: 'var(--color-1)' }} />
-          </button>
         </div>
         <div className="flex border-b border-[#39444d]">
           <button
@@ -91,6 +87,8 @@ export function FriendsPage() {
         <div className="border-b border-slate-700/80 bg-slate-950/80 p-3 backdrop-blur-xl">
           <div className="relative mx-auto w-full max-w-[420px]">
             <input
+              id="friend-search"
+              name="friend-search"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search by nickname"

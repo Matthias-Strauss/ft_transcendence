@@ -1,6 +1,7 @@
 export function validatePassword(pw: string): string | null {
   if (typeof pw !== 'string') return 'Password must be a string';
   if (pw.length < 8) return 'Password must be at least 8 characters long';
+  if (pw.length > 72) return 'Password must be 72 characters or fewer';
   if (!/[A-Za-z]/.test(pw)) return 'Password must include at least one letter';
   if (!/\d/.test(pw)) return 'Password must include at least one number';
   if (!/[^A-Za-z0-9]/.test(pw))

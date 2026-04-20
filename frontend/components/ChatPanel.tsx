@@ -1,27 +1,23 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
-import { Send, FileUp, Ban, ShieldCheck } from 'lucide-react';
+import { Ban, Download, FileUp, MoreHorizontal, Send, ShieldCheck, Trash2 } from 'lucide-react';
 import { socket } from '../socket';
 import { apiFetch } from '../utils/api';
 import { uploadFile } from '../utils/send_file';
 import useChatStore, {
   type ChatMessage,
+  type ChatFileMetadata,
   type PongInviteMetadata,
   type PongNotificationMetadata,
 } from '../utils/chatState';
 import useUserStore from '../utils/userStore';
 import showToast from '../utils/toast';
 import { AuthedFilePreview } from './ui/AuthedFilePreview';
-import { Download, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Dropdown from './ui/Dropdown';
 import { DropdownItem } from '../types/posts';
-import { MoreHorizontal } from 'lucide-react';
 import { handleSend } from '../chat/send';
-import {
-  mapApiMessageToChatMessage,
-  normalizeIncomingPayload,
-  shouldShowMessageInActiveChat,
-} from '../chat/messages';
+import { mapApiMessageToChatMessage, normalizeIncomingPayload } from '../chat/messages';
+import { buildPongNotificationCopy, buildPongNotificationLabel } from '../chat/pongNotifications';
 import type { UploadedFileMeta } from '../chat/types';
 
 const EMPTY_MESSAGES: ChatMessage[] = [];
@@ -31,13 +27,16 @@ interface ChatPanelProps {
 }
 
 function isPongInviteMetadata(metadata: ChatMessage['metadata']): metadata is PongInviteMetadata {
-  return metadata?.kind === 'pong_invite' && metadata.game === 'pong';
+  return metadata?.kind === 'pong_invite' && (metadata as PongInviteMetadata)?.game === 'pong';
 }
 
 function isPongNotificationMetadata(
   metadata: ChatMessage['metadata'],
 ): metadata is PongNotificationMetadata {
-  return metadata?.kind === 'pong_notification' && metadata.game === 'pong';
+  return (
+    metadata?.kind === 'pong_notification' &&
+    (metadata as PongNotificationMetadata)?.game === 'pong'
+  );
 }
 
 function formatInviteExpiry(expiresAt: string) {
@@ -49,53 +48,6 @@ function formatInviteExpiry(expiresAt: string) {
   }
 
   return `Expires ${expiry.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-}
-
-function buildNotificationLabel(metadata: PongNotificationMetadata) {
-  if (metadata.event === 'invite_accepted') {
-    return 'Invite Accepted';
-  }
-
-  if (metadata.event === 'invite_declined') {
-    return 'Invite Declined';
-  }
-
-  if (metadata.event === 'opponent_left') {
-    return 'Player Left';
-  }
-
-  if (metadata.event === 'opponent_disconnected') {
-    return 'Match Ended';
-  }
-
-  return 'Match Result';
-}
-
-function buildNotificationCopy(metadata: PongNotificationMetadata) {
-  if (metadata.event === 'invite_accepted') {
-    return 'The Pong invite was accepted.';
-  }
-
-  if (metadata.event === 'invite_declined') {
-    return 'The Pong invite was declined.';
-  }
-
-  if (metadata.event === 'opponent_left') {
-    const who = metadata.endedByUsername ?? 'A player';
-    return `${who} left the match.`;
-  }
-
-  if (metadata.event === 'opponent_disconnected') {
-    const who = metadata.endedByUsername ?? 'A player';
-    return `${who} disconnected and did not return in time.`;
-  }
-
-  const finalScore = metadata.finalScore;
-  if (!finalScore || !metadata.winnerUsername) {
-    return 'The Pong match finished.';
-  }
-
-  return `${metadata.winnerUsername} won ${finalScore.p1}-${finalScore.p2}.`;
 }
 
 export function ChatPanel({ onClose }: ChatPanelProps) {
@@ -118,13 +70,16 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
   const targetUsername = useChatStore((state) => state.targetUsername);
   const messagesByUser = useChatStore((s) => s.messagesByUser);
   const setMessagesForUser = useChatStore((s) => s.setMessagesForUser);
-  const appendMessageForUser = useChatStore((s) => s.appendMessageForUser);
   const clearTargetUsername = useChatStore((s) => s.clearTargetUsername);
   const clearUnreadForUser = useChatStore((s) => s.clearUnreadForUser);
+  const markMessageDeleted = useChatStore((s) => s.markMessageDeleted);
 
   const meUsername = useUserStore((s) => s.user?.username ?? null);
+  const [deletingMessageIds, setDeletingMessageIds] = useState<string[]>([]);
 
-  const activeMessages = targetUsername ? messagesByUser[targetUsername] ?? EMPTY_MESSAGES : EMPTY_MESSAGES;
+  const activeMessages = targetUsername
+    ? messagesByUser[targetUsername] ?? EMPTY_MESSAGES
+    : EMPTY_MESSAGES;
   const inviteOutcomeById = useMemo(
     () =>
       activeMessages.reduce<Record<string, 'ACCEPTED' | 'DECLINED'>>((acc, msg) => {
@@ -254,30 +209,10 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
 
         if (!normalized) return;
 
-        const { chatMessage, otherUsername, senderUsername, recipientUsername } = normalized;
+        const { senderUsername } = normalized;
 
         if (activeTarget && senderUsername === activeTarget) {
           setIsTargetTyping(false);
-        }
-
-        if (otherUsername) {
-          appendMessageForUser(otherUsername, chatMessage);
-        }
-        if (chatMessage.isOwn) return;
-
-        if (activeTarget) {
-          const shouldShow = shouldShowMessageInActiveChat(
-            activeTarget,
-            senderUsername,
-            recipientUsername,
-          );
-
-          if (!shouldShow) {
-          } else {
-            if (otherUsername) clearUnreadForUser(otherUsername);
-          }
-
-          return;
         }
       } catch (e) {
         showToast('Error handling chat message', 'error');
@@ -295,18 +230,31 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
       setIsTargetTyping(Boolean(payload?.isTyping));
     };
 
+    const onChatMessageDeleted = (payload: any) => {
+      const messageId = typeof payload?.messageId === 'string' ? payload.messageId : null;
+
+      if (!messageId) {
+        return;
+      }
+
+      markMessageDeleted(messageId);
+      setDeletingMessageIds((current) => current.filter((id) => id !== messageId));
+    };
+
     socket.on('connect', onConnect);
     socket.on('disconnect', onDisconnect);
     socket.on('chat:message', onChatMessage);
     socket.on('chat:typing', onChatTyping);
+    socket.on('chat:message_deleted', onChatMessageDeleted);
 
     return () => {
       socket.off('connect', onConnect);
       socket.off('disconnect', onDisconnect);
       socket.off('chat:message', onChatMessage);
       socket.off('chat:typing', onChatTyping);
+      socket.off('chat:message_deleted', onChatMessageDeleted);
     };
-  }, [appendMessageForUser, meUsername]);
+  }, [markMessageDeleted, meUsername]);
 
   useEffect(() => {
     let mounted = true;
@@ -345,11 +293,17 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
     return () => {
       mounted = false;
     };
-  }, [meUsername, targetUsername, setMessagesForUser]);
+  }, [clearUnreadForUser, meUsername, targetUsername, setMessagesForUser]);
 
   const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (!selectedFile) return;
+
+    if (!connected || !targetUsername) {
+      showToast('You must be online to upload a PDF', 'error');
+      e.target.value = '';
+      return;
+    }
 
     if (meUsername && targetUsername === meUsername) {
       showToast('You cannot chat with yourself', 'error');
@@ -379,6 +333,8 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
     e.target.value = '';
   };
 
+  const isFileUploadDisabled = !connected || !targetUsername || isUploading;
+
   const onSend = () => {
     handleSend({
       inputValue,
@@ -399,40 +355,42 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
     });
   };
 
-  const markFileDeletedInState = (username: string, messageId: string) => {
-    const current = messagesByUser[username] ?? [];
-
-    const next = current.map((m) => {
-      if (m.id !== messageId) return m;
-      return {
-        ...m,
-        message: m.message?.trim() ? m.message : 'Attachment deleted',
-        metadata: undefined,
-      };
-    });
-
-    setMessagesForUser(username, next);
-  };
-
   const handleFileDelete = async ({
-    fileId,
+    messageId,
     message,
   }: {
-    fileId: string;
+    messageId: string;
     message: ChatMessage;
   }) => {
-    const res = await apiFetch(`/api/chat/conversations/${targetUsername}/files/${fileId}`, {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-    });
-
-    if (!res.ok) {
-      showToast('Failed to delete file', 'error');
+    if (!targetUsername || deletingMessageIds.includes(messageId)) {
       return;
     }
 
-    markFileDeletedInState(targetUsername, message.id);
-    showToast('File deleted', 'success');
+    setDeletingMessageIds((current) => [...new Set([...current, messageId])]);
+
+    try {
+      const res = await apiFetch(
+        `/api/chat/conversations/${encodeURIComponent(targetUsername)}/files/${encodeURIComponent(
+          messageId,
+        )}`,
+        {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+        },
+      );
+
+      if (!res.ok) {
+        showToast('Failed to delete file', 'error');
+        return;
+      }
+
+      markMessageDeleted(message.id);
+      showToast('File deleted', 'success');
+    } catch {
+      showToast('Failed to delete file', 'error');
+    } finally {
+      setDeletingMessageIds((current) => current.filter((id) => id !== messageId));
+    }
   };
 
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -584,18 +542,28 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
         <div className="flex-1 overflow-y-auto bg-white px-4 py-4">
           <div className="flex flex-col gap-4">
             {activeMessages.map((msg) => {
-              const fileUrl = msg.metadata?.fileUrl;
-              const fileId = msg.id;
-              const fileName = msg.metadata?.originalName;
+              const isChatFile = msg.metadata?.kind === 'chat_pdf';
+              const fileUrl = isChatFile ? (msg.metadata as ChatFileMetadata)?.fileUrl : undefined;
+              const fileName = isChatFile
+                ? (msg.metadata as ChatFileMetadata)?.originalName
+                : undefined;
               const inviteMetadata = isPongInviteMetadata(msg.metadata) ? msg.metadata : null;
               const notificationMetadata = isPongNotificationMetadata(msg.metadata)
                 ? msg.metadata
                 : null;
               const inviteExpired =
                 inviteMetadata && new Date(inviteMetadata.expiresAt).getTime() <= Date.now();
-              const inviteOutcome = inviteMetadata
-                ? inviteOutcomeById[inviteMetadata.inviteId] ??
-                  (inviteExpired ? 'EXPIRED' : inviteMetadata.status)
+              const statusFromOutcome = inviteMetadata
+                ? inviteOutcomeById[inviteMetadata.inviteId]
+                : undefined;
+              const inviteOutcome:
+                | 'PENDING'
+                | 'ACCEPTED'
+                | 'DECLINED'
+                | 'EXPIRED'
+                | 'CANCELED'
+                | null = inviteMetadata
+                ? statusFromOutcome || (inviteExpired ? 'EXPIRED' : inviteMetadata.status)
                 : null;
               const canRespond =
                 Boolean(inviteMetadata) &&
@@ -604,6 +572,7 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
                 !inviteExpired;
               const isResponding =
                 inviteMetadata && respondingInviteIds.includes(inviteMetadata.inviteId);
+              const isDeletingFile = deletingMessageIds.includes(msg.id);
               return (
                 <div
                   key={msg.id}
@@ -617,7 +586,7 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
                   </div>
 
                   <div
-                    className={`max-w-[82%] rounded-2xl px-3 py-2 text-sm leading-6 ${
+                    className={`max-w-[82%] rounded-2xl px-3 py-2 text-sm leading-6 break-words ${
                       msg.isOwn
                         ? 'rounded-br-md bg-sky-600 text-white'
                         : 'rounded-bl-md border border-slate-200 bg-slate-100 text-slate-900'
@@ -668,14 +637,14 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
                       <div className="flex min-w-[220px] flex-col gap-2">
                         <div className="flex items-center justify-between gap-3">
                           <p className="m-0 text-[13px] font-bold">
-                            {buildNotificationLabel(notificationMetadata)}
+                            {buildPongNotificationLabel(notificationMetadata)}
                           </p>
                           <span className="rounded-full bg-sky-900/10 px-2 py-1 text-[10px] font-bold tracking-[0.04em] text-sky-900">
                             PONG
                           </span>
                         </div>
                         <p className="m-0 text-[12px] leading-[1.5]">
-                          {buildNotificationCopy(notificationMetadata)}
+                          {buildPongNotificationCopy(notificationMetadata)}
                         </p>
                         {notificationMetadata.event === 'match_result' &&
                           notificationMetadata.finalScore && (
@@ -694,25 +663,39 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
                           <AuthedFilePreview
                             src={fileUrl}
                             fileName={fileName || 'Attachment'}
-                            mimeType={msg.metadata?.mimeType || 'application/pdf'}
-                            className="max-h-40 w-auto max-w-full rounded-lg object-contain"
+                            mimeType={
+                              isChatFile
+                                ? (msg.metadata as ChatFileMetadata)?.mimeType
+                                : 'application/pdf'
+                            }
+                            className="w-full max-w-full"
                           />
 
                           <div className="flex items-center gap-3 pl-1">
-                            <Download
-                              className="size-4 cursor-pointer text-slate-500 transition hover:text-slate-900"
-                              onClick={() => downloadFile(fileUrl, fileName)}
-                            />
+                            <button
+                              type="button"
+                              className="inline-flex items-center justify-center rounded-full border border-slate-200 p-1.5 text-slate-500 transition hover:border-slate-300 hover:text-slate-900"
+                              onClick={() => void downloadFile(fileUrl, fileName)}
+                              aria-label={`Download ${fileName || 'attachment'}`}
+                              title="Download file"
+                            >
+                              <Download className="size-4" />
+                            </button>
 
-                            {msg.isOwn &&
-                              msg.metadata &&
-                              'fileId' in msg.metadata &&
-                              msg.metadata.fileId && (
-                                <Trash2
-                                  className="size-4 cursor-pointer text-red-500 transition hover:text-red-700"
-                                  onClick={() => handleFileDelete({ fileId, message: msg })}
-                                />
-                              )}
+                            {msg.isOwn && (
+                              <button
+                                type="button"
+                                className="inline-flex items-center justify-center rounded-full border border-red-200 p-1.5 text-red-500 transition hover:border-red-300 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                onClick={() =>
+                                  void handleFileDelete({ messageId: msg.id, message: msg })
+                                }
+                                aria-label={`Delete ${fileName || 'attachment'}`}
+                                title="Delete file"
+                                disabled={isDeletingFile}
+                              >
+                                <Trash2 className="size-4" />
+                              </button>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -730,6 +713,8 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
         <div className="mt-auto border-t border-slate-200 bg-white px-3 py-3">
           <div className="flex h-11 w-full items-center gap-2">
             <input
+              id="chat-message-input"
+              name="chat-message"
               type="text"
               placeholder="Type a message..."
               value={inputValue}
@@ -738,13 +723,29 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
               className="h-full flex-1 rounded-full border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-sky-500"
             />
 
-            <label className="inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-full border border-slate-300 text-slate-500 transition hover:bg-slate-50 hover:text-slate-700">
+            <label
+              className={`inline-flex h-11 w-11 items-center justify-center rounded-full border border-slate-300 text-slate-500 transition ${
+                isFileUploadDisabled
+                  ? 'cursor-not-allowed opacity-50'
+                  : 'cursor-pointer hover:bg-slate-50 hover:text-slate-700'
+              }`}
+              aria-disabled={isFileUploadDisabled}
+              title={isFileUploadDisabled ? 'Connect to upload a PDF' : 'Upload a PDF'}
+              onClick={(e) => {
+                if (isFileUploadDisabled) {
+                  e.preventDefault();
+                }
+              }}
+            >
               <FileUp className="size-5" />
               <input
+                id="chat-pdf-upload"
+                name="chat-pdf-upload"
                 type="file"
                 accept=".pdf"
                 onChange={handleFileChange}
                 style={{ display: 'none' }}
+                disabled={isFileUploadDisabled}
               />
             </label>
 

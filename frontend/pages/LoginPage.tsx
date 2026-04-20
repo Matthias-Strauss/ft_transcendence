@@ -84,6 +84,7 @@ export default function LoginPage() {
                 </label>
                 <input
                   id="username"
+                  name="username"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   autoComplete="username"
@@ -99,6 +100,7 @@ export default function LoginPage() {
                 </label>
                 <input
                   id="password"
+                  name="password"
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -136,6 +138,22 @@ export default function LoginPage() {
                 className="font-semibold text-sky-300 transition hover:text-sky-200"
               >
                 Create one
+              </Link>
+            </div>
+
+            <div className="relative mt-6 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-slate-400">
+              <span>Legal</span>
+              <Link
+                to="/privacy"
+                className="font-semibold text-sky-300 transition hover:text-sky-200"
+              >
+                Privacy Policy
+              </Link>
+              <Link
+                to="/terms"
+                className="font-semibold text-sky-300 transition hover:text-sky-200"
+              >
+                Terms of Service
               </Link>
             </div>
           </div>

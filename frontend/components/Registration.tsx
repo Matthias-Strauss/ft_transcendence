@@ -118,6 +118,7 @@ const Registration: React.FC = () => {
                 </label>
                 <input
                   id="username"
+                  name="username"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   autoComplete="username"
@@ -133,6 +134,7 @@ const Registration: React.FC = () => {
                 </label>
                 <input
                   id="displayname"
+                  name="displayname"
                   value={displayname}
                   onChange={(e) => setDisplayName(e.target.value)}
                   autoComplete="nickname"
@@ -147,6 +149,7 @@ const Registration: React.FC = () => {
                 </label>
                 <input
                   id="email"
+                  name="email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -163,6 +166,7 @@ const Registration: React.FC = () => {
                 </label>
                 <input
                   id="password"
+                  name="password"
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -175,6 +179,8 @@ const Registration: React.FC = () => {
               <div className="space-y-2 mt-1">
                 <label className="flex items-start gap-3 text-sm text-slate-300">
                   <input
+                    id="accept-privacy"
+                    name="accept-privacy"
                     type="checkbox"
                     checked={acceptedPrivacy}
                     onChange={(e) => setAcceptedPrivacy(e.target.checked)}
@@ -192,6 +198,8 @@ const Registration: React.FC = () => {
 
                 <label className="flex items-start gap-3 text-sm text-slate-300">
                   <input
+                    id="accept-terms"
+                    name="accept-terms"
                     type="checkbox"
                     checked={acceptedTerms}
                     onChange={(e) => setAcceptedTerms(e.target.checked)}

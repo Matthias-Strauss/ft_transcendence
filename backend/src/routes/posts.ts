@@ -1,3 +1,4 @@
+import { Prisma, type PrismaClient } from '@prisma/client';
 import { Router } from 'express';
 import { z } from 'zod';
 import path from 'node:path';
@@ -442,6 +443,23 @@ postsRouter.delete(
 );
 
 // BOOKMARK
+async function syncPostBookmarkCount(tx: Prisma.TransactionClient | PrismaClient, postId: string) {
+  const bookmarkCount = await tx.postBookmark.count({
+    where: { postId },
+  });
+
+  return tx.post.update({
+    where: { id: postId },
+    data: {
+      bookmarkCount,
+    },
+    select: {
+      id: true,
+      bookmarkCount: true,
+    },
+  });
+}
+
 postsRouter.post(
   '/posts/:id/bookmark',
   requireAuth,
@@ -466,18 +484,9 @@ postsRouter.post(
         skipDuplicates: true,
       });
 
-      if (created.count > 0) {
-        const updatedPost = await tx.post.update({
-          where: { id: postId },
-          data: {
-            bookmarkCount: { increment: 1 },
-          },
-          select: {
-            id: true,
-            bookmarkCount: true,
-          },
-        });
+      const updatedPost = await syncPostBookmarkCount(tx, postId);
 
+      if (created.count > 0) {
         try {
           if (post && post.authorId && post.authorId !== viewerId) {
             const createdNotif = await tx.notification.create({
@@ -502,30 +511,12 @@ postsRouter.post(
             } catch {}
           }
         } catch {}
-
-        return {
-          postId: updatedPost.id,
-          bookmarkedByMe: true,
-          bookmarkCount: updatedPost.bookmarkCount,
-        };
-      }
-
-      const unchangedPost = await tx.post.findUnique({
-        where: { id: postId },
-        select: {
-          id: true,
-          bookmarkCount: true,
-        },
-      });
-
-      if (!unchangedPost) {
-        throw PostErrors.notFound();
       }
 
       return {
-        postId: unchangedPost.id,
+        postId: updatedPost.id,
         bookmarkedByMe: true,
-        bookmarkCount: unchangedPost.bookmarkCount,
+        bookmarkCount: updatedPost.bookmarkCount,
       };
     });
 
@@ -547,48 +538,19 @@ postsRouter.delete(
     await checkPostVisibility(postId, viewerId);
 
     const result = await prisma.$transaction(async (tx) => {
-      const deleted = await tx.postBookmark.deleteMany({
+      await tx.postBookmark.deleteMany({
         where: {
           postId,
           userId: viewerId,
         },
       });
 
-      if (deleted.count > 0) {
-        const updatedPost = await tx.post.update({
-          where: { id: postId },
-          data: {
-            bookmarkCount: { decrement: 1 },
-          },
-          select: {
-            id: true,
-            bookmarkCount: true,
-          },
-        });
-
-        return {
-          postId: updatedPost.id,
-          bookmarkedByMe: false,
-          bookmarkCount: updatedPost.bookmarkCount,
-        };
-      }
-
-      const unchangedPost = await tx.post.findUnique({
-        where: { id: postId },
-        select: {
-          id: true,
-          bookmarkCount: true,
-        },
-      });
-
-      if (!unchangedPost) {
-        throw PostErrors.notFound();
-      }
+      const updatedPost = await syncPostBookmarkCount(tx, postId);
 
       return {
-        postId: unchangedPost.id,
+        postId: updatedPost.id,
         bookmarkedByMe: false,
-        bookmarkCount: unchangedPost.bookmarkCount,
+        bookmarkCount: updatedPost.bookmarkCount,
       };
     });
 

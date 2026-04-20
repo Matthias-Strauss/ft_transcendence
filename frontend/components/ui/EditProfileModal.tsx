@@ -7,6 +7,21 @@ import { Eye, EyeOff } from 'lucide-react';
 import type { UserStore, User } from '../../utils/userStore';
 import showToast from '../../utils/toast';
 
+const AVATAR_MIME_MAP = {
+  'image/jpeg': '.jpg',
+  'image/png': '.png',
+} as const;
+
+const AVATAR_MAX_BYTES =
+  Number((import.meta as any).env.VITE_AVATAR_MAX_FILE_SIZE_BYTES) || 2097152;
+
+const AVATAR_ACCEPT = [...Object.keys(AVATAR_MIME_MAP), '.jpg', '.jpeg', '.png'].join(',');
+const EMAIL_MAX_LENGTH = 254;
+const DISPLAYNAME_MAX_LENGTH = 30;
+const USERNAME_MIN_LENGTH = 3;
+const USERNAME_MAX_LENGTH = 30;
+const PASSWORD_MAX_LENGTH = 72;
+
 interface Props {
   user?: User | null;
   onClose: () => void;
@@ -75,21 +90,55 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
   ]);
 
   const isValidEmail = (v: string) => {
-    if (!v) return false;
+    if (!v || v.length > EMAIL_MAX_LENGTH) return false;
     const re = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
     return re.test(v);
   };
 
   const isValidDisplayname = (v: string) => {
     const t = v.trim();
-    if (t.length < 1 || t.length > 30) return false;
+    if (t.length < 1 || t.length > DISPLAYNAME_MAX_LENGTH) return false;
     return /^[a-zA-Z0-9._-]+( [a-zA-Z0-9._-]+)*$/.test(t);
   };
 
   const isValidUsername = (v: string) => {
     const t = v.trim().toLowerCase();
-    if (t.length < 3 || t.length > 30) return false;
+    if (t.length < USERNAME_MIN_LENGTH || t.length > USERNAME_MAX_LENGTH) return false;
     return /^[a-z0-9._-]+$/.test(t);
+  };
+
+  const getEmailError = (v: string) => {
+    const normalized = v.trim();
+    if (!normalized) return 'Email is required';
+    if (normalized.length > EMAIL_MAX_LENGTH) {
+      return `Email must be ${EMAIL_MAX_LENGTH} characters or fewer`;
+    }
+    if (!isValidEmail(normalized)) return 'Enter a valid email address';
+    return '';
+  };
+
+  const getDisplaynameError = (v: string) => {
+    const normalized = v.trim();
+    if (!normalized) return '';
+    if (normalized.length > DISPLAYNAME_MAX_LENGTH) {
+      return `Display name must be ${DISPLAYNAME_MAX_LENGTH} characters or fewer`;
+    }
+    if (!isValidDisplayname(normalized)) {
+      return 'Use letters, numbers, dots, underscores, hyphens, and single spaces';
+    }
+    return '';
+  };
+
+  const getUsernameError = (v: string) => {
+    const normalized = v.trim().toLowerCase();
+    if (!normalized) return '';
+    if (normalized.length < USERNAME_MIN_LENGTH || normalized.length > USERNAME_MAX_LENGTH) {
+      return `Username must be ${USERNAME_MIN_LENGTH}-${USERNAME_MAX_LENGTH} characters`;
+    }
+    if (!isValidUsername(normalized)) {
+      return 'Username may only contain lowercase letters, numbers, dots, underscores, and hyphens';
+    }
+    return '';
   };
 
   useEffect(() => {
@@ -110,6 +159,28 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
 
   function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0] ?? null;
+    if (!f) {
+      setSelectedFile(null);
+      return;
+    }
+
+    if (f.size > AVATAR_MAX_BYTES) {
+      showNotification(
+        `Image is too large. Maximum size is ${Math.round(AVATAR_MAX_BYTES / 1024 / 1024)} MB.`,
+      );
+      if (fileRef.current) fileRef.current.value = '';
+      return;
+    }
+
+    const allowed = Object.keys(AVATAR_MIME_MAP);
+    const allowedExts = ['jpg', 'jpeg', 'png'];
+    const ext = f.name.split('.').pop()?.toLowerCase() ?? '';
+    if (!allowed.includes(f.type) && !allowedExts.includes(ext)) {
+      showNotification('Only JPEG and PNG images are allowed.');
+      if (fileRef.current) fileRef.current.value = '';
+      return;
+    }
+
     setSelectedFile(f);
   }
 
@@ -128,7 +199,7 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
       } else {
         showNotification('Failed to upload avatar. Please try again.');
       }
-    } catch (e) {
+    } catch {
       showNotification(
         'An unexpected error occurred while uploading the avatar. Please try again.',
       );
@@ -154,7 +225,7 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
       } else {
         showNotification('Failed to delete avatar. Please try again.');
       }
-    } catch (e) {
+    } catch {
       showNotification('An unexpected error occurred while deleting the avatar. Please try again.');
     } finally {
       setLoading(false);
@@ -165,7 +236,7 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
     if (loading) return;
 
     const normalizedEmail = (email ?? '').trim();
-    const payloadEmail = normalizedEmail === '' ? null : normalizedEmail;
+    const payloadEmail = normalizedEmail;
 
     const displayTrim = (displayname ?? '').trim();
     const usernameTrim = (usernameState ?? '').trim().toLowerCase();
@@ -177,6 +248,16 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
 
     if (displayTrim && !isValidDisplayname(displayTrim)) {
       showNotification('Invalid display name — 1–30 chars, words separated by single spaces');
+      return;
+    }
+
+    if (payloadEmail.length === 0) {
+      showNotification('Email is required');
+      return;
+    }
+
+    if (!isValidEmail(payloadEmail)) {
+      showNotification('Invalid email address');
       return;
     }
 
@@ -210,10 +291,10 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
       if (typeof data?.displayname !== 'undefined') updatePatch.displayname = data.displayname;
       if (typeof data?.username !== 'undefined') updatePatch.username = data.username;
 
-      updateUser(updatePatch as Partial<User>);
-      onUpdated?.(updatePatch as any);
+      updateUser(updatePatch);
+      onUpdated?.(updatePatch);
       showNotification('Profile saved successfully.', 'success');
-    } catch (e) {
+    } catch {
       showToast('Failed to update profile', 'error');
       showNotification('An unexpected error occurred while saving your profile. Please try again.');
     } finally {
@@ -234,6 +315,12 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
     const pwdErr = validatePassword(newPassword);
     if (pwdErr) {
       showNotification(pwdErr);
+      return;
+    }
+
+    const usernameToCheck = (storeUser?.username ?? user?.username ?? '').trim().toLowerCase();
+    if (usernameToCheck && newPassword.toLowerCase().includes(usernameToCheck)) {
+      showNotification('Password cannot contain username');
       return;
     }
 
@@ -258,7 +345,7 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
 
       showToast('Password changed successfully. You will be logged out.', 'success');
       await logout();
-    } catch (e) {
+    } catch {
       showToast('Failed to change password', 'error');
       showNotification(
         'An unexpected error occurred while changing your password. Please try again.',
@@ -269,20 +356,41 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
   }
 
   const normalizedEmail = (email ?? '').trim();
-  const payloadEmailNormalized = normalizedEmail === '' ? null : normalizedEmail;
+  const payloadEmailNormalized = normalizedEmail;
 
   const displayNameNormalized = (displayname ?? '').trim();
   const usernameNormalized = (usernameState ?? '').trim().toLowerCase();
+  const passwordError = newPassword ? validatePassword(newPassword) ?? '' : '';
+  const confirmPasswordError =
+    confirmPassword && newPassword !== confirmPassword ? 'New passwords do not match' : '';
+  const usernameInPassword =
+    usernameNormalized && newPassword.toLowerCase().includes(usernameNormalized);
 
-  const emailChanged = payloadEmailNormalized !== (storeUser?.email ?? null);
+  const emailChanged = payloadEmailNormalized !== (storeUser?.email ?? '');
   const displaynameChanged =
     displayNameNormalized !== '' && displayNameNormalized !== (storeUser?.displayname ?? '');
   const usernameChanged =
     usernameNormalized !== '' && usernameNormalized !== (storeUser?.username ?? '');
 
-  const emailInvalid = payloadEmailNormalized !== null && !isValidEmail(payloadEmailNormalized);
-  const displaynameInvalid = displaynameChanged && !isValidDisplayname(displayNameNormalized);
-  const usernameInvalid = usernameChanged && !isValidUsername(usernameNormalized);
+  const emailError = getEmailError(payloadEmailNormalized);
+  const displaynameError = getDisplaynameError(displayNameNormalized);
+  const usernameError = getUsernameError(usernameNormalized);
+
+  const emailInvalid = emailError.length > 0;
+  const displaynameInvalid = displaynameChanged && displaynameError.length > 0;
+  const usernameInvalid = usernameChanged && usernameError.length > 0;
+  const passwordInvalid = Boolean(passwordError) || usernameInPassword;
+  const passwordDisabledReason = passwordLoading
+    ? 'Changing...'
+    : !currentPassword || !newPassword || !confirmPassword
+    ? 'Fill all password fields'
+    : passwordError
+    ? passwordError
+    : usernameInPassword
+    ? 'Password cannot contain username'
+    : confirmPasswordError
+    ? confirmPasswordError
+    : '';
 
   const saveDisabled =
     loading ||
@@ -295,12 +403,12 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
     ? 'Saving...'
     : !emailChanged && !displaynameChanged && !usernameChanged
     ? 'No changes to save'
-    : emailInvalid
-    ? 'Invalid email address'
+    : emailError
+    ? emailError
     : displaynameInvalid
-    ? 'Invalid display name'
+    ? displaynameError
     : usernameInvalid
-    ? 'Invalid username'
+    ? usernameError
     : '';
 
   const notificationTypeClasses = {
@@ -311,6 +419,7 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
 
   const panelInputClass =
     'w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-sky-400 focus:bg-white/8';
+  const invalidInputClass = 'border-rose-400/70 bg-rose-500/10 focus:border-rose-400';
   const pillButtonClass =
     'inline-flex items-center justify-center rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:-translate-y-0.5 hover:bg-white/10 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60';
   const ghostButtonClass =
@@ -412,9 +521,11 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
           <div className="flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <input
+                id="avatar-file"
                 ref={fileRef}
+                name="avatar-file"
                 type="file"
-                accept="image/png,image/jpeg"
+                accept={AVATAR_ACCEPT}
                 onChange={onFileChange}
                 className="hidden"
                 style={{ display: 'none' }}
@@ -451,34 +562,68 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
                 <div>
                   <label className="text-[12px] text-[#8b98a5] block mb-1">Display name</label>
                   <input
+                    id="profile-displayname"
+                    name="profile-displayname"
                     type="text"
                     value={displayname}
                     onChange={(e) => setDisplayname(e.target.value)}
+                    maxLength={DISPLAYNAME_MAX_LENGTH}
                     placeholder="Display name"
-                    className={panelInputClass}
+                    className={`${panelInputClass} ${displaynameError ? invalidInputClass : ''}`}
                   />
+                  <div className="mt-1 flex items-center justify-between gap-3 text-[11px]">
+                    <span className={displaynameError ? 'text-rose-300' : 'text-[#8b98a5]'}>
+                      {displaynameError || '1-30 chars, single spaces between words'}
+                    </span>
+                    <span className="text-[#8b98a5]">
+                      {displayNameNormalized.length}/{DISPLAYNAME_MAX_LENGTH}
+                    </span>
+                  </div>
                 </div>
 
                 <div>
                   <label className="text-[12px] text-[#8b98a5] block mb-1">Username</label>
                   <input
+                    id="profile-username"
+                    name="username"
                     type="text"
                     value={usernameState}
                     onChange={(e) => setUsernameState(e.target.value)}
+                    maxLength={USERNAME_MAX_LENGTH}
                     placeholder="username"
-                    className={panelInputClass}
+                    className={`${panelInputClass} ${usernameError ? invalidInputClass : ''}`}
                   />
+                  <div className="mt-1 flex items-center justify-between gap-3 text-[11px]">
+                    <span className={usernameError ? 'text-rose-300' : 'text-[#8b98a5]'}>
+                      {usernameError || '3-30 chars, lowercase letters, numbers, . _ -'}
+                    </span>
+                    <span className="text-[#8b98a5]">
+                      {usernameNormalized.length}/{USERNAME_MAX_LENGTH}
+                    </span>
+                  </div>
                 </div>
 
                 <div>
                   <label className="text-[12px] text-[#8b98a5] block mb-1">Email</label>
                   <input
+                    id="profile-email"
+                    name="email"
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    maxLength={EMAIL_MAX_LENGTH}
+                    required
                     placeholder="you@example.com"
-                    className={panelInputClass}
+                    className={`${panelInputClass} ${emailError ? invalidInputClass : ''}`}
                   />
+                  <div className="mt-1 flex items-center justify-between gap-3 text-[11px]">
+                    <span className={emailError ? 'text-rose-300' : 'text-[#8b98a5]'}>
+                      {emailError || 'Use a valid email address'}
+                    </span>
+                    <span className="text-[#8b98a5]">
+                      {payloadEmailNormalized.length}/{EMAIL_MAX_LENGTH}
+                    </span>
+                  </div>
                 </div>
 
                 <div className="flex justify-end">
@@ -495,8 +640,9 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
                 </div>
 
                 <div className="text-[12px] text-[#8b98a5]">
-                  <div>Display name: 1–30 chars, words separated by single spaces.</div>
-                  <div>Username: 3–30 chars, lowercase a-z, 0-9, dot, underscore, dash.</div>
+                  <div>Display name: 1-30 chars, words separated by single spaces.</div>
+                  <div>Username: 3-30 chars, lowercase a-z, 0-9, dot, underscore, dash.</div>
+                  <div>Email: required, valid format, max 254 chars.</div>
                 </div>
               </div>
             </div>
@@ -506,6 +652,8 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
               <div className="flex flex-col gap-2">
                 <div className="flex items-center gap-2">
                   <input
+                    id="current-password"
+                    name="current-password"
                     type={showCurrent ? 'text' : 'password'}
                     value={currentPassword}
                     onChange={(e) => setCurrentPassword(e.target.value)}
@@ -529,11 +677,14 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
 
                 <div className="flex items-center gap-2">
                   <input
+                    id="new-password"
+                    name="new-password"
                     type={showNew ? 'text' : 'password'}
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
+                    maxLength={PASSWORD_MAX_LENGTH}
                     placeholder="New password"
-                    className={panelInputClass}
+                    className={`${panelInputClass} ${passwordInvalid ? invalidInputClass : ''}`}
                   />
                   <button
                     type="button"
@@ -552,11 +703,16 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
 
                 <div className="flex items-center gap-2">
                   <input
+                    id="confirm-password"
+                    name="confirm-password"
                     type={showConfirm ? 'text' : 'password'}
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
+                    maxLength={PASSWORD_MAX_LENGTH}
                     placeholder="Confirm new password"
-                    className={panelInputClass}
+                    className={`${panelInputClass} ${
+                      confirmPasswordError ? invalidInputClass : ''
+                    }`}
                   />
                   <button
                     type="button"
@@ -573,21 +729,40 @@ export default function EditProfileModal({ user, onClose, onUpdated }: Props) {
                   </button>
                 </div>
 
+                <div className="text-[12px]">
+                  <div className={passwordError ? 'text-rose-300' : 'text-[#8b98a5]'}>
+                    {passwordError ||
+                      'Password: 8-72 chars, at least one letter, one number, and one special character.'}
+                  </div>
+                  {usernameInPassword && (
+                    <div className="mt-1 text-rose-300">Password cannot contain username.</div>
+                  )}
+                  {confirmPasswordError && (
+                    <div className="mt-1 text-rose-300">{confirmPasswordError}</div>
+                  )}
+                  <div className="mt-1 text-[#8b98a5]">
+                    {newPassword.length}/{PASSWORD_MAX_LENGTH}
+                  </div>
+                </div>
+
                 <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={handleChangePassword}
-                    disabled={
-                      passwordLoading ||
-                      !currentPassword ||
-                      !newPassword ||
-                      !confirmPassword ||
-                      newPassword !== confirmPassword
-                    }
-                    className="rounded-full bg-[var(--color-1)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--color-1)]/90 disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    {passwordLoading ? 'Changing...' : 'Change password'}
-                  </button>
+                  <span className="inline-block" title={passwordDisabledReason}>
+                    <button
+                      type="button"
+                      onClick={handleChangePassword}
+                      disabled={
+                        passwordLoading ||
+                        !currentPassword ||
+                        !newPassword ||
+                        !confirmPassword ||
+                        passwordInvalid ||
+                        Boolean(confirmPasswordError)
+                      }
+                      className="rounded-full bg-[var(--color-1)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--color-1)]/90 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      {passwordLoading ? 'Changing...' : 'Change password'}
+                    </button>
+                  </span>
                 </div>
               </div>
             </div>

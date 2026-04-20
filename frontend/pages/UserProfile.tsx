@@ -326,6 +326,8 @@ export default function UserProfile() {
 
           <div className="relative w-full max-w-[420px]">
             <input
+              id="user-search"
+              name="user-search"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search by nickname"
