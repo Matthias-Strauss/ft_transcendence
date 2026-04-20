@@ -59,7 +59,7 @@ export function SavedCard({ post, onRemoved }: SavedCardProps) {
       </p>
 
       {bookmarked.imageUrl && (
-        <div className="rounded-2xl overflow-hidden border border-[#39444d]">
+        <div className="rounded-2xl overflow-hidden border border-[#39444d] w-full max-w-2xl">
           <AuthedImage src={bookmarked.imageUrl} alt="Saved post image" className="w-full h-auto" />
         </div>
       )}

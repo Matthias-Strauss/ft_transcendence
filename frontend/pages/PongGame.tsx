@@ -59,10 +59,36 @@ const CAMERA_Z = 60;
 const CAMERA_TARGET_Y = 3.4;
 const CAMERA_FOV = 1.12;
 
+let sharedBackgroundVideo: HTMLVideoElement | null = null;
+
+function getSharedBackgroundVideo(): HTMLVideoElement | null {
+  if (typeof document === 'undefined') {
+    return null;
+  }
+
+  if (!sharedBackgroundVideo) {
+    const video = document.createElement('video');
+    video.autoplay = true;
+    video.loop = true;
+    video.muted = true;
+    video.playsInline = true;
+    video.preload = 'auto';
+    video.src = VIDEO_DOME_URL;
+    video.className =
+      'pointer-events-none absolute inset-0 h-full w-full object-cover object-center brightness-[0.38] contrast-[1.05] saturate-[1.15]';
+    video.style.objectPosition = VIDEO_BACKGROUND_POSITION;
+    video.style.transform = `translateY(${VIDEO_BACKGROUND_OFFSET_Y}) scale(${VIDEO_BACKGROUND_SCALE})`;
+    sharedBackgroundVideo = video;
+  }
+
+  return sharedBackgroundVideo;
+}
+
 type TimedSnapshot = { t: number; snap: PongSnapshot };
 
 export default function PongGame() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const backgroundVideoHostRef = useRef<HTMLDivElement | null>(null);
   const snapshotBufferRef = useRef<TimedSnapshot[]>([]);
   const cameraRef = useRef<FreeCamera | null>(null);
   const engineRef = useRef<Engine | null>(null);
@@ -76,6 +102,8 @@ export default function PongGame() {
   const activeMatch = usePongStore((state) => state.activeMatch);
   const setActiveMatch = usePongStore((state) => state.setActiveMatch);
   const clearActiveMatch = usePongStore((state) => state.clearActiveMatch);
+  const restoredFromStorage = usePongStore((state) => state.restoredFromStorage);
+  const acknowledgeRestoredMatch = usePongStore((state) => state.acknowledgeRestoredMatch);
   const [mode, setMode] = useState<Mode>(activeMatch ? 'playing' : 'idle');
   const [connected, setConnected] = useState(socket.connected);
   const [opponent, setOpponent] = useState<string>(activeMatch?.opponent ?? '');
@@ -87,6 +115,7 @@ export default function PongGame() {
   const modeRef = useRef<Mode>(activeMatch ? 'playing' : 'idle');
   const youAreRef = useRef<Slot | null>(activeMatch?.youAre ?? null);
   const ignoreNextEndedRef = useRef(false);
+  const pageUnloadingRef = useRef(false);
 
   useEffect(() => {
     modeRef.current = mode;
@@ -112,15 +141,32 @@ export default function PongGame() {
   useEffect(() => {
     const emitLeaveIfActive = () => {
       if (!socket.connected) return;
+      if (pageUnloadingRef.current) return;
       if (modeRef.current !== 'waiting' && modeRef.current !== 'playing') return;
       socket.emit('pong:leave');
     };
 
+    const handlePageHide = () => {
+      pageUnloadingRef.current = true;
+    };
+
+    const handleBeforeUnload = () => {
+      pageUnloadingRef.current = true;
+    };
+
     const onConnect = () => {
       setConnected(true);
-      if (usePongStore.getState().activeMatch) {
-        socket.emit('pong:rejoin');
+
+      const pongState = usePongStore.getState();
+      if (!pongState.activeMatch) {
+        return;
       }
+
+      if (pongState.restoredFromStorage) {
+        pongState.acknowledgeRestoredMatch();
+      }
+
+      socket.emit('pong:rejoin');
     };
     const onDisconnect = () => setConnected(false);
     const onWaiting = () => {
@@ -216,7 +262,8 @@ export default function PongGame() {
     socket.on('pong:opponent_returned', onOpponentReturned);
     socket.on('pong:resumed', onResumed);
     socket.on('pong:rejoin_failed', onRejoinFailed);
-    window.addEventListener('pagehide', emitLeaveIfActive);
+    window.addEventListener('pagehide', handlePageHide);
+    window.addEventListener('beforeunload', handleBeforeUnload);
 
     return () => {
       socket.off('connect', onConnect);
@@ -229,8 +276,10 @@ export default function PongGame() {
       socket.off('pong:opponent_returned', onOpponentReturned);
       socket.off('pong:resumed', onResumed);
       socket.off('pong:rejoin_failed', onRejoinFailed);
-      window.removeEventListener('pagehide', emitLeaveIfActive);
+      window.removeEventListener('pagehide', handlePageHide);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
       emitLeaveIfActive();
+      pageUnloadingRef.current = false;
     };
   }, [clearActiveMatch, notifySnapshot, resetDebugHud, resetToIdle, setActiveMatch]);
 
@@ -247,6 +296,15 @@ export default function PongGame() {
     }, 250);
     return () => clearInterval(interval);
   }, [opponentGoneUntil]);
+
+  useEffect(() => {
+    if (!connected || !restoredFromStorage || !activeMatch) {
+      return;
+    }
+
+    acknowledgeRestoredMatch();
+    socket.emit('pong:rejoin');
+  }, [acknowledgeRestoredMatch, activeMatch, connected, restoredFromStorage]);
 
   const findMatch = () => {
     if (!socket.connected) return;
@@ -502,21 +560,24 @@ export default function PongGame() {
     cursor: 'pointer',
   };
 
+  useEffect(() => {
+    const host = backgroundVideoHostRef.current;
+    const video = getSharedBackgroundVideo();
+    if (!host || !video) return;
+
+    host.appendChild(video);
+    void video.play().catch(() => {});
+
+    return () => {
+      if (video.parentElement === host) {
+        host.removeChild(video);
+      }
+    };
+  }, []);
+
   return (
     <div className="relative h-[calc(100vh-2rem)] w-full overflow-hidden bg-[#191521]">
-      <video
-        autoPlay
-        loop
-        muted
-        playsInline
-        preload="auto"
-        src={VIDEO_DOME_URL}
-        className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center brightness-[0.38] contrast-[1.05] saturate-[1.15]"
-        style={{
-          objectPosition: VIDEO_BACKGROUND_POSITION,
-          transform: `translateY(${VIDEO_BACKGROUND_OFFSET_Y}) scale(${VIDEO_BACKGROUND_SCALE})`,
-        }}
-      />
+      <div ref={backgroundVideoHostRef} className="absolute inset-0" />
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(25,21,33,0.18)_0%,rgba(25,21,33,0.34)_44%,rgba(25,21,33,0.76)_100%)]" />
       <canvas ref={canvasRef} className="absolute inset-0 z-10 h-full w-full" />
       <div className="relative z-20 h-full w-full">

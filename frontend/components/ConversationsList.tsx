@@ -5,6 +5,7 @@ import { AuthedImage } from './ui/AuthedImage';
 import { socket } from '../socket';
 import useUserStore from '../utils/userStore';
 import showToast from '../utils/toast';
+import { buildPongNotificationCopy, isPongNotificationMetadata } from '../chat/pongNotifications';
 
 type ConversationItem = {
   target: {
@@ -17,6 +18,7 @@ type ConversationItem = {
     id: string;
     text?: string | null;
     createdAt?: string;
+    metadata?: Record<string, any> | null;
   };
   unreadCount?: number;
   blockedByMe?: boolean;
@@ -96,6 +98,7 @@ export function ConversationsList() {
           id: payload.id,
           text: payload.text,
           createdAt: payload.createdAt,
+          metadata: payload.metadata ?? null,
         };
 
         setItems((prev) => {
@@ -150,7 +153,7 @@ export function ConversationsList() {
   }, [targetUsername]);
 
   return (
-    <div className="p-8">
+    <div className="p-8 overflow-hidden">
       <div className="mb-6">
         <h2 className="font-bold text-[20px] text-[#f7f9f9] mb-2">Messages</h2>
         <p className="text-[#8b98a5]">Recent conversations</p>
@@ -183,16 +186,16 @@ export function ConversationsList() {
                 />
               </div>
 
-              <div className="flex-1 text-left">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-sm font-semibold text-[#f7f9f9]">
+              <div className="flex-1 text-left overflow-hidden">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="text-sm font-semibold text-[#f7f9f9] truncate">
                       {it.target.displayname ?? it.target.username}
                     </div>
-                    <div className="text-xs text-[#8b98a5]">@{it.target.username}</div>
+                    <div className="text-xs text-[#8b98a5] truncate">@{it.target.username}</div>
                   </div>
 
-                  <div className="text-xs text-[#8b98a5]">
+                  <div className="text-sm text-[#8b98a5] whitespace-nowrap">
                     {it.lastMessage?.createdAt
                       ? new Date(it.lastMessage.createdAt).toLocaleTimeString([], {
                           hour: '2-digit',
@@ -203,7 +206,9 @@ export function ConversationsList() {
                 </div>
 
                 <div className="text-sm text-[#8b98a5] mt-1 truncate">
-                  {it.lastMessage?.text ?? ''}
+                  {isPongNotificationMetadata(it.lastMessage?.metadata)
+                    ? buildPongNotificationCopy(it.lastMessage.metadata)
+                    : it.lastMessage?.text ?? ''}
                 </div>
               </div>
 

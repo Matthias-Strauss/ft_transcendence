@@ -29,6 +29,8 @@ export default function CommentSection({ post, onCommentCreated }: PostProp) {
   const [comments, setComments] = useState<CommentsResponse | null>(null);
   const currentUser = useUserStore((s: UserStore) => s.user);
 
+  const COMMENT_MAX_CHARS = 300;
+
   const handleCommentSubmit = async () => {
     const content = commentInput.trim();
     if (!content) {
@@ -44,8 +46,7 @@ export default function CommentSection({ post, onCommentCreated }: PostProp) {
     });
 
     if (!res.ok) {
-      const errorText = await res.text();
-      showToast(`Failed to submit comment: ${res.status} ${errorText}`, 'error');
+      showToast('Failed to submit comment', 'error');
       return;
     }
 
@@ -91,31 +92,44 @@ export default function CommentSection({ post, onCommentCreated }: PostProp) {
   return (
     <div className="border-t border-[#39444d] bg-[#0f172a]">
       <div className="p-4 border-b border-[#39444d]">
-        <div className="flex gap-3">
-          <div className="size-10 rounded-full overflow-hidden shrink-0 bg-gradient-to-br from-[var(--color-1)] to-[var(--color-2)] flex items-center justify-center">
-            <span className="text-[14px] font-bold text-white">P</span>
+        <div className="flex gap-2 sm:gap-3">
+          <div className="size-8 sm:size-10 rounded-full overflow-hidden shrink-0 bg-gradient-to-br from-[var(--color-1)] to-[var(--color-2)] flex items-center justify-center">
+            <span className="text-[12px] sm:text-[14px] font-bold text-white">P</span>
           </div>
-          <div className="flex-1 flex gap-2">
+          <div className="flex-1 flex gap-1 sm:gap-2">
             <input
+              id="comment-input"
+              name="comment-input"
               type="text"
               placeholder="Write a comment..."
               value={commentInput}
-              onChange={(e) => setCommentInput(e.target.value)}
+              maxLength={COMMENT_MAX_CHARS}
+              onChange={(e) => setCommentInput(e.target.value.slice(0, COMMENT_MAX_CHARS))}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault();
-                  void handleCommentSubmit();
+                  const len = commentInput.trim().length;
+                  if (len > 0 && len <= COMMENT_MAX_CHARS) {
+                    void handleCommentSubmit();
+                  }
                 }
               }}
-              className="flex-1 bg-transparent border-b border-[#39444d] py-2 text-[15px] text-[#f7f9f9] placeholder:text-[#8b98a5] focus:outline-none focus:border-[var(--color-1)] transition-colors"
+              className="flex-1 bg-transparent border-b border-[#39444d] py-2 text-[13px] sm:text-[15px] text-[#f7f9f9] placeholder:text-[#8b98a5] focus:outline-none focus:border-[var(--color-1)] transition-colors"
             />
+            <span
+              className={`text-xs sm:text-sm whitespace-nowrap ${
+                commentInput.length > COMMENT_MAX_CHARS ? 'text-red-400' : 'text-[#8b98a5]'
+              }`}
+            >
+              {commentInput.length}/{COMMENT_MAX_CHARS}
+            </span>
             <button
               onClick={() => void handleCommentSubmit()}
-              disabled={!commentInput.trim()}
-              className="p-2 rounded-full transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--color-1)]/10"
+              disabled={!commentInput.trim() || commentInput.trim().length > COMMENT_MAX_CHARS}
+              className="p-1.5 sm:p-2 rounded-full transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--color-1)]/10 shrink-0"
             >
               <Send
-                className="size-5"
+                className="size-4 sm:size-5"
                 style={{ color: commentInput.trim() ? 'var(--color-1)' : '#8b98a5' }}
               />
             </button>

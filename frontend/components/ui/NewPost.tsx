@@ -1,4 +1,4 @@
-import { forwardRef, useState, type ChangeEvent } from 'react';
+import { forwardRef, useState, useRef, type ChangeEvent } from 'react';
 import { apiFetch } from '../../utils/api';
 import { ImagePlus, X } from 'lucide-react';
 import showToast from '../../utils/toast';
@@ -6,6 +6,18 @@ import showToast from '../../utils/toast';
 interface CreatePostFormProps {
   onPostCreated?: () => void;
 }
+
+const AVATAR_MIME_MAP = {
+  'image/jpeg': '.jpg',
+  'image/png': '.png',
+} as const;
+
+const POST_IMAGE_MAX_BYTES =
+  Number((import.meta as any).env.VITE_POST_IMAGE_MAX_FILE_SIZE_BYTES) || 5242880;
+
+const ACCEPT_ATTR = [...Object.keys(AVATAR_MIME_MAP), '.jpg', '.jpeg', '.png'].join(',');
+
+const POST_MAX_CHARS = 500;
 
 const CreatePostForm = forwardRef<HTMLTextAreaElement, CreatePostFormProps>(
   ({ onPostCreated }, ref) => {
@@ -16,7 +28,8 @@ const CreatePostForm = forwardRef<HTMLTextAreaElement, CreatePostFormProps>(
     const [visibility, setVisibility] = useState<'PUBLIC' | 'FRIENDS'>('FRIENDS');
 
     const handleContentChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
-      const value = e.target.value;
+      const raw = e.target.value;
+      const value = raw.slice(0, POST_MAX_CHARS);
 
       setContent(value);
 
@@ -28,9 +41,87 @@ const CreatePostForm = forwardRef<HTMLTextAreaElement, CreatePostFormProps>(
       }
     };
 
+    const inputRef = useRef<HTMLInputElement | null>(null);
+
+    const pickFile = async (e?: React.MouseEvent) => {
+      e?.preventDefault();
+      const wf = window as any;
+      if (wf.showOpenFilePicker) {
+        try {
+          const [handle] = await wf.showOpenFilePicker({
+            multiple: false,
+            types: [
+              {
+                description: 'Images',
+                accept: {
+                  'image/jpeg': ['.jpg', '.jpeg'],
+                  'image/png': ['.png'],
+                },
+              },
+            ],
+            excludeAcceptAllOption: true,
+          });
+
+          const file = await handle.getFile();
+          if (!file) return;
+
+          if (file.size > POST_IMAGE_MAX_BYTES) {
+            showToast(
+              `Image is too large. Maximum size is ${Math.round(
+                POST_IMAGE_MAX_BYTES / 1024 / 1024,
+              )} MB.`,
+              'error',
+            );
+            return;
+          }
+
+          const allowedTypes = Object.keys(AVATAR_MIME_MAP);
+          const allowedExts = ['jpg', 'jpeg', 'png'];
+          const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
+          if (!allowedTypes.includes(file.type) && !allowedExts.includes(ext)) {
+            showToast('Only JPEG and PNG images are allowed.', 'error');
+            return;
+          }
+
+          setImageFile(file);
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            if (typeof reader.result === 'string') {
+              setPreviewURL(reader.result);
+            }
+          };
+          reader.readAsDataURL(file);
+          return;
+        } catch (err) {
+          return;
+        }
+      }
+
+      inputRef.current?.click();
+    };
+
     const handleImageChange = (e: ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (file) {
+        if (file.size > POST_IMAGE_MAX_BYTES) {
+          showToast(
+            `Image is too large. Maximum size is ${Math.round(
+              POST_IMAGE_MAX_BYTES / 1024 / 1024,
+            )} MB.`,
+            'error',
+          );
+          e.target.value = '';
+          return;
+        }
+        const allowedTypes = Object.keys(AVATAR_MIME_MAP);
+        const allowedExts = ['jpg', 'jpeg', 'png'];
+        const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
+        if (!allowedTypes.includes(file.type) && !allowedExts.includes(ext)) {
+          showToast('Only JPEG and PNG images are allowed.', 'error');
+          e.target.value = '';
+          return;
+        }
+
         setImageFile(file);
         const reader = new FileReader();
         reader.onloadend = () => {
@@ -80,6 +171,8 @@ const CreatePostForm = forwardRef<HTMLTextAreaElement, CreatePostFormProps>(
 
           <div className="flex-1">
             <textarea
+              id="new-post-content"
+              name="new-post-content"
               placeholder="What's happening in your game?"
               className="w-full bg-transparent text-[20px] text-[#f7f9f9] placeholder:text-[#8b98a5] resize-none outline-none mb-3"
               value={content}
@@ -109,15 +202,24 @@ const CreatePostForm = forwardRef<HTMLTextAreaElement, CreatePostFormProps>(
 
             <div className="flex items-center justify-between">
               <div className="flex gap-2 items-center">
-                <label className="cursor-pointer text-xl hover:opacity-80 transition">
-                  <ImagePlus className="size-6 text-[#8b98a5]" />
+                <div>
+                  <button
+                    type="button"
+                    onClick={pickFile}
+                    className="cursor-pointer text-xl hover:opacity-80 transition"
+                  >
+                    <ImagePlus className="size-6 text-[#8b98a5]" />
+                  </button>
                   <input
+                    ref={inputRef}
+                    id="new-post-image"
+                    name="new-post-image"
                     type="file"
-                    accept="image/*"
+                    accept={ACCEPT_ATTR}
                     onChange={handleImageChange}
                     style={{ display: 'none' }}
                   />
-                </label>
+                </div>
               </div>
 
               <div className="flex items-center gap-3">
@@ -148,16 +250,27 @@ const CreatePostForm = forwardRef<HTMLTextAreaElement, CreatePostFormProps>(
                 </div>
               </div>
 
-              <button
-                className="px-6 py-2 rounded-full font-bold text-[15px] transition-colors"
-                style={{
-                  background: 'var(--color-1)',
-                  color: '#f7f9f9',
-                }}
-                onClick={handleSubmit}
-              >
-                Post
-              </button>
+              <div className="flex items-center gap-3">
+                <span
+                  className={`text-sm ${
+                    content.length > POST_MAX_CHARS ? 'text-red-400' : 'text-[#8b98a5]'
+                  }`}
+                >
+                  {content.length}/{POST_MAX_CHARS}
+                </span>
+
+                <button
+                  className="px-6 py-2 rounded-full font-bold text-[15px] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  style={{
+                    background: 'var(--color-1)',
+                    color: '#f7f9f9',
+                  }}
+                  onClick={handleSubmit}
+                  disabled={content.trim().length === 0 || content.length > POST_MAX_CHARS}
+                >
+                  Post
+                </button>
+              </div>
             </div>
           </div>
         </div>

@@ -412,6 +412,8 @@ export function emitDirectMessageDeleted(
   const payload = {
     messageId: params.messageId,
     deletedByUserId: params.deletedByUserId,
+    senderUsername: params.senderUsername,
+    recipientUsername: params.recipientUsername,
   };
 
   const usernames = new Set([params.senderUsername, params.recipientUsername]);

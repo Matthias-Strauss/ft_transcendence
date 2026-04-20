@@ -47,14 +47,16 @@ export function setupWebSocket(httpServer: HttpServer) {
         winnerUsername,
       });
     } else if (params.reason === 'left') {
-      text = 'Pong match ended: opponent left';
+      const opponent_usr = params.endedBy?.username ?? 'Opponent';
+      text = `${opponent_usr} left the match.`;
       metadata = buildPongNotificationMetadata(invite, 'opponent_left', {
         matchId: params.matchId,
         finalScore: params.finalScore,
         endedByUsername: params.endedBy?.username,
       });
     } else {
-      text = 'Pong match ended: opponent disconnected';
+      const opponent_usr = params.endedBy?.username ?? 'Opponent';
+      text = `${opponent_usr} disconnected and did not return in time.`;
       metadata = buildPongNotificationMetadata(invite, 'opponent_disconnected', {
         matchId: params.matchId,
         finalScore: params.finalScore,

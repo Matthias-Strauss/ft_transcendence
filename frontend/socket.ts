@@ -22,6 +22,10 @@ let beforeSocketConnect: (() => Promise<boolean>) | null = null;
 let connectingPromise: Promise<boolean> | null = null;
 let resettingSocketConnection = false;
 
+function browserIsOffline(): boolean {
+  return typeof navigator !== 'undefined' && navigator.onLine === false;
+}
+
 function clearReconnectTimer() {
   if (reconnectTimer !== null) {
     window.clearTimeout(reconnectTimer);
@@ -30,7 +34,12 @@ function clearReconnectTimer() {
 }
 
 function scheduleReconnect(delayMs = RECONNECT_DELAY_MS) {
-  if (!shouldMaintainSocketConnection || reconnectsBlocked || reconnectTimer !== null) {
+  if (
+    !shouldMaintainSocketConnection ||
+    reconnectsBlocked ||
+    reconnectTimer !== null ||
+    browserIsOffline()
+  ) {
     return;
   }
 
@@ -76,7 +85,7 @@ export function unblockSocketReconnects(): void {
 export function connectSocket(options: { forceReconnect?: boolean } = {}): Promise<boolean> {
   shouldMaintainSocketConnection = true;
 
-  if (reconnectsBlocked) {
+  if (reconnectsBlocked || browserIsOffline()) {
     return Promise.resolve(false);
   }
 
@@ -95,7 +104,14 @@ export function connectSocket(options: { forceReconnect?: boolean } = {}): Promi
   connectingPromise = (async () => {
     const sessionReady = await runBeforeConnectHook();
 
-    if (!sessionReady || reconnectsBlocked || !shouldMaintainSocketConnection) {
+    if (!sessionReady) {
+      if (shouldMaintainSocketConnection && !reconnectsBlocked) {
+        scheduleReconnect();
+      }
+      return false;
+    }
+
+    if (reconnectsBlocked || !shouldMaintainSocketConnection || browserIsOffline()) {
       return false;
     }
 
@@ -141,6 +157,11 @@ socket.on('connect_error', () => {
     return;
   }
 
+  if (browserIsOffline()) {
+    clearReconnectTimer();
+    return;
+  }
+
   scheduleReconnect();
 });
 
@@ -153,3 +174,4 @@ function handleBrowserOnline() {
 }
 
 window.addEventListener('online', handleBrowserOnline);
+window.addEventListener('offline', clearReconnectTimer);

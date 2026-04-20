@@ -16,6 +16,8 @@ import Notifications from './pages/Notifications';
 import usePongStore from './utils/pongState';
 import useNotificationStore from './utils/notificationStore';
 import useFriendRequestStore from './utils/friendRequestStore';
+import { normalizeIncomingPayload, shouldShowMessageInActiveChat } from './chat/messages';
+import showToast from './utils/toast';
 
 const ROOT_TABS = new Set(['home', 'notifications', 'messages', 'friends', 'saved']);
 
@@ -42,7 +44,7 @@ type PongScore = {
 
 type PongMatchPayload = {
   matchId?: string;
-  youAre?: string;
+  youAre?: 'p1' | 'p2';
   opponent?: string;
 };
 
@@ -158,36 +160,33 @@ export default function SocialApp() {
   }, [location.pathname]);
 
   useEffect(() => {
-    type ChatMessagePayload = {
-      sender?: { username?: string | null } | null;
-      username?: string | null;
-      recipient?: { username?: string | null } | null;
-      to?: string | null;
-    };
-
-    const onChatMessage = (payload: ChatMessagePayload) => {
+    const onChatMessage = (payload: any) => {
       try {
-        if (!payload) return;
-
         const me = useUserStore.getState().user?.username ?? null;
         if (!me) return;
 
-        const senderUsername = payload?.sender?.username ?? payload?.username ?? null;
-        const recipientUsername = payload?.recipient?.username ?? payload?.to ?? null;
+        const normalized = normalizeIncomingPayload(payload, me, socket.id);
+        if (!normalized) return;
 
-        if (!senderUsername || !recipientUsername) return;
+        const { chatMessage, otherUsername, senderUsername, recipientUsername } = normalized;
+        if (!otherUsername) return;
 
-        if (recipientUsername !== me) return;
-
-        const other = senderUsername;
         const state = useChatStore.getState();
-        const target = state.targetUsername;
-        const panelOpen = state.panelOpen;
 
-        if (panelOpen && target === other) {
-          state.clearUnreadForUser(other);
+        state.appendMessageForUser(otherUsername, chatMessage);
+
+        if (chatMessage.isOwn) {
+          return;
+        }
+
+        const isVisibleInActiveChat =
+          state.panelOpen &&
+          shouldShowMessageInActiveChat(state.targetUsername, senderUsername, recipientUsername);
+
+        if (isVisibleInActiveChat) {
+          state.clearUnreadForUser(otherUsername);
         } else {
-          state.incrementUnreadForUser(other, 1);
+          state.incrementUnreadForUser(otherUsername, 1);
         }
       } catch {}
     };
@@ -323,9 +322,11 @@ export default function SocialApp() {
 
   useEffect(() => {
     const onMatched = (payload: PongMatchPayload) => {
-      if (!payload?.matchId || !payload?.youAre || !payload?.opponent) {
+      if (!payload?.matchId || !payload?.opponent) {
         return;
       }
+
+      if (payload.youAre !== 'p1' && payload.youAre !== 'p2') return;
 
       usePongStore.getState().setActiveMatch({
         matchId: payload.matchId,
@@ -342,9 +343,11 @@ export default function SocialApp() {
     };
 
     const onResumed = (payload: PongResumedPayload) => {
-      if (!payload?.matchId || !payload?.youAre || !payload?.opponent || !payload?.score) {
+      if (!payload?.matchId || !payload?.opponent || !payload?.score) {
         return;
       }
+
+      if (payload.youAre !== 'p1' && payload.youAre !== 'p2') return;
 
       usePongStore.getState().setActiveMatch({
         matchId: payload.matchId,
@@ -401,7 +404,7 @@ export default function SocialApp() {
         aria-expanded={mobileSidebarOpen}
         onClick={() => setMobileSidebarOpen((v) => !v)}
       >
-        {mobileSidebarOpen ? <X className="size-5" /> : <Menu className="size-5" />}
+        <Menu className="size-5" />
       </button>
 
       {mobileSidebarOpen && (
@@ -422,7 +425,7 @@ export default function SocialApp() {
       />
 
       <div className="ml-0 flex gap-3 px-2 pb-2 pt-14 md:ml-[220px] md:gap-6 md:px-4 md:py-4">
-        <main className="min-h-[calc(100vh-1rem)] flex-1 bg-[#0f172a] md:min-h-[calc(100vh-2rem)] md:border-x md:border-[#39444d]">
+        <main className="min-h-[calc(100vh-1rem)] flex-1 bg-[#0f172a] md:min-h-[calc(100vh-2rem)] md:border-x md:border-[#39444d] overflow-hidden">
           {!showingNestedRoute && <HomeFeed ref={inputRef} isVisible={activeTab === 'home'} />}
           {!showingNestedRoute && activeTab !== 'home' && renderContent()}
           {showingNestedRoute && <Outlet />}

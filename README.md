@@ -80,6 +80,18 @@ This project uses Docker for the full application stack, including the frontend,
 
 ---
 
+## 🌐 Browser Compatibility
+
+- The application is intended to be compatible with the latest stable version of **Google Chrome**, as required by the subject.
+- We also target compatibility with additional modern browsers during development and testing. Chrome, Chromium and Brave are tested and fully compatible.
+
+### Known Limitations
+
+- The HTTPS/SSL certificate is self-signed in local development environments, so browsers will show a certificate warning until it is explicitly trusted.
+- Other than the self-signed development certificate, we currently have no known browser-specific limitations.
+
+---
+
 ## 👥 Team Information
 
 | Team Member    | Role            | Responsibilities                                                    |
